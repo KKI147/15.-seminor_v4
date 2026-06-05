@@ -17,3 +17,7 @@
 - [ ] Click algebra list item and verify cyan highlight on canvas
 - [ ] Click same item again to deselect
 - [ ] Click empty canvas to clear selection
+- [ ] LINE tool: pick two points, verify dashed indigo infinite line
+- [ ] Drag point and verify line updates
+- [ ] Type `Line(A,B)` in algebra input
+- [ ] Delete line with DELETE tool

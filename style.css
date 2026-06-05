@@ -91,11 +91,14 @@
 }
 
 /* 버튼 아이콘 대체 텍스트/이모지용 텍스트 스타일링 */
-.tool-btn[data-tool="MOVE"]::before { content: "⬈"; font-size: 18px; }
+.tool-btn[data-tool="MOVE"]::before { content: "✋"; font-size: 16px; }
+.tool-btn[data-tool="MOVE"].active::before { color: #ffffff; }
 .tool-btn[data-tool="POINT"]::before { content: "●"; font-size: 12px; color: #ef4444; }
 .tool-btn[data-tool="POINT"].active::before { color: #ffffff; }
 .tool-btn[data-tool="SEGMENT"]::before { content: "―"; font-size: 14px; color: #2563eb; }
 .tool-btn[data-tool="SEGMENT"].active::before { color: #ffffff; }
+.tool-btn[data-tool="LINE"]::before { content: "↔"; font-size: 14px; color: #4f46e5; }
+.tool-btn[data-tool="LINE"].active::before { color: #ffffff; }
 .tool-btn[data-tool="CIRCLE"]::before { content: "○"; font-size: 16px; color: #059669; }
 .tool-btn[data-tool="CIRCLE"].active::before { color: #ffffff; }
 .tool-btn[data-tool="DELETE"]::before { content: "🗑"; font-size: 14px; }
@@ -240,9 +243,9 @@
 
 /* 대수창에서 선택된 항목 */
 .algebra-item.active {
-    background-color: #ecfeff;
-    border-color: #06b6d4;
-    box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
+    background-color: #eff6ff;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.12);
 }
 
 /* 오브젝트 컬러 인디케이터 */
@@ -255,6 +258,7 @@
 
 .obj-color-indicator.point { background-color: #ef4444; }
 .obj-color-indicator.segment { background-color: #2563eb; }
+.obj-color-indicator.line { background-color: #4f46e5; }
 .obj-color-indicator.circle { background-color: #059669; }
 .obj-color-indicator.function { background-color: #7c3aed; }
 
