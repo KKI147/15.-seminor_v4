@@ -192,6 +192,17 @@
     background-color: var(--accent-hover);
 }
 
+.algebra-hint {
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.algebra-hint b {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
 .algebra-error {
     min-height: 16px;
     font-size: 11px;

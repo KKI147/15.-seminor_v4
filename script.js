@@ -139,8 +139,9 @@ function createAlgeoUI($container) {
         '                <div class="empty-msg">오브젝트가 없습니다.</div>' +
         '            </div>' +
         '            <div class="sidebar-input-area">' +
-        '                <input type="text" id="algebraInput" placeholder="A=(1,2)  y=2x+1  AB  ⊙(A,B)" autocomplete="off" />' +
+        '                <input type="text" id="algebraInput" placeholder="D,E  Circle(A,C)  A=(1,2)" autocomplete="off" />' +
         '                <button type="button" id="btnAlgebraSubmit">입력</button>' +
+        '                <div class="algebra-hint">선분: <b>AB</b> 또는 <b>D,E</b> · 원: <b>Circle(A,C)</b></div>' +
         '                <div class="algebra-error" id="algebraError"></div>' +
         '            </div>' +
         '        </div>' +
@@ -198,15 +199,26 @@ AlgeoEngine.prototype.findCircleByCenterAndPoint = function (centerId, pointId) 
     return null;
 };
 
-// 이름으로 점 객체 검색
+// 이름으로 점 객체 검색 (대소문자 구분 후, 없으면 대소문자 무시 재검색)
 AlgeoEngine.prototype.findPointByName = function (name) {
     const list = this.objects;
-    for (let i = 0; i < list.length; i++) {
-        if (list[i].type === 'POINT' && list[i].name === name) {
+    let i;
+    let fallback = null;
+    const lowerName = (name || '').toLowerCase();
+
+    for (i = 0; i < list.length; i++) {
+        if (list[i].type !== 'POINT') {
+            continue;
+        }
+        if (list[i].name === name) {
             return list[i];
         }
+        if (fallback === null && list[i].name.toLowerCase() === lowerName) {
+            fallback = list[i];
+        }
     }
-    return null;
+
+    return fallback;
 };
 
 // 점 객체 추가
@@ -1142,14 +1154,14 @@ AlgeoApp.prototype.parseTwoPointNames = function (combined) {
         const p1 = this.engine.findPointByName(name1);
         const p2 = this.engine.findPointByName(name2);
 
-        if (p1 && p2 && name1 !== name2) {
+        if (p1 && p2 && p1.id !== p2.id) {
             if (!best || name1.length > best.name1.length) {
                 best = {
                     p1: p1,
                     p2: p2,
                     name1: name1,
                     name2: name2,
-                    segmentName: name1 + name2
+                    segmentName: p1.name + p2.name
                 };
             }
         }
@@ -1166,7 +1178,33 @@ AlgeoApp.prototype.parseTwoPointNames = function (combined) {
         };
     }
 
-    return { success: false, message: '두 점을 찾을 수 없습니다. 먼저 점을 생성하세요.' };
+    return {
+        success: false,
+        message: '두 점을 찾을 수 없습니다. D,E 또는 de 형식으로 입력하고, 점이 먼저 있어야 합니다.'
+    };
+};
+
+// 쉼표로 구분된 두 점 이름 파싱 (예: "D, E")
+AlgeoApp.prototype.parseCommaPointNames = function (name1, name2) {
+    const p1 = this.engine.findPointByName(name1);
+    const p2 = this.engine.findPointByName(name2);
+
+    if (!p1) {
+        return { success: false, message: '점 ' + name1 + '을(를) 찾을 수 없습니다.' };
+    }
+    if (!p2) {
+        return { success: false, message: '점 ' + name2 + '을(를) 찾을 수 없습니다.' };
+    }
+    if (p1.id === p2.id) {
+        return { success: false, message: '서로 다른 두 점을 지정해 주세요.' };
+    }
+
+    return {
+        success: true,
+        p1: p1,
+        p2: p2,
+        segmentName: p1.name + p2.name
+    };
 };
 
 // 대수창 선분 정의 처리 (예: AB)
@@ -1316,23 +1354,49 @@ AlgeoApp.prototype.parseAlgebraInput = function (input) {
         return { success: true, message: '' };
     }
 
-    // 원: ⊙(A, B) — 중심 A, 둘레 점 B
+    // 원: Circle(A, C) — ⊙ 기호 없이 영문으로 입력 (권장)
+    const circleWordMatch = trimmed.match(/^circle\s*\(\s*([A-Za-z][A-Za-z0-9]*)\s*,\s*([A-Za-z][A-Za-z0-9]*)\s*\)$/i);
+    if (circleWordMatch) {
+        return this.handleCircleInput(circleWordMatch[1], circleWordMatch[2]);
+    }
+
+    // 원: CircleAC — Circle(A,C) 축약형
+    const circleWordShortMatch = trimmed.match(/^circle\s*([A-Za-z][A-Za-z0-9]+)$/i);
+    if (circleWordShortMatch) {
+        const circleWordParsed = this.parseTwoPointNames(circleWordShortMatch[1]);
+        if (!circleWordParsed.success) {
+            return { success: false, message: '원 정의에 필요한 두 점을 찾을 수 없습니다. 예: Circle(A, C)' };
+        }
+        return this.handleCircleInput(circleWordParsed.name1, circleWordParsed.name2);
+    }
+
+    // 원: ⊙(A, B) — 특수문자 입력 가능할 때
     const circleParenMatch = trimmed.match(/^⊙\s*\(\s*([A-Za-z][A-Za-z0-9]*)\s*,\s*([A-Za-z][A-Za-z0-9]*)\s*\)$/);
     if (circleParenMatch) {
         return this.handleCircleInput(circleParenMatch[1], circleParenMatch[2]);
     }
 
-    // 원: ⊙AB — 중심 A, 둘레 점 B (이름 분할)
+    // 원: ⊙AC — ⊙(A,C) 축약형
     const circleShortMatch = trimmed.match(/^⊙\s*([A-Za-z][A-Za-z0-9]+)$/);
     if (circleShortMatch) {
         const circleParsed = this.parseTwoPointNames(circleShortMatch[1]);
         if (!circleParsed.success) {
-            return { success: false, message: '원 정의에 필요한 두 점을 찾을 수 없습니다. 예: ⊙(A, B)' };
+            return { success: false, message: '원 정의에 필요한 두 점을 찾을 수 없습니다. 예: Circle(A, C)' };
         }
         return this.handleCircleInput(circleParsed.name1, circleParsed.name2);
     }
 
-    // 선분: AB — 점 A와 점 B 연결
+    // 선분: D, E — 쉼표로 두 점 구분 (소문자 de보다 명확)
+    const segmentCommaMatch = trimmed.match(/^([A-Za-z][A-Za-z0-9]*)\s*,\s*([A-Za-z][A-Za-z0-9]*)$/);
+    if (segmentCommaMatch) {
+        const commaParsed = this.parseCommaPointNames(segmentCommaMatch[1], segmentCommaMatch[2]);
+        if (!commaParsed.success) {
+            return { success: false, message: commaParsed.message };
+        }
+        return this.handleSegmentInput(commaParsed.p1, commaParsed.p2, commaParsed.segmentName);
+    }
+
+    // 선분: AB 또는 de — 붙여 쓰기 (대소문자 무시 검색)
     const segmentMatch = trimmed.match(/^([A-Za-z][A-Za-z0-9]+)$/);
     if (segmentMatch) {
         const segParsed = this.parseTwoPointNames(segmentMatch[1]);
@@ -1344,7 +1408,7 @@ AlgeoApp.prototype.parseAlgebraInput = function (input) {
 
     return {
         success: false,
-        message: '지원 형식: A=(1,2), y=2x+1, AB, ⊙(A,B)'
+        message: '지원 형식: A=(1,2), y=2x+1, D,E, AB, Circle(A,C)'
     };
 };
 
