@@ -99,6 +99,10 @@
 .tool-btn[data-tool="SEGMENT"].active::before { color: #ffffff; }
 .tool-btn[data-tool="LINE"]::before { content: "↔"; font-size: 14px; color: #4f46e5; }
 .tool-btn[data-tool="LINE"].active::before { color: #ffffff; }
+.tool-btn[data-tool="MIDPOINT"]::before { content: "M"; font-size: 13px; font-weight: 700; color: #8b5cf6; }
+.tool-btn[data-tool="MIDPOINT"].active::before { color: #ffffff; }
+.tool-btn[data-tool="PERP_BISECTOR"]::before { content: "⊥"; font-size: 16px; color: #0891b2; }
+.tool-btn[data-tool="PERP_BISECTOR"].active::before { color: #ffffff; }
 .tool-btn[data-tool="CIRCLE"]::before { content: "○"; font-size: 16px; color: #059669; }
 .tool-btn[data-tool="CIRCLE"].active::before { color: #ffffff; }
 .tool-btn[data-tool="DELETE"]::before { content: "🗑"; font-size: 14px; }
@@ -153,17 +157,44 @@
 
 /* 대수창 수식 입력 영역 */
 .sidebar-input-area {
-    padding: 12px;
+    padding: 10px 12px 12px;
     border-top: 1px solid var(--border-color);
     background-color: #fafafa;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.algebra-input-top {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.cmd-dict-btn {
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: 11px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    text-decoration: underline;
+    transition: var(--transition-fast);
+}
+
+.cmd-dict-btn:hover {
+    color: var(--accent-color);
+}
+
+.algebra-input-row {
+    display: flex;
+    gap: 6px;
 }
 
 #algebraInput {
-    width: 100%;
-    height: 36px;
+    flex: 1;
+    min-width: 0;
+    height: 34px;
     padding: 0 10px;
     border: 1px solid var(--border-color);
     border-radius: 6px;
@@ -180,7 +211,9 @@
 }
 
 #btnAlgebraSubmit {
-    height: 32px;
+    flex-shrink: 0;
+    height: 34px;
+    padding: 0 12px;
     border: none;
     border-radius: 6px;
     background-color: var(--accent-color);
@@ -195,19 +228,132 @@
     background-color: var(--accent-hover);
 }
 
-.algebra-hint {
-    font-size: 11px;
-    color: var(--text-secondary);
-    line-height: 1.5;
+/* 자동완성·툴팁·명령어 사전 컨테이너 */
+.algebra-assist-wrap {
+    position: relative;
 }
 
-.algebra-hint b {
-    color: var(--text-primary);
+/* GeoGebra 스타일 설명 툴팁 */
+.algebra-tooltip {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    margin-bottom: 4px;
+    padding: 8px 10px;
+    background-color: #3f3f46;
+    color: #f4f4f5;
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.45;
+    z-index: 20;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.algebra-tooltip.open {
+    display: block;
+}
+
+.algebra-tooltip .tooltip-syntax {
     font-weight: 600;
+    margin-bottom: 4px;
+    color: #ffffff;
+}
+
+.algebra-tooltip .tooltip-desc {
+    color: #d4d4d8;
+}
+
+/* 입력 시 자동완성 목록 */
+.algebra-suggest-list {
+    display: none;
+    list-style: none;
+    margin: 0;
+    padding: 4px 0;
+    max-height: 140px;
+    overflow-y: auto;
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: var(--shadow-md);
+}
+
+.algebra-suggest-list.open {
+    display: block;
+}
+
+.algebra-suggest-item {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 7px 10px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.algebra-suggest-item:hover,
+.algebra-suggest-item.active {
+    background-color: #eff6ff;
+}
+
+.algebra-suggest-item .suggest-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.algebra-suggest-item .suggest-syntax {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+/* 명령어 사전 패널 (토글) */
+.algebra-cmd-dict {
+    display: none;
+    max-height: 150px;
+    overflow-y: auto;
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: var(--shadow-md);
+}
+
+.algebra-cmd-dict.open {
+    display: block;
+}
+
+.algebra-cmd-item {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 7px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f5f9;
+    transition: var(--transition-fast);
+}
+
+.algebra-cmd-item:last-child {
+    border-bottom: none;
+}
+
+.algebra-cmd-item:hover {
+    background-color: #f8fafc;
+}
+
+.algebra-cmd-item .cmd-item-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.algebra-cmd-item .cmd-item-syntax {
+    font-size: 11px;
+    color: var(--text-secondary);
 }
 
 .algebra-error {
-    min-height: 16px;
+    min-height: 14px;
     font-size: 11px;
     color: #dc2626;
     line-height: 1.4;
@@ -259,6 +405,8 @@
 .obj-color-indicator.point { background-color: #ef4444; }
 .obj-color-indicator.segment { background-color: #2563eb; }
 .obj-color-indicator.line { background-color: #4f46e5; }
+.obj-color-indicator.midpoint { background-color: #8b5cf6; }
+.obj-color-indicator.perp_bisector { background-color: #0891b2; }
 .obj-color-indicator.circle { background-color: #059669; }
 .obj-color-indicator.function { background-color: #7c3aed; }
 
