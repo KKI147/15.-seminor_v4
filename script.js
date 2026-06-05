@@ -55,6 +55,18 @@ const ALGEBRA_COMMANDS = [
         syntax: 'Perpendicular(A, B, C)',
         example: 'Perpendicular(A,B,C)',
         desc: 'C를 지나며 AB에 수직인 직선입니다.'
+    },
+    {
+        label: '각도',
+        syntax: 'Angle(A, B, C)',
+        example: 'Angle(A,B,C)',
+        desc: 'B가 꼭짓점인 각도 ∠ABC입니다.'
+    },
+    {
+        label: '호',
+        syntax: 'Arc(A, B, C)',
+        example: 'Arc(A,B,C)',
+        desc: '끝점 A,B → 호 위의 점 C로 호 모양 결정.'
     }
 ];
 
@@ -62,10 +74,10 @@ const ALGEBRA_COMMANDS = [
 const ALGEO_TOOL_CATEGORIES = [
     {
         id: 'pointer',
-        icon: '↖',
+        icon: '✋',
         title: '이동·선택',
         tools: [
-            { tool: 'MOVE', label: '이동', icon: '✋' }
+            { tool: 'MOVE', label: '이동', icon: '✋', hint: '드래그로 이동' }
         ]
     },
     {
@@ -73,39 +85,63 @@ const ALGEO_TOOL_CATEGORIES = [
         icon: '●',
         title: '점',
         tools: [
-            { tool: 'POINT', label: '점', icon: '●', shortcut: 'D' },
-            { tool: 'MIDPOINT', label: '중점', icon: 'M', shortcut: 'M' }
+            { tool: 'POINT', label: '점', icon: '●', shortcut: 'D', hint: '빈 곳 클릭' },
+            { tool: 'MIDPOINT', label: '중점', icon: '◎', shortcut: 'M', hint: '점 2개 선택' }
         ]
     },
     {
         id: 'line',
-        icon: '╱',
+        icon: '／',
         title: '선',
         tools: [
-            { tool: 'SEGMENT', label: '선분', icon: '―' },
-            { tool: 'LINE', label: '직선', icon: '↔' },
-            { tool: 'PERP_BISECTOR', label: '수직이등분선', icon: '⊥' },
-            { tool: 'PARALLEL_LINE', label: '평행선', icon: '∥' },
-            { tool: 'PERP_LINE', label: '수직선', icon: '⟂' }
+            { tool: 'SEGMENT', label: '선분', icon: '―', hint: '점1 → 드래그 → 점2' },
+            { tool: 'LINE', label: '직선', icon: '↔', hint: '점1 → 드래그 → 점2' },
+            { tool: 'PERP_BISECTOR', label: '수직이등분선', icon: '⊥', hint: '점 2개 선택' },
+            { tool: 'PARALLEL_LINE', label: '평행선', icon: '∥', hint: '기준2점 → 통과점' },
+            { tool: 'PERP_LINE', label: '수직선', icon: '┴', hint: '기준2점 → 통과점' },
+            { tool: 'ANGLE', label: '각도', icon: '∠', hint: '변1 → 꼭짓점 → 조절' }
         ]
     },
     {
         id: 'circle',
-        icon: '○',
+        icon: '◯',
         title: '원',
         tools: [
-            { tool: 'CIRCLE', label: '원', icon: '○' }
+            { tool: 'CIRCLE', label: '원', icon: '◯', hint: '중심 → 드래그 → 확정' },
+            { tool: 'ARC', label: '호', icon: '◠', hint: '끝점2 → 호위점' }
         ]
     },
     {
         id: 'edit',
-        icon: '✂',
+        icon: '⌫',
         title: '편집',
         tools: [
-            { tool: 'DELETE', label: '삭제', icon: '✕' }
+            { tool: 'DELETE', label: '삭제', icon: '⌫', hint: '객체 클릭' }
         ]
     }
 ];
+
+// 캔버스 객체 가시성 팔레트 (AlgeoMath 스타일 — 선명한 색·굵은 선)
+const ALGEO_VIS = {
+    point: '#e11d48',
+    midpoint: '#7c3aed',
+    segment: '#1d4ed8',
+    line: '#4338ca',
+    perpBisector: '#0e7490',
+    parallel: '#c2410c',
+    perpLine: '#be123c',
+    circle: '#047857',
+    arc: '#0f766e',
+    angle: '#9333ea',
+    angleFill: 'rgba(147, 51, 234, 0.14)',
+    function: '#6d28d9',
+    pointRadius: 7,
+    midpointRadius: 6,
+    pointStroke: '#1e293b',
+    grid: '#d8e0ea',
+    gridLabel: '#475569',
+    axis: '#0f172a'
+};
 
 // 도구 ID가 속한 카테고리 검색
 function findToolCategoryId(toolId) {
@@ -262,9 +298,10 @@ function createAlgeoUI($container) {
         '        </div>' +
         '    </div>' +
         '    <div class="algeo-workspace">' +
-        '        <div class="algeo-sidebar">' +
+        '        <div class="algeo-sidebar" id="algebraSidebar">' +
         '            <div class="sidebar-header">' +
         '                <h3>대수창</h3>' +
+        '                <button type="button" id="btnToggleAlgebra" class="sidebar-toggle-btn" title="대수창 숨기기" aria-label="대수창 숨기기">◀</button>' +
         '            </div>' +
         '            <div class="sidebar-content" id="algebraList">' +
         '                <div class="empty-msg">오브젝트가 없습니다.</div>' +
@@ -282,6 +319,7 @@ function createAlgeoUI($container) {
         '            </div>' +
         '        </div>' +
         '        <div class="algeo-canvas-container">' +
+        '            <button type="button" id="btnOpenAlgebra" class="algebra-reopen-btn" title="대수창 열기" aria-label="대수창 열기">▶<span>대수창</span></button>' +
         '            <canvas id="algeoCanvas"></canvas>' +
         '            <div class="algeo-right-bar">' +
         '                <button type="button" class="right-bar-btn" id="btnZoomIn" title="확대">+</button>' +
@@ -648,6 +686,154 @@ AlgeoEngine.prototype.getPerpLinePoints = function (obj) {
     };
 };
 
+// 평행선 미리보기용 — 기준 두 점과 통과 좌표로 직선 두 점 반환
+AlgeoEngine.prototype.getParallelLinePointsAt = function (ref1, ref2, throughX, throughY) {
+    const dx = ref2.x - ref1.x;
+    const dy = ref2.y - ref1.y;
+    if (Math.abs(dx) < 1e-10 && Math.abs(dy) < 1e-10) {
+        return null;
+    }
+    return {
+        p1: { x: throughX - dx, y: throughY - dy },
+        p2: { x: throughX + dx, y: throughY + dy }
+    };
+};
+
+// 수직선 미리보기용 — 기준 두 점과 통과 좌표로 직선 두 점 반환
+AlgeoEngine.prototype.getPerpLinePointsAt = function (ref1, ref2, throughX, throughY) {
+    const dx = ref2.x - ref1.x;
+    const dy = ref2.y - ref1.y;
+    if (Math.abs(dx) < 1e-10 && Math.abs(dy) < 1e-10) {
+        return null;
+    }
+    return {
+        p1: { x: throughX - dy, y: throughY + dx },
+        p2: { x: throughX + dy, y: throughY - dx }
+    };
+};
+
+// 각도 객체 검색 (꼭짓점·두 변 점 순서 유지)
+AlgeoEngine.prototype.findAngleByPoints = function (ray1Id, vertexId, ray2Id) {
+    const list = this.objects;
+    let i;
+    for (i = 0; i < list.length; i++) {
+        const obj = list[i];
+        if (obj.type === 'ANGLE' && obj.vertexId === vertexId &&
+            obj.ray1Id === ray1Id && obj.ray2Id === ray2Id) {
+            return obj;
+        }
+    }
+    return null;
+};
+
+// 세 점의 외심(호의 중심) 계산
+AlgeoEngine.prototype.computeCircumcenter = function (ax, ay, bx, by, cx, cy) {
+    const d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+    if (Math.abs(d) < 1e-12) {
+        return null;
+    }
+    const a2 = ax * ax + ay * ay;
+    const b2 = bx * bx + by * by;
+    const c2 = cx * cx + cy * cy;
+    return {
+        x: (a2 * (by - cy) + b2 * (cy - ay) + c2 * (ay - by)) / d,
+        y: (a2 * (cx - bx) + b2 * (ax - cx) + c2 * (bx - ax)) / d
+    };
+};
+
+// 호 객체 검색 — 끝점 2개 + 호 위의 점
+AlgeoEngine.prototype.findArcByThreePoints = function (p1Id, p2Id, guideId) {
+    const list = this.objects;
+    let i;
+    for (i = 0; i < list.length; i++) {
+        const obj = list[i];
+        if (obj.type === 'ARC' && obj.guideId === guideId) {
+            if ((obj.p1Id === p1Id && obj.p2Id === p2Id) ||
+                (obj.p1Id === p2Id && obj.p2Id === p1Id)) {
+                return obj;
+            }
+        }
+    }
+    return null;
+};
+
+// 각도 객체 추가 (ray1—vertex—ray2, 꼭짓점은 vertex)
+AlgeoEngine.prototype.addAngle = function (name, ray1Id, vertexId, ray2Id) {
+    const ray1 = this.objectMap[ray1Id];
+    const vertex = this.objectMap[vertexId];
+    const ray2 = this.objectMap[ray2Id];
+    if (!ray1 || !vertex || !ray2) { return null; }
+
+    const id = this.generateId();
+    const angle = {
+        id: id,
+        type: 'ANGLE',
+        name: name,
+        ray1Id: ray1Id,
+        vertexId: vertexId,
+        ray2Id: ray2Id,
+        parents: [ray1Id, vertexId, ray2Id],
+        children: []
+    };
+
+    ray1.children.push(id);
+    vertex.children.push(id);
+    ray2.children.push(id);
+
+    this.objects.push(angle);
+    this.objectMap[id] = angle;
+    return angle;
+};
+
+// 호 객체 추가 (끝점 A,B + 호 위의 조절점 C)
+AlgeoEngine.prototype.addArc = function (name, p1Id, p2Id, guideId) {
+    const p1 = this.objectMap[p1Id];
+    const p2 = this.objectMap[p2Id];
+    const guide = this.objectMap[guideId];
+    if (!p1 || !p2 || !guide) { return null; }
+
+    const id = this.generateId();
+    const arc = {
+        id: id,
+        type: 'ARC',
+        name: name,
+        p1Id: p1Id,
+        p2Id: p2Id,
+        guideId: guideId,
+        parents: [p1Id, p2Id, guideId],
+        children: []
+    };
+
+    p1.children.push(id);
+    p2.children.push(id);
+    guide.children.push(id);
+
+    this.objects.push(arc);
+    this.objectMap[id] = arc;
+    return arc;
+};
+
+// 각도 크기(도) 계산
+AlgeoEngine.prototype.getAngleDegrees = function (obj) {
+    const ray1 = this.objectMap[obj.ray1Id];
+    const vertex = this.objectMap[obj.vertexId];
+    const ray2 = this.objectMap[obj.ray2Id];
+    if (!ray1 || !vertex || !ray2) { return null; }
+
+    const v1x = ray1.x - vertex.x;
+    const v1y = ray1.y - vertex.y;
+    const v2x = ray2.x - vertex.x;
+    const v2y = ray2.y - vertex.y;
+    const m1 = Math.sqrt(v1x * v1x + v1y * v1y);
+    const m2 = Math.sqrt(v2x * v2x + v2y * v2y);
+    if (m1 < 1e-10 || m2 < 1e-10) { return null; }
+
+    let cosVal = (v1x * v2x + v1y * v2y) / (m1 * m2);
+    if (cosVal > 1) { cosVal = 1; }
+    if (cosVal < -1) { cosVal = -1; }
+    return Math.acos(cosVal) * 180 / Math.PI;
+};
+
 // 종속 객체 좌표 재계산
 AlgeoEngine.prototype.recalculateObject = function (obj) {
     if (obj.type === 'MIDPOINT') {
@@ -824,6 +1010,7 @@ function AlgeoRenderer(engine, canvas) {
     this.offsetY = 0;           // 캔버스 중심에서 원점까지의 픽셀 Y 오프셋
     this.highlightIds = [];     // 작도 중 강조 표시할 점 ID 목록
     this.selectedObjectId = null; // 대수창에서 선택된 객체 ID
+    this.toolPreview = null;    // 호·원 작도 중 실시간 미리보기
 
     this.initViewport();
 }
@@ -882,6 +1069,11 @@ AlgeoRenderer.prototype.draw = function () {
 
     // 2. 수학 객체들 그리기
     this.drawObjects();
+
+    // 3. 호·원 작도 미리보기
+    if (this.toolPreview) {
+        this.drawToolPreview(this.toolPreview);
+    }
 };
 
 AlgeoRenderer.prototype.drawGrid = function () {
@@ -900,7 +1092,7 @@ AlgeoRenderer.prototype.drawGrid = function () {
     const pxSpacing = gridSpacing * this.scale;
 
     // 격자선 펜 설정
-    ctx.strokeStyle = '#e2e8f0';
+    ctx.strokeStyle = ALGEO_VIS.grid;
     ctx.lineWidth = 1;
 
     // 세로 격자선 그리기 (왼쪽에서 오른쪽으로)
@@ -914,9 +1106,9 @@ AlgeoRenderer.prototype.drawGrid = function () {
         // 눈금 숫자 라벨 그리기 (수평축)
         const mathX = Number(this.toMathX(x).toFixed(2));
         if (mathX !== 0 && Math.abs(x - this.offsetX) > 5) {
-            ctx.fillStyle = '#64748b';
-            ctx.font = '10px Outfit, sans-serif';
-            ctx.fillText(mathX, x - 5, this.offsetY + 15);
+            ctx.fillStyle = ALGEO_VIS.gridLabel;
+            ctx.font = '600 11px Outfit, sans-serif';
+            ctx.fillText(mathX, x - 5, this.offsetY + 16);
         }
     }
 
@@ -931,9 +1123,9 @@ AlgeoRenderer.prototype.drawGrid = function () {
         // 눈금 숫자 라벨 (Y축 오른쪽)
         const mathY = Number(this.toMathY(y).toFixed(2));
         if (mathY !== 0 && Math.abs(y - this.offsetY) > 5) {
-            ctx.fillStyle = '#64748b';
-            ctx.font = '10px Outfit, sans-serif';
-            ctx.fillText(String(mathY), this.offsetX + 8, y + 4);
+            ctx.fillStyle = ALGEO_VIS.gridLabel;
+            ctx.font = '600 11px Outfit, sans-serif';
+            ctx.fillText(String(mathY), this.offsetX + 10, y + 4);
         }
     }
 
@@ -945,11 +1137,11 @@ AlgeoRenderer.prototype.drawGrid = function () {
 AlgeoRenderer.prototype.drawAxes = function (ctx, width, height) {
     const ox = this.offsetX;
     const oy = this.offsetY;
-    const axisColor = '#1e293b';
-    const labelColor = '#0f172a';
+    const axisColor = ALGEO_VIS.axis;
+    const labelColor = ALGEO_VIS.axis;
 
     ctx.strokeStyle = axisColor;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
 
     // X축 (y = 0 수평선)
     if (oy >= -2 && oy <= height + 2) {
@@ -1028,22 +1220,22 @@ AlgeoRenderer.prototype.drawObjects = function () {
             const p1 = this.engine.objectMap[obj.p1Id];
             const p2 = this.engine.objectMap[obj.p2Id];
             if (p1 && p2) {
-                this.drawLine(p1, p2, isSelected, '#4f46e5', [10, 6], 2.5);
+                this.drawLine(p1, p2, isSelected, ALGEO_VIS.line, [12, 6], 3);
             }
         } else if (obj.type === 'PERP_BISECTOR') {
             const linePts = this.engine.getPerpBisectorLinePoints(obj);
             if (linePts) {
-                this.drawLine(linePts.p1, linePts.p2, isSelected, '#0891b2', [6, 4], 2.5);
+                this.drawLine(linePts.p1, linePts.p2, isSelected, ALGEO_VIS.perpBisector, [8, 5], 3);
             }
         } else if (obj.type === 'PARALLEL_LINE') {
             const linePts = this.engine.getParallelLinePoints(obj);
             if (linePts) {
-                this.drawLine(linePts.p1, linePts.p2, isSelected, '#ea580c', [8, 4], 2.5);
+                this.drawLine(linePts.p1, linePts.p2, isSelected, ALGEO_VIS.parallel, [10, 5], 3);
             }
         } else if (obj.type === 'PERP_LINE') {
             const linePts = this.engine.getPerpLinePoints(obj);
             if (linePts) {
-                this.drawLine(linePts.p1, linePts.p2, isSelected, '#e11d48', [4, 4], 2.5);
+                this.drawLine(linePts.p1, linePts.p2, isSelected, ALGEO_VIS.perpLine, [6, 4], 3);
             }
         } else if (obj.type === 'SEGMENT') {
             const p1 = this.engine.objectMap[obj.p1Id];
@@ -1052,8 +1244,9 @@ AlgeoRenderer.prototype.drawObjects = function () {
                 ctx.beginPath();
                 ctx.moveTo(this.toScreenX(p1.x), this.toScreenY(p1.y));
                 ctx.lineTo(this.toScreenX(p2.x), this.toScreenY(p2.y));
-                ctx.strokeStyle = '#2563eb';
-                ctx.lineWidth = isSelected ? 4 : 3;
+                ctx.strokeStyle = ALGEO_VIS.segment;
+                ctx.lineWidth = isSelected ? 5 : 3.5;
+                ctx.lineCap = 'round';
                 ctx.stroke();
             }
         } else if (obj.type === 'CIRCLE') {
@@ -1069,9 +1262,23 @@ AlgeoRenderer.prototype.drawObjects = function () {
 
                 ctx.beginPath();
                 ctx.arc(cx, cy, screenRadius, 0, 2 * Math.PI);
-                ctx.strokeStyle = '#059669';
-                ctx.lineWidth = isSelected ? 3 : 2;
+                ctx.strokeStyle = ALGEO_VIS.circle;
+                ctx.lineWidth = isSelected ? 4 : 3;
                 ctx.stroke();
+            }
+        } else if (obj.type === 'ARC') {
+            const p1 = this.engine.objectMap[obj.p1Id];
+            const p2 = this.engine.objectMap[obj.p2Id];
+            const guide = this.engine.objectMap[obj.guideId];
+            if (p1 && p2 && guide) {
+                this.drawArcThreePoints(p1, p2, guide, isSelected, ALGEO_VIS.arc, 3.5);
+            }
+        } else if (obj.type === 'ANGLE') {
+            const ray1 = this.engine.objectMap[obj.ray1Id];
+            const vertex = this.engine.objectMap[obj.vertexId];
+            const ray2 = this.engine.objectMap[obj.ray2Id];
+            if (ray1 && vertex && ray2) {
+                this.drawAngleShape(ray1, vertex, ray2, isSelected);
             }
         }
     }
@@ -1080,47 +1287,357 @@ AlgeoRenderer.prototype.drawObjects = function () {
     for (let i = 0; i < list.length; i++) {
         const obj = list[i];
         if (obj.type === 'POINT' || obj.type === 'MIDPOINT') {
-            const isMid = obj.type === 'MIDPOINT';
-            const radius = isMid ? 5 : 6;
-            const sx = this.toScreenX(obj.x);
-            const sy = this.toScreenY(obj.y);
-            const isHighlighted = this.highlightIds.indexOf(obj.id) >= 0;
-            const isSelected = obj.id === this.selectedObjectId;
-
-            if (isSelected) {
-                ctx.beginPath();
-                ctx.arc(sx, sy, 9, 0, 2 * Math.PI);
-                ctx.strokeStyle = '#2563eb';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            }
-
-            if (isHighlighted) {
-                ctx.beginPath();
-                ctx.arc(sx, sy, 12, 0, 2 * Math.PI);
-                ctx.strokeStyle = '#f59e0b';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            }
-
-            ctx.beginPath();
-            ctx.arc(sx, sy, radius, 0, 2 * Math.PI);
-            if (isHighlighted) {
-                ctx.fillStyle = '#f59e0b';
-            } else if (isMid) {
-                ctx.fillStyle = '#8b5cf6';
-            } else {
-                ctx.fillStyle = '#ef4444';
-            }
-            ctx.fill();
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-
-            ctx.fillStyle = '#1e293b';
-            ctx.font = 'bold 12px Outfit, sans-serif';
-            ctx.fillText(obj.name, sx + 8, sy - 8);
+            this.drawPointShape(obj);
         }
+    }
+};
+
+// 점·중점 렌더 (AlgeoMath 스타일 — 굵은 테두리·흰색 외곽 라벨)
+AlgeoRenderer.prototype.drawPointShape = function (obj) {
+    const ctx = this.ctx;
+    const isMid = obj.type === 'MIDPOINT';
+    const radius = isMid ? ALGEO_VIS.midpointRadius : ALGEO_VIS.pointRadius;
+    const sx = this.toScreenX(obj.x);
+    const sy = this.toScreenY(obj.y);
+    const isHighlighted = this.highlightIds.indexOf(obj.id) >= 0;
+    const isSelected = obj.id === this.selectedObjectId;
+
+    if (isSelected) {
+        ctx.beginPath();
+        ctx.arc(sx, sy, radius + 6, 0, 2 * Math.PI);
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+    }
+
+    if (isHighlighted) {
+        ctx.beginPath();
+        ctx.arc(sx, sy, radius + 9, 0, 2 * Math.PI);
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+    }
+
+    ctx.beginPath();
+    ctx.arc(sx, sy, radius, 0, 2 * Math.PI);
+    if (isHighlighted) {
+        ctx.fillStyle = '#f59e0b';
+    } else if (isMid) {
+        ctx.fillStyle = ALGEO_VIS.midpoint;
+    } else {
+        ctx.fillStyle = ALGEO_VIS.point;
+    }
+    ctx.fill();
+    ctx.strokeStyle = ALGEO_VIS.pointStroke;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    this.drawCanvasLabel(obj.name, sx + 10, sy - 10, {
+        font: 'bold 13px Outfit, sans-serif',
+        color: ALGEO_VIS.axis
+    });
+};
+
+// 캔버스 라벨 (흰색 외곽선으로 격자 위 가독성 확보)
+AlgeoRenderer.prototype.drawCanvasLabel = function (text, x, y, options) {
+    const ctx = this.ctx;
+    const opts = options || {};
+    const align = opts.align || 'left';
+    const font = opts.font || 'bold 12px Outfit, sans-serif';
+    const color = opts.color || ALGEO_VIS.axis;
+    const useHalo = opts.halo !== false;
+
+    ctx.font = font;
+    ctx.textAlign = align;
+    ctx.textBaseline = 'alphabetic';
+
+    if (useHalo) {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 4;
+        ctx.lineJoin = 'round';
+        ctx.strokeText(text, x, y);
+    }
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+    ctx.textAlign = 'left';
+};
+
+// 호·원·선 작도 도구 실시간 미리보기 (AlgeoMath 스타일)
+AlgeoRenderer.prototype.drawToolPreview = function (preview) {
+    const ctx = this.ctx;
+    const engine = this.engine;
+
+    if (preview.type === 'SEGMENT') {
+        const p1 = engine.objectMap[preview.p1Id];
+        if (!p1) { return; }
+        ctx.save();
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.moveTo(this.toScreenX(p1.x), this.toScreenY(p1.y));
+        ctx.lineTo(this.toScreenX(preview.mathX), this.toScreenY(preview.mathY));
+        ctx.strokeStyle = 'rgba(37, 99, 235, 0.65)';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        ctx.restore();
+        return;
+    }
+
+    if (preview.type === 'LINE') {
+        const p1 = engine.objectMap[preview.p1Id];
+        if (!p1) { return; }
+        const p2 = { x: preview.mathX, y: preview.mathY };
+        const end = this.getLineScreenEndpoints(p1, p2);
+        if (!end) { return; }
+        ctx.save();
+        ctx.setLineDash([8, 5]);
+        this.drawLine({ x: p1.x, y: p1.y }, p2, false, 'rgba(79, 70, 229, 0.55)', [8, 5], 2.5);
+        ctx.restore();
+        return;
+    }
+
+    if (preview.type === 'PARALLEL_LINE' || preview.type === 'PERP_LINE') {
+        const ref1 = engine.objectMap[preview.refP1Id];
+        const ref2 = engine.objectMap[preview.refP2Id];
+        if (!ref1 || !ref2) { return; }
+        let linePts = null;
+        if (preview.type === 'PARALLEL_LINE') {
+            linePts = engine.getParallelLinePointsAt(ref1, ref2, preview.mathX, preview.mathY);
+        } else {
+            linePts = engine.getPerpLinePointsAt(ref1, ref2, preview.mathX, preview.mathY);
+        }
+        if (!linePts) { return; }
+        const color = preview.type === 'PARALLEL_LINE'
+            ? 'rgba(234, 88, 12, 0.55)' : 'rgba(225, 29, 72, 0.55)';
+        const dash = preview.type === 'PARALLEL_LINE' ? [10, 5] : [6, 4];
+        ctx.save();
+        this.drawLine(linePts.p1, linePts.p2, false, color, dash, 2.5);
+        ctx.restore();
+        return;
+    }
+
+    if (preview.type === 'ANGLE') {
+        const ray1 = engine.objectMap[preview.ray1Id];
+        const vertex = engine.objectMap[preview.vertexId];
+        if (!ray1 || !vertex) { return; }
+        const ray2 = { x: preview.mathX, y: preview.mathY };
+        ctx.save();
+        ctx.globalAlpha = 0.75;
+        this.drawAngleShape(ray1, vertex, ray2, false);
+        ctx.restore();
+        return;
+    }
+
+    if (preview.type === 'CIRCLE') {
+        const center = engine.objectMap[preview.centerId];
+        if (!center) { return; }
+
+        const cx = this.toScreenX(center.x);
+        const cy = this.toScreenY(center.y);
+        const dx = preview.mathX - center.x;
+        const dy = preview.mathY - center.y;
+        const r = Math.sqrt(dx * dx + dy * dy) * this.scale;
+        if (r < 2) { return; }
+
+        ctx.save();
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+        ctx.strokeStyle = 'rgba(4, 120, 87, 0.55)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(this.toScreenX(preview.mathX), this.toScreenY(preview.mathY));
+        ctx.strokeStyle = 'rgba(4, 120, 87, 0.35)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+        return;
+    }
+
+    if (preview.type === 'ARC') {
+        const p1 = engine.objectMap[preview.p1Id];
+        const p2 = engine.objectMap[preview.p2Id];
+        if (!p1 || !p2) { return; }
+
+        const guidePt = this.getGuidePointOnCircumcircle(p1, p2, preview.mathX, preview.mathY);
+        const sweep = this.getArcSweepThroughGuide(p1, p2, guidePt);
+        if (!sweep) { return; }
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(sweep.cx, sweep.cy, sweep.r, 0, 2 * Math.PI);
+        ctx.strokeStyle = 'rgba(4, 120, 87, 0.25)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(sweep.cx, sweep.cy, sweep.r, sweep.startA, sweep.endA, sweep.ccw);
+        ctx.strokeStyle = ALGEO_VIS.arc;
+        ctx.lineWidth = 3.5;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        ctx.restore();
+    }
+};
+
+// 원 위의 점 — 중심·반지름·마우스 방향으로 투영
+AlgeoRenderer.prototype.getMathPointOnCircle = function (center, radius, mathX, mathY) {
+    const angle = Math.atan2(mathY - center.y, mathX - center.x);
+    return {
+        x: center.x + radius * Math.cos(angle),
+        y: center.y + radius * Math.sin(angle)
+    };
+};
+
+// 화면 좌표 기준 호(arc) 파라미터 — 작은 호(劣弧) 기준
+AlgeoRenderer.prototype.getArcScreenSweep = function (cx, cy, fromX, fromY, toX, toY) {
+    const a1 = Math.atan2(fromY - cy, fromX - cx);
+    const a2 = Math.atan2(toY - cy, toX - cx);
+    let diff = a2 - a1;
+
+    while (diff > Math.PI) { diff -= 2 * Math.PI; }
+    while (diff < -Math.PI) { diff += 2 * Math.PI; }
+
+    return {
+        startA: a1,
+        endA: a1 + diff,
+        ccw: diff < 0
+    };
+};
+
+// 끝점 2개와 호 위의 점으로 외접원 호 스윕 계산
+AlgeoRenderer.prototype.getArcSweepThroughGuide = function (p1, p2, guide) {
+    const center = this.engine.computeCircumcenter(
+        p1.x, p1.y, p2.x, p2.y, guide.x, guide.y
+    );
+    if (!center) { return null; }
+
+    const mathR = Math.sqrt(
+        (p1.x - center.x) * (p1.x - center.x) +
+        (p1.y - center.y) * (p1.y - center.y)
+    );
+    const cx = this.toScreenX(center.x);
+    const cy = this.toScreenY(center.y);
+    const r = mathR * this.scale;
+
+    const sx1 = this.toScreenX(p1.x);
+    const sy1 = this.toScreenY(p1.y);
+    const sx2 = this.toScreenX(p2.x);
+    const sy2 = this.toScreenY(p2.y);
+    const sgx = this.toScreenX(guide.x);
+    const sgy = this.toScreenY(guide.y);
+
+    const a1 = Math.atan2(sy1 - cy, sx1 - cx);
+    const a2 = Math.atan2(sy2 - cy, sx2 - cx);
+    const ag = Math.atan2(sgy - cy, sgx - cx);
+
+    let diff1 = a2 - a1;
+    while (diff1 > Math.PI) { diff1 -= 2 * Math.PI; }
+    while (diff1 < -Math.PI) { diff1 += 2 * Math.PI; }
+
+    let diff2 = diff1 > 0 ? diff1 - 2 * Math.PI : diff1 + 2 * Math.PI;
+    let t = ag - a1;
+    while (t > Math.PI) { t -= 2 * Math.PI; }
+    while (t < -Math.PI) { t += 2 * Math.PI; }
+
+    let useDiff = diff1;
+    if (diff1 >= 0) {
+        if (t < 0 || t > diff1) { useDiff = diff2; }
+    } else if (t > 0 || t < diff1) {
+        useDiff = diff2;
+    }
+
+    return {
+        cx: cx,
+        cy: cy,
+        r: r,
+        startA: a1,
+        endA: a1 + useDiff,
+        ccw: useDiff < 0
+    };
+};
+
+// 호 미리보기용 — 마우스를 외접원 위로 투영
+AlgeoRenderer.prototype.getGuidePointOnCircumcircle = function (p1, p2, mathX, mathY) {
+    const center = this.engine.computeCircumcenter(
+        p1.x, p1.y, p2.x, p2.y, mathX, mathY
+    );
+    if (!center) {
+        return { x: mathX, y: mathY };
+    }
+    const radius = Math.sqrt(
+        (p1.x - center.x) * (p1.x - center.x) +
+        (p1.y - center.y) * (p1.y - center.y)
+    );
+    return this.getMathPointOnCircle(center, radius, mathX, mathY);
+};
+
+// 원호 그리기 (끝점 2개 + 호 위의 점)
+AlgeoRenderer.prototype.drawArcThreePoints = function (p1, p2, guide, isSelected, color, baseWidth) {
+    const sweep = this.getArcSweepThroughGuide(p1, p2, guide);
+    if (!sweep || sweep.r < 1) { return; }
+
+    const ctx = this.ctx;
+    ctx.beginPath();
+    ctx.arc(sweep.cx, sweep.cy, sweep.r, sweep.startA, sweep.endA, sweep.ccw);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = isSelected ? baseWidth + 2 : baseWidth;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+};
+
+// 각도 표시 (꼭짓점 호 + 도 단위 라벨)
+AlgeoRenderer.prototype.drawAngleShape = function (ray1, vertex, ray2, isSelected) {
+    const bx = this.toScreenX(vertex.x);
+    const by = this.toScreenY(vertex.y);
+    const sx1 = this.toScreenX(ray1.x);
+    const sy1 = this.toScreenY(ray1.y);
+    const sx2 = this.toScreenX(ray2.x);
+    const sy2 = this.toScreenY(ray2.y);
+    const arcR = 34;
+    const sweep = this.getArcScreenSweep(bx, by, sx1, sy1, sx2, sy2);
+    const ctx = this.ctx;
+    const v1x = ray1.x - vertex.x;
+    const v1y = ray1.y - vertex.y;
+    const v2x = ray2.x - vertex.x;
+    const v2y = ray2.y - vertex.y;
+    const m1 = Math.sqrt(v1x * v1x + v1y * v1y);
+    const m2 = Math.sqrt(v2x * v2x + v2y * v2y);
+    let degrees = null;
+    if (m1 > 1e-10 && m2 > 1e-10) {
+        let cosVal = (v1x * v2x + v1y * v2y) / (m1 * m2);
+        if (cosVal > 1) { cosVal = 1; }
+        if (cosVal < -1) { cosVal = -1; }
+        degrees = Math.acos(cosVal) * 180 / Math.PI;
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.arc(bx, by, arcR, sweep.startA, sweep.endA, sweep.ccw);
+    ctx.closePath();
+    ctx.fillStyle = ALGEO_VIS.angleFill;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(bx, by, arcR, sweep.startA, sweep.endA, sweep.ccw);
+    ctx.strokeStyle = isSelected ? '#6d28d9' : ALGEO_VIS.angle;
+    ctx.lineWidth = isSelected ? 3.5 : 2.5;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    if (degrees !== null) {
+        const midA = sweep.startA + (sweep.endA - sweep.startA) / 2;
+        const labelR = arcR + 16;
+        const lx = bx + Math.cos(midA) * labelR;
+        const ly = by + Math.sin(midA) * labelR;
+        this.drawCanvasLabel(degrees.toFixed(1) + '\u00B0', lx, ly + 4, {
+            align: 'center',
+            font: 'bold 12px Outfit, sans-serif',
+            color: '#5b21b6'
+        });
     }
 };
 
@@ -1185,11 +1702,13 @@ AlgeoRenderer.prototype.drawLine = function (p1, p2, isSelected, color, dashPatt
 
     ctx.save();
     ctx.setLineDash(dash);
+    ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(end.x1, end.y1);
     ctx.lineTo(end.x2, end.y2);
     ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = isSelected ? width + 1 : width;
+    ctx.lineWidth = isSelected ? width + 1.5 : width;
+    ctx.globalAlpha = isSelected ? 1 : 0.92;
     ctx.stroke();
     ctx.restore();
 };
@@ -1219,8 +1738,9 @@ AlgeoRenderer.prototype.drawFunction = function (obj, isSelected) {
         }
     }
 
-    ctx.strokeStyle = '#7c3aed';
-    ctx.lineWidth = isSelected ? 3.5 : 2.5;
+    ctx.strokeStyle = ALGEO_VIS.function;
+    ctx.lineWidth = isSelected ? 4 : 3;
+    ctx.lineCap = 'round';
     ctx.stroke();
 };
 
@@ -1234,7 +1754,7 @@ function AlgeoApp(engine, renderer) {
     this.engine = engine;
     this.renderer = renderer;
 
-    this.currentTool = 'MOVE';        // MOVE, POINT, SEGMENT, LINE, MIDPOINT, PERP_BISECTOR, PARALLEL_LINE, PERP_LINE, CIRCLE, DELETE
+    this.currentTool = 'MOVE';        // MOVE, POINT, SEGMENT, LINE, MIDPOINT, PERP_BISECTOR, PARALLEL_LINE, PERP_LINE, ANGLE, ARC, CIRCLE, DELETE
     this.isDraggingCanvas = false;    // 캔버스 드래그 여부
     this.dragStart = { x: 0, y: 0 };  // 캔버스 드래그 시작 픽셀 좌표
     this.origOffset = { x: 0, y: 0 }; // 드래그 시작 시점 뷰포트 오프셋
@@ -1243,7 +1763,9 @@ function AlgeoApp(engine, renderer) {
     this.selectedPoints = [];         // 선분/원 작도를 위해 선택된 점 배열
     this.selectedObjectId = null;     // 대수창에서 선택된 객체 ID
     this.algebraCmdDictOpen = false;  // 명령어 사전 패널 표시 여부
+    this.algebraPanelOpen = true;     // 대수창 표시 여부
     this.openToolCategoryId = null;   // 열린 도구 플라이아웃 카테고리 ID
+    this.constructionDraft = null;    // 인터랙티브 작도: type별 임시 상태 + 마우스 미리보기
 }
 
 AlgeoApp.prototype.init = function () {
@@ -1255,6 +1777,7 @@ AlgeoApp.prototype.init = function () {
 
     // 1. 좌측 도구 레일·플라이아웃
     self.initToolRail();
+    self.initAlgebraPanelToggle();
 
     // 2. 뷰포트 조작 버튼 이벤트 바인딩
     $('#btnZoomIn').on('click', function () {
@@ -1308,6 +1831,52 @@ AlgeoApp.prototype.init = function () {
 
     self.selectTool('MOVE');
     self.updateCanvasCursor();
+
+    // Esc — 호·원 작도 중 취소
+    $(document).on('keydown', function (e) {
+        if (e.keyCode !== 27) {
+            return;
+        }
+        if (self.constructionDraft || self.selectedPoints.length > 0) {
+            self.clearToolDraft();
+            self.renderer.draw();
+        }
+    });
+};
+
+// 대수창 표시/숨김 토글 초기화
+AlgeoApp.prototype.initAlgebraPanelToggle = function () {
+    const self = this;
+
+    $('#btnToggleAlgebra').on('click', function (e) {
+        e.stopPropagation();
+        self.setAlgebraPanelOpen(false);
+    });
+
+    $('#btnOpenAlgebra').on('click', function (e) {
+        e.stopPropagation();
+        self.setAlgebraPanelOpen(true);
+    });
+};
+
+// 대수창 열림 상태 설정 및 캔버스 크기 갱신
+AlgeoApp.prototype.setAlgebraPanelOpen = function (isOpen) {
+    this.algebraPanelOpen = isOpen;
+
+    if (isOpen) {
+        $('#algebraSidebar').removeClass('collapsed');
+        $('#btnOpenAlgebra').removeClass('visible');
+    } else {
+        $('#algebraSidebar').addClass('collapsed');
+        $('#btnOpenAlgebra').addClass('visible');
+        this.closeCmdDict();
+    }
+
+    const self = this;
+    window.setTimeout(function () {
+        self.renderer.resize();
+        self.renderer.draw();
+    }, 260);
 };
 
 // 좌측 도구 레일·플라이아웃 이벤트 초기화
@@ -1386,9 +1955,16 @@ AlgeoApp.prototype.renderToolFlyout = function (categoryId) {
             ? '<span class="flyout-shortcut">' + item.shortcut + '</span>'
             : '';
 
+        const hintHtml = item.hint
+            ? '<span class="flyout-tool-hint">' + item.hint + '</span>'
+            : '';
+
         bodyHtml += '<button type="button" class="flyout-tool-item' + activeClass + '" data-tool="' + item.tool + '">';
         bodyHtml += '<span class="flyout-tool-icon">' + item.icon + '</span>';
+        bodyHtml += '<span class="flyout-tool-text">';
         bodyHtml += '<span class="flyout-tool-label">' + item.label + '</span>';
+        bodyHtml += hintHtml;
+        bodyHtml += '</span>';
         bodyHtml += shortcutHtml;
         bodyHtml += '</button>';
     }
@@ -1399,11 +1975,61 @@ AlgeoApp.prototype.renderToolFlyout = function (categoryId) {
 // 작도 도구 선택 및 UI 동기화
 AlgeoApp.prototype.selectTool = function (toolId) {
     this.currentTool = toolId;
-    this.selectedPoints = [];
-    this.syncHighlightToRenderer();
+    this.clearToolDraft();
     this.syncToolRailUI();
     this.updateCanvasCursor();
     this.renderer.draw();
+};
+
+// 인터랙티브 작도 상태 초기화
+AlgeoApp.prototype.clearToolDraft = function () {
+    this.selectedPoints = [];
+    this.constructionDraft = null;
+    this.renderer.toolPreview = null;
+    this.syncHighlightToRenderer();
+};
+
+// 클릭 위치의 점 ID 반환 — 없으면 새 점 생성
+AlgeoApp.prototype.resolvePointAtClick = function (mouseX, mouseY, hitPoint) {
+    if (hitPoint) {
+        return hitPoint.id;
+    }
+    const r = this.renderer;
+    const mathX = r.toMathX(mouseX);
+    const mathY = r.toMathY(mouseY);
+    const name = this.getNextPointName();
+    const pt = this.engine.addPoint(name, mathX, mathY);
+    this.updateAlgebraView();
+    return pt.id;
+};
+
+// 마우스 위치로 작도 미리보기 갱신
+AlgeoApp.prototype.updateToolPreviewFromMouse = function (mouseX, mouseY) {
+    const r = this.renderer;
+    const draft = this.constructionDraft;
+    if (!draft) { return; }
+
+    const mathX = r.toMathX(mouseX);
+    const mathY = r.toMathY(mouseY);
+    const preview = { type: draft.type, mathX: mathX, mathY: mathY };
+
+    if (draft.type === 'SEGMENT' || draft.type === 'LINE') {
+        preview.p1Id = draft.p1Id;
+    } else if (draft.type === 'ARC') {
+        preview.p1Id = draft.p1Id;
+        preview.p2Id = draft.p2Id;
+    } else if (draft.type === 'CIRCLE') {
+        preview.centerId = draft.centerId;
+    } else if (draft.type === 'ANGLE') {
+        preview.ray1Id = draft.ray1Id;
+        preview.vertexId = draft.vertexId;
+    } else if (draft.type === 'PARALLEL_LINE' || draft.type === 'PERP_LINE') {
+        preview.refP1Id = draft.refP1Id;
+        preview.refP2Id = draft.refP2Id;
+    }
+
+    r.toolPreview = preview;
+    r.draw();
 };
 
 // 레일·플라이아웃 활성 상태 갱신
@@ -1467,7 +2093,8 @@ AlgeoApp.prototype.updateCanvasCursor = function () {
         cursor = 'crosshair';
     } else if (this.currentTool === 'SEGMENT' || this.currentTool === 'LINE' ||
         this.currentTool === 'MIDPOINT' || this.currentTool === 'PERP_BISECTOR' ||
-        this.currentTool === 'PARALLEL_LINE' || this.currentTool === 'PERP_LINE' || this.currentTool === 'CIRCLE') {
+        this.currentTool === 'PARALLEL_LINE' || this.currentTool === 'PERP_LINE' ||
+        this.currentTool === 'ANGLE' || this.currentTool === 'ARC' || this.currentTool === 'CIRCLE') {
         cursor = 'pointer';
     } else if (this.currentTool === 'DELETE') {
         cursor = 'not-allowed';
@@ -1508,6 +2135,308 @@ AlgeoApp.prototype.zoomAt = function (factor, screenX, screenY) {
     r.draw();
 };
 
+// 선분·직선: 점1 → 드래그 미리보기 → 점2 확정
+AlgeoApp.prototype.handleSegmentLineMouseDown = function (e, hitPoint) {
+    const r = this.renderer;
+    const mouseX = e.offsetX;
+    const mouseY = e.offsetY;
+    const toolType = this.currentTool;
+
+    if (this.constructionDraft && this.constructionDraft.type === toolType) {
+        const draft = this.constructionDraft;
+        const p2Id = this.resolvePointAtClick(mouseX, mouseY, hitPoint);
+        if (p2Id === draft.p1Id) {
+            r.draw();
+            return;
+        }
+        const p1 = this.engine.objectMap[draft.p1Id];
+        const p2 = this.engine.objectMap[p2Id];
+        if (toolType === 'SEGMENT') {
+            const name = p1.name + p2.name;
+            if (!this.engine.findSegmentByPoints(draft.p1Id, p2Id)) {
+                this.engine.addSegment(name, draft.p1Id, p2Id);
+                this.updateAlgebraView();
+            }
+        } else if (!this.engine.findLineByPoints(draft.p1Id, p2Id)) {
+            const name = 'd' + p1.name + p2.name;
+            this.engine.addLine(name, draft.p1Id, p2Id);
+            this.updateAlgebraView();
+        }
+        this.clearToolDraft();
+        r.draw();
+        return;
+    }
+
+    const p1Id = this.resolvePointAtClick(mouseX, mouseY, hitPoint);
+    this.constructionDraft = { type: toolType, p1Id: p1Id };
+    this.renderer.highlightIds = [p1Id];
+    this.updateToolPreviewFromMouse(mouseX, mouseY);
+};
+
+// 각도: 변1 → 꼭짓점 → 마우스 조절 → 확정
+AlgeoApp.prototype.handleAngleMouseDown = function (e, hitPoint) {
+    const r = this.renderer;
+    const mouseX = e.offsetX;
+    const mouseY = e.offsetY;
+
+    if (this.constructionDraft && this.constructionDraft.type === 'ANGLE') {
+        const draft = this.constructionDraft;
+        let ray2Id = null;
+        if (hitPoint && hitPoint.id !== draft.vertexId && hitPoint.id !== draft.ray1Id) {
+            ray2Id = hitPoint.id;
+        } else {
+            const vertex = this.engine.objectMap[draft.vertexId];
+            const mathX = r.toMathX(mouseX);
+            const mathY = r.toMathY(mouseY);
+            const dx = mathX - vertex.x;
+            const dy = mathY - vertex.y;
+            if (Math.sqrt(dx * dx + dy * dy) < 0.05) {
+                r.draw();
+                return;
+            }
+            const ray2Name = this.getNextPointName();
+            const ray2Pt = this.engine.addPoint(ray2Name, mathX, mathY);
+            ray2Id = ray2Pt.id;
+            this.updateAlgebraView();
+        }
+        if (ray2Id !== draft.ray1Id && ray2Id !== draft.vertexId) {
+            if (!this.engine.findAngleByPoints(draft.ray1Id, draft.vertexId, ray2Id)) {
+                const ray1 = this.engine.objectMap[draft.ray1Id];
+                const vertex = this.engine.objectMap[draft.vertexId];
+                const ray2 = this.engine.objectMap[ray2Id];
+                const name = '\u2220' + ray1.name + vertex.name + ray2.name;
+                this.engine.addAngle(name, draft.ray1Id, draft.vertexId, ray2Id);
+                this.updateAlgebraView();
+            }
+        }
+        this.clearToolDraft();
+        r.draw();
+        return;
+    }
+
+    if (!hitPoint) {
+        r.draw();
+        return;
+    }
+
+    if (this.selectedPoints.length === 0) {
+        this.selectedPoints.push(hitPoint.id);
+        this.syncHighlightToRenderer();
+        r.draw();
+        return;
+    }
+
+    const ray1Id = this.selectedPoints[0];
+    const vertexId = hitPoint.id;
+    if (vertexId === ray1Id) {
+        r.draw();
+        return;
+    }
+
+    this.constructionDraft = { type: 'ANGLE', ray1Id: ray1Id, vertexId: vertexId };
+    this.selectedPoints = [];
+    this.renderer.highlightIds = [ray1Id, vertexId];
+    this.updateToolPreviewFromMouse(mouseX, mouseY);
+};
+
+// 평행선·수직선: 기준2점 → 마우스 미리보기 → 통과점 확정
+AlgeoApp.prototype.handleParallelPerpMouseDown = function (e, hitPoint) {
+    const r = this.renderer;
+    const mouseX = e.offsetX;
+    const mouseY = e.offsetY;
+    const toolType = this.currentTool;
+
+    if (this.constructionDraft &&
+        (this.constructionDraft.type === 'PARALLEL_LINE' || this.constructionDraft.type === 'PERP_LINE')) {
+        const draft = this.constructionDraft;
+        const throughId = this.resolvePointAtClick(mouseX, mouseY, hitPoint);
+        const ref1 = this.engine.objectMap[draft.refP1Id];
+        const ref2 = this.engine.objectMap[draft.refP2Id];
+        const through = this.engine.objectMap[throughId];
+
+        if (draft.type === 'PARALLEL_LINE') {
+            if (!this.engine.findParallelLineByRefs(draft.refP1Id, draft.refP2Id, throughId)) {
+                const name = 'pl' + through.name + ref1.name + ref2.name;
+                this.engine.addParallelLine(name, draft.refP1Id, draft.refP2Id, throughId);
+                this.updateAlgebraView();
+            }
+        } else if (!this.engine.findPerpLineByRefs(draft.refP1Id, draft.refP2Id, throughId)) {
+            const name = 'pp' + through.name + ref1.name + ref2.name;
+            this.engine.addPerpLine(name, draft.refP1Id, draft.refP2Id, throughId);
+            this.updateAlgebraView();
+        }
+        this.clearToolDraft();
+        r.draw();
+        return;
+    }
+
+    if (!hitPoint) {
+        r.draw();
+        return;
+    }
+
+    this.selectedPoints.push(hitPoint.id);
+    this.syncHighlightToRenderer();
+
+    if (this.selectedPoints.length < 2) {
+        r.draw();
+        return;
+    }
+
+    const refP1Id = this.selectedPoints[0];
+    const refP2Id = this.selectedPoints[1];
+    if (refP1Id === refP2Id) {
+        this.selectedPoints = [];
+        this.syncHighlightToRenderer();
+        r.draw();
+        return;
+    }
+
+    this.constructionDraft = {
+        type: toolType,
+        refP1Id: refP1Id,
+        refP2Id: refP2Id
+    };
+    this.selectedPoints = [];
+    this.renderer.highlightIds = [refP1Id, refP2Id];
+    this.updateToolPreviewFromMouse(mouseX, mouseY);
+};
+
+// 호: 끝점2 → 호 위 점으로 모양 조절
+AlgeoApp.prototype.handleArcMouseDown = function (e, hitPoint) {
+    const r = this.renderer;
+    const mouseX = e.offsetX;
+    const mouseY = e.offsetY;
+
+    if (this.constructionDraft && this.constructionDraft.type === 'ARC') {
+        this.confirmArcDraft(mouseX, mouseY, hitPoint);
+        return;
+    }
+
+    const pointId = this.resolvePointAtClick(mouseX, mouseY, hitPoint);
+
+    if (this.selectedPoints.length === 0) {
+        this.selectedPoints.push(pointId);
+        this.syncHighlightToRenderer();
+        r.draw();
+        return;
+    }
+
+    const p1Id = this.selectedPoints[0];
+    if (pointId === p1Id) {
+        r.draw();
+        return;
+    }
+
+    this.constructionDraft = { type: 'ARC', p1Id: p1Id, p2Id: pointId };
+    this.selectedPoints = [];
+    this.renderer.highlightIds = [p1Id, pointId];
+    this.updateToolPreviewFromMouse(mouseX, mouseY);
+};
+
+// 호 작도 확정 — 호 위 조절점은 외접원에 투영
+AlgeoApp.prototype.confirmArcDraft = function (mouseX, mouseY, hitPoint) {
+    const r = this.renderer;
+    const draft = this.constructionDraft;
+    if (!draft || draft.type !== 'ARC') { return; }
+
+    const p1 = this.engine.objectMap[draft.p1Id];
+    const p2 = this.engine.objectMap[draft.p2Id];
+    if (!p1 || !p2) {
+        this.clearToolDraft();
+        r.draw();
+        return;
+    }
+
+    let guideId = null;
+    if (hitPoint && hitPoint.id !== draft.p1Id && hitPoint.id !== draft.p2Id) {
+        guideId = hitPoint.id;
+    } else {
+        const mathX = r.toMathX(mouseX);
+        const mathY = r.toMathY(mouseY);
+        const guidePt = r.getGuidePointOnCircumcircle(p1, p2, mathX, mathY);
+        const center = this.engine.computeCircumcenter(
+            p1.x, p1.y, p2.x, p2.y, guidePt.x, guidePt.y
+        );
+        if (!center) {
+            r.draw();
+            return;
+        }
+        const guideName = this.getNextPointName();
+        const guide = this.engine.addPoint(guideName, guidePt.x, guidePt.y);
+        guideId = guide.id;
+        this.updateAlgebraView();
+    }
+
+    if (!this.engine.findArcByThreePoints(draft.p1Id, draft.p2Id, guideId)) {
+        const guide = this.engine.objectMap[guideId];
+        const arcName = 'arc' + p1.name + p2.name + guide.name;
+        this.engine.addArc(arcName, draft.p1Id, draft.p2Id, guideId);
+        this.updateAlgebraView();
+    }
+
+    this.clearToolDraft();
+    r.draw();
+};
+
+// 원: 중심 → 드래그 미리보기 → 확정
+AlgeoApp.prototype.handleCircleMouseDown = function (e, hitPoint) {
+    const r = this.renderer;
+    const mouseX = e.offsetX;
+    const mouseY = e.offsetY;
+
+    if (this.constructionDraft && this.constructionDraft.type === 'CIRCLE') {
+        this.confirmCircleDraft(mouseX, mouseY, hitPoint);
+        return;
+    }
+
+    const centerId = this.resolvePointAtClick(mouseX, mouseY, hitPoint);
+    this.constructionDraft = { type: 'CIRCLE', centerId: centerId };
+    this.renderer.highlightIds = [centerId];
+    this.updateToolPreviewFromMouse(mouseX, mouseY);
+};
+
+// 원 작도 확정
+AlgeoApp.prototype.confirmCircleDraft = function (mouseX, mouseY, hitPoint) {
+    const r = this.renderer;
+    const draft = this.constructionDraft;
+    if (!draft || draft.type !== 'CIRCLE') { return; }
+
+    const center = this.engine.objectMap[draft.centerId];
+    if (!center) {
+        this.clearToolDraft();
+        r.draw();
+        return;
+    }
+
+    let pointId = null;
+    if (hitPoint && hitPoint.id !== draft.centerId) {
+        pointId = hitPoint.id;
+    } else {
+        const mathX = r.toMathX(mouseX);
+        const mathY = r.toMathY(mouseY);
+        const dx = mathX - center.x;
+        const dy = mathY - center.y;
+        if (Math.sqrt(dx * dx + dy * dy) < 0.05) {
+            r.draw();
+            return;
+        }
+        const ptName = this.getNextPointName();
+        const pt = this.engine.addPoint(ptName, mathX, mathY);
+        pointId = pt.id;
+        this.updateAlgebraView();
+    }
+
+    const circleName = '⊙' + center.name;
+    if (!this.engine.findCircleByCenterAndPoint(draft.centerId, pointId)) {
+        this.engine.addCircle(circleName, draft.centerId, pointId);
+        this.updateAlgebraView();
+    }
+
+    this.clearToolDraft();
+    r.draw();
+};
+
 // 마우스 다운 핸들러
 AlgeoApp.prototype.handleMouseDown = function (e) {
     const r = this.renderer;
@@ -1543,52 +2472,24 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
             this.updateAlgebraView();
             r.draw();
         }
-    } else if (this.currentTool === 'SEGMENT' || this.currentTool === 'LINE' ||
-        this.currentTool === 'MIDPOINT' || this.currentTool === 'PERP_BISECTOR' ||
-        this.currentTool === 'PARALLEL_LINE' || this.currentTool === 'PERP_LINE' || this.currentTool === 'CIRCLE') {
+    } else if (this.currentTool === 'ARC') {
+        this.handleArcMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'CIRCLE') {
+        this.handleCircleMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'SEGMENT' || this.currentTool === 'LINE') {
+        this.handleSegmentLineMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'ANGLE') {
+        this.handleAngleMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'PARALLEL_LINE' || this.currentTool === 'PERP_LINE') {
+        this.handleParallelPerpMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'MIDPOINT' || this.currentTool === 'PERP_BISECTOR') {
         if (hitPoint) {
             this.selectedPoints.push(hitPoint.id);
             this.syncHighlightToRenderer();
 
-            // 선분: 두 점 선택 완료 시 작도
-            if (this.currentTool === 'SEGMENT' && this.selectedPoints.length === 2) {
+            if (this.currentTool === 'MIDPOINT' && this.selectedPoints.length === 2) {
                 const p1Id = this.selectedPoints[0];
                 const p2Id = this.selectedPoints[1];
-
-                if (p1Id !== p2Id) {
-                    const p1 = this.engine.objectMap[p1Id];
-                    const p2 = this.engine.objectMap[p2Id];
-                    const name = p1.name + p2.name;
-                    this.engine.addSegment(name, p1Id, p2Id);
-                    this.updateAlgebraView();
-                }
-                this.selectedPoints = [];
-                this.syncHighlightToRenderer();
-                r.draw();
-            }
-            // 직선: 두 점 선택 완료 시 작도
-            else if (this.currentTool === 'LINE' && this.selectedPoints.length === 2) {
-                const p1Id = this.selectedPoints[0];
-                const p2Id = this.selectedPoints[1];
-
-                if (p1Id !== p2Id) {
-                    const p1 = this.engine.objectMap[p1Id];
-                    const p2 = this.engine.objectMap[p2Id];
-                    const name = 'd' + p1.name + p2.name;
-                    if (!this.engine.findLineByPoints(p1Id, p2Id)) {
-                        this.engine.addLine(name, p1Id, p2Id);
-                        this.updateAlgebraView();
-                    }
-                }
-                this.selectedPoints = [];
-                this.syncHighlightToRenderer();
-                r.draw();
-            }
-            // 중점: 두 점 선택 완료 시 작도
-            else if (this.currentTool === 'MIDPOINT' && this.selectedPoints.length === 2) {
-                const p1Id = this.selectedPoints[0];
-                const p2Id = this.selectedPoints[1];
-
                 if (p1Id !== p2Id) {
                     const p1 = this.engine.objectMap[p1Id];
                     const p2 = this.engine.objectMap[p2Id];
@@ -1601,12 +2502,9 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
                 this.selectedPoints = [];
                 this.syncHighlightToRenderer();
                 r.draw();
-            }
-            // 수직이등분선: 두 점 선택 완료 시 작도
-            else if (this.currentTool === 'PERP_BISECTOR' && this.selectedPoints.length === 2) {
+            } else if (this.currentTool === 'PERP_BISECTOR' && this.selectedPoints.length === 2) {
                 const p1Id = this.selectedPoints[0];
                 const p2Id = this.selectedPoints[1];
-
                 if (p1Id !== p2Id) {
                     const p1 = this.engine.objectMap[p1Id];
                     const p2 = this.engine.objectMap[p2Id];
@@ -1615,61 +2513,6 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
                         this.engine.addPerpBisector(name, p1Id, p2Id);
                         this.updateAlgebraView();
                     }
-                }
-                this.selectedPoints = [];
-                this.syncHighlightToRenderer();
-                r.draw();
-            }
-            // 평행선: 기준 두 점 + 통과 점(3번째) 선택 시 작도
-            else if (this.currentTool === 'PARALLEL_LINE' && this.selectedPoints.length === 3) {
-                const refP1Id = this.selectedPoints[0];
-                const refP2Id = this.selectedPoints[1];
-                const throughId = this.selectedPoints[2];
-
-                if (refP1Id !== refP2Id) {
-                    const ref1 = this.engine.objectMap[refP1Id];
-                    const ref2 = this.engine.objectMap[refP2Id];
-                    const through = this.engine.objectMap[throughId];
-                    if (!this.engine.findParallelLineByRefs(refP1Id, refP2Id, throughId)) {
-                        const name = 'pl' + through.name + ref1.name + ref2.name;
-                        this.engine.addParallelLine(name, refP1Id, refP2Id, throughId);
-                        this.updateAlgebraView();
-                    }
-                }
-                this.selectedPoints = [];
-                this.syncHighlightToRenderer();
-                r.draw();
-            }
-            // 수직선: 기준 두 점 + 통과 점(3번째) 선택 시 작도
-            else if (this.currentTool === 'PERP_LINE' && this.selectedPoints.length === 3) {
-                const refP1Id = this.selectedPoints[0];
-                const refP2Id = this.selectedPoints[1];
-                const throughId = this.selectedPoints[2];
-
-                if (refP1Id !== refP2Id) {
-                    const ref1 = this.engine.objectMap[refP1Id];
-                    const ref2 = this.engine.objectMap[refP2Id];
-                    const through = this.engine.objectMap[throughId];
-                    if (!this.engine.findPerpLineByRefs(refP1Id, refP2Id, throughId)) {
-                        const name = 'pp' + through.name + ref1.name + ref2.name;
-                        this.engine.addPerpLine(name, refP1Id, refP2Id, throughId);
-                        this.updateAlgebraView();
-                    }
-                }
-                this.selectedPoints = [];
-                this.syncHighlightToRenderer();
-                r.draw();
-            }
-            // 원: 중심점과 둘레 점 선택 시 작도
-            else if (this.currentTool === 'CIRCLE' && this.selectedPoints.length === 2) {
-                const centerId = this.selectedPoints[0];
-                const pointId = this.selectedPoints[1];
-
-                if (centerId !== pointId) {
-                    const center = this.engine.objectMap[centerId];
-                    const name = '⊙' + center.name;
-                    this.engine.addCircle(name, centerId, pointId);
-                    this.updateAlgebraView();
                 }
                 this.selectedPoints = [];
                 this.syncHighlightToRenderer();
@@ -1718,6 +2561,8 @@ AlgeoApp.prototype.handleMouseMove = function (e) {
         this.engine.movePoint(this.activePoint.id, mathX, mathY);
         this.updateAlgebraView();
         r.draw();
+    } else if (this.constructionDraft) {
+        this.updateToolPreviewFromMouse(mouseX, mouseY);
     }
 };
 
@@ -1829,6 +2674,35 @@ AlgeoApp.prototype.findObjectAt = function (screenX, screenY) {
                     return obj;
                 }
             }
+        } else if (obj.type === 'ARC') {
+            const p1 = this.engine.objectMap[obj.p1Id];
+            const p2 = this.engine.objectMap[obj.p2Id];
+            const guide = this.engine.objectMap[obj.guideId];
+            if (p1 && p2 && guide) {
+                const sweep = r.getArcSweepThroughGuide(p1, p2, guide);
+                if (sweep && this.distToArcCurve(
+                    screenX, screenY, sweep.cx, sweep.cy, sweep.r,
+                    sweep.startA, sweep.endA, sweep.ccw
+                ) <= 6) {
+                    return obj;
+                }
+            }
+        } else if (obj.type === 'ANGLE') {
+            const ray1 = this.engine.objectMap[obj.ray1Id];
+            const vertex = this.engine.objectMap[obj.vertexId];
+            const ray2 = this.engine.objectMap[obj.ray2Id];
+            if (ray1 && vertex && ray2) {
+                const bx = r.toScreenX(vertex.x);
+                const by = r.toScreenY(vertex.y);
+                const sx1 = r.toScreenX(ray1.x);
+                const sy1 = r.toScreenY(ray1.y);
+                const sx2 = r.toScreenX(ray2.x);
+                const sy2 = r.toScreenY(ray2.y);
+                const sweep = r.getArcScreenSweep(bx, by, sx1, sy1, sx2, sy2);
+                if (this.distToArcCurve(screenX, screenY, bx, by, 34, sweep.startA, sweep.endA, sweep.ccw) <= 8) {
+                    return obj;
+                }
+            }
         } else if (obj.type === 'FUNCTION') {
             if (this.isNearFunction(screenX, screenY, obj)) {
                 return obj;
@@ -1882,6 +2756,30 @@ AlgeoApp.prototype.distToLine = function (px, py, ax, ay, bx, by) {
 };
 
 // 점 P에서 선분 AB까지의 픽셀 거리 계산
+// 화면 좌표 호 곡선과 점 사이 최소 거리 (삭제 툴용)
+AlgeoApp.prototype.distToArcCurve = function (px, py, cx, cy, r, startA, endA, ccw) {
+    const steps = 24;
+    let i;
+    let minDist = Infinity;
+    let prevX = cx + Math.cos(startA) * r;
+    let prevY = cy + Math.sin(startA) * r;
+
+    for (i = 1; i <= steps; i++) {
+        const t = i / steps;
+        const angle = startA + (endA - startA) * t;
+        const nx = cx + Math.cos(angle) * r;
+        const ny = cy + Math.sin(angle) * r;
+        const d = this.distToSegment(px, py, prevX, prevY, nx, ny);
+        if (d < minDist) {
+            minDist = d;
+        }
+        prevX = nx;
+        prevY = ny;
+    }
+
+    return minDist;
+};
+
 AlgeoApp.prototype.distToSegment = function (px, py, ax, ay, bx, by) {
     const l2 = (ax - bx) * (ax - bx) + (ay - by) * (ay - by);
     if (l2 === 0) {
@@ -2182,6 +3080,56 @@ AlgeoApp.prototype.handleLineInput = function (name1, name2) {
     return { success: true, message: '' };
 };
 
+// 대수창 각도 정의 처리 (예: Angle(A, B, C) — B가 꼭짓점)
+AlgeoApp.prototype.handleAngleInput = function (name1, name2, name3) {
+    const parsed = this.parseTriplePointNames(name1, name2, name3);
+    if (!parsed.success) {
+        return { success: false, message: parsed.message };
+    }
+    if (parsed.ref2.id === parsed.ref1.id || parsed.ref2.id === parsed.through.id) {
+        return { success: false, message: '꼭짓점은 두 변의 점과 달라야 합니다.' };
+    }
+
+    const existing = this.engine.findAngleByPoints(
+        parsed.ref1.id, parsed.ref2.id, parsed.through.id
+    );
+    if (!existing) {
+        const angName = '\u2220' + parsed.ref1.name + parsed.ref2.name + parsed.through.name;
+        this.engine.addAngle(angName, parsed.ref1.id, parsed.ref2.id, parsed.through.id);
+    }
+    return { success: true, message: '' };
+};
+
+// 대수창 호 정의 처리 (예: Arc(A, B, C) — C는 호 위의 점)
+AlgeoApp.prototype.handleArcInput = function (name1, name2, name3) {
+    const parsed = this.parseTriplePointNames(name1, name2, name3);
+    if (!parsed.success) {
+        return { success: false, message: parsed.message };
+    }
+    if (parsed.ref1.id === parsed.ref2.id || parsed.ref1.id === parsed.through.id ||
+        parsed.ref2.id === parsed.through.id) {
+        return { success: false, message: '호의 세 점은 서로 달라야 합니다.' };
+    }
+
+    const center = this.engine.computeCircumcenter(
+        parsed.ref1.x, parsed.ref1.y,
+        parsed.ref2.x, parsed.ref2.y,
+        parsed.through.x, parsed.through.y
+    );
+    if (!center) {
+        return { success: false, message: '세 점이 일직선상에 있어 호를 만들 수 없습니다.' };
+    }
+
+    const existing = this.engine.findArcByThreePoints(
+        parsed.ref1.id, parsed.ref2.id, parsed.through.id
+    );
+    if (!existing) {
+        const arcName = 'arc' + parsed.ref1.name + parsed.ref2.name + parsed.through.name;
+        this.engine.addArc(arcName, parsed.ref1.id, parsed.ref2.id, parsed.through.id);
+    }
+    return { success: true, message: '' };
+};
+
 // 대수창 선분 정의 처리 (예: AB)
 AlgeoApp.prototype.handleSegmentInput = function (p1, p2, segName) {
     const existing = this.engine.findSegmentByPoints(p1.id, p2.id);
@@ -2278,6 +3226,21 @@ AlgeoApp.prototype.updateAlgebraView = function () {
                 const dy = point.y - center.y;
                 const radius = Math.sqrt(dx * dx + dy * dy);
                 desc = '원 (중심: ' + center.name + ', 반지름: ' + radius.toFixed(2) + ')';
+            }
+        } else if (obj.type === 'ANGLE') {
+            const deg = this.engine.getAngleDegrees(obj);
+            const ray1 = this.engine.objectMap[obj.ray1Id];
+            const vertex = this.engine.objectMap[obj.vertexId];
+            const ray2 = this.engine.objectMap[obj.ray2Id];
+            if (ray1 && vertex && ray2 && deg !== null) {
+                desc = ray1.name + vertex.name + ray2.name + ' (' + deg.toFixed(1) + '\u00B0)';
+            }
+        } else if (obj.type === 'ARC') {
+            const p1 = this.engine.objectMap[obj.p1Id];
+            const p2 = this.engine.objectMap[obj.p2Id];
+            const guide = this.engine.objectMap[obj.guideId];
+            if (p1 && p2 && guide) {
+                desc = p1.name + '\u2312' + p2.name + ' (\u2191' + guide.name + ')';
             }
         } else if (obj.type === 'FUNCTION') {
             desc = obj.expression;
@@ -2498,6 +3461,18 @@ AlgeoApp.prototype.parseAlgebraInput = function (input) {
         return this.handleParallelLineInput(parallelMatch[1], parallelMatch[2], parallelMatch[3]);
     }
 
+    // 각도: Angle(A, B, C) — B가 꼭짓점
+    const angleMatch = trimmed.match(/^angle\s*\(\s*([A-Za-z][A-Za-z0-9]*)\s*,\s*([A-Za-z][A-Za-z0-9]*)\s*,\s*([A-Za-z][A-Za-z0-9]*)\s*\)$/i);
+    if (angleMatch) {
+        return this.handleAngleInput(angleMatch[1], angleMatch[2], angleMatch[3]);
+    }
+
+    // 호: Arc(O, A, B)
+    const arcMatch = trimmed.match(/^arc\s*\(\s*([A-Za-z][A-Za-z0-9]*)\s*,\s*([A-Za-z][A-Za-z0-9]*)\s*,\s*([A-Za-z][A-Za-z0-9]*)\s*\)$/i);
+    if (arcMatch) {
+        return this.handleArcInput(arcMatch[1], arcMatch[2], arcMatch[3]);
+    }
+
     // 직선: Line(A, B)
     const lineWordMatch = trimmed.match(/^line\s*\(\s*([A-Za-z][A-Za-z0-9]*)\s*,\s*([A-Za-z][A-Za-z0-9]*)\s*\)$/i);
     if (lineWordMatch) {
@@ -2558,7 +3533,7 @@ AlgeoApp.prototype.parseAlgebraInput = function (input) {
 
     return {
         success: false,
-        message: '지원 형식: A=(1,2), Parallel(A,B,C), Perpendicular(A,B,C), Line(A,B)'
+        message: '지원 형식: A=(1,2), Angle(A,B,C), Arc(O,A,B), Line(A,B)'
     };
 };
 

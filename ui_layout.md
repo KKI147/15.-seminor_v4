@@ -46,6 +46,29 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 - 캔버스가 세로 전체 높이 사용
 - 우측 바 자리 확보 (2단계에서 격자·스냅 버튼 추가 예정)
 - 레일·플라이아웃: **밝은 배경** + 카테고리/도구별 **색상 아이콘** (가시성 개선)
+- 캔버스: `ALGEO_VIS` 팔레트 — AlgeoMath 참고 선명한 색·굵은 선·라벨 흰 외곽선
+
+## 인터랙티브 작도 (AlgeoMath UX)
+
+> **상세 명세·원칙·다음 작업**: [`ux_guidelines.md`](ux_guidelines.md)
+
+| 도구 | 조작 |
+|------|------|
+| **선분·직선** | 점1 → 마우스 미리보기 → 점2 확정 |
+| **원** | 중심 → 마우스 반지름 미리보기 → 확정 |
+| **호** | 끝점 A → 끝점 B → 마우스(외접원+호) → 호 위 점 C 확정 |
+| **각도** | 변1 → 꼭짓점 → 마우스 조절 → 확정 |
+| **평행·수직** | 기준 2점 → 마우스 미리보기 → 통과점 |
+| **Esc** | `constructionDraft` / 선택 점 작도 중 취소 |
+
+- 상태: `AlgeoApp.constructionDraft` + `renderer.drawToolPreview()`
+- 대수창 호: `Arc(A,B,C)` — C가 호 위 조절점
+
+## 대수창 토글 (UX-2 일부 완료)
+
+- 헤더 `◀` (`#btnToggleAlgebra`) → 사이드바 접기 (`.algeo-sidebar.collapsed`)
+- 캔버스 좌측 `▶ 대수창` (`#btnOpenAlgebra`) → 다시 펼치기
+- 토글 후 `renderer.resize()` 로 캔버스 재계산
 
 ---
 
@@ -53,14 +76,15 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 
 | 카테고리 ID | 레일 아이콘 | 플라이아웃 도구 |
 |-------------|------------|----------------|
-| `pointer` | ↖ | 이동 (MOVE) |
+| `pointer` | ✋ | 이동 (MOVE) |
 | `point` | ● | 점 (POINT), 중점 (MIDPOINT) |
-| `line` | ╱ | 선분, 직선, 수직이등분선, 평행선, 수직선 |
-| `circle` | ○ | 원 (CIRCLE) |
-| `edit` | ✂ | 삭제 (DELETE) |
+| `line` | ／ | 선분(―), 직선(↔), 수직이등분선, 평행선, 수직선, 각도 |
+| `circle` | ◯ | 원 (CIRCLE), 호 (ARC) |
+| `edit` | ⌫ | 삭제 (DELETE) |
 
-- 데이터: `script.js` 상단 `ALGEO_TOOL_CATEGORIES` 배열
+- 데이터: `script.js` 상단 `ALGEO_TOOL_CATEGORIES` 배열 (각 도구 `hint` 포함)
 - HTML 생성: `buildToolRailHtml()`, 플라이아웃은 `renderToolFlyout()` 동적 렌더
+- 플라이아웃 hint 스타일: `style.css` `.flyout-tool-hint`
 
 ---
 
@@ -95,6 +119,7 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 
 ## 2단계 예정 (미구현)
 
+- [x] 대수창 표시/숨김 토글 (헤더 ◀ / 캔버스 열기 탭) — `ux_guidelines.md` UX-2
 - [ ] 대수창 `생성순` / `종류순` 탭
 - [ ] 입력창 `+` 버튼 스타일
 - [ ] 우측 바: 격자 on/off, 스냅(자석) 토글
