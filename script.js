@@ -1,55 +1,48 @@
 let algeoAppInstance = null;
 
-// 대수창 명령어 사전 (자동완성·툴팁용)
+// 대수창 명령어 사전
 const ALGEBRA_COMMANDS = [
     {
         label: '점',
         syntax: 'A = (x, y)',
         example: 'A=(1,2)',
         desc: '점을 만들거나 좌표를 이동합니다.',
-        match: ['=', '점', '(']
     },
     {
         label: '함수',
         syntax: 'y = ax + b',
         example: 'y=2x+1',
-        desc: '일차함수 그래프를 그립니다.',
-        match: ['y=', '함수', 'x']
+        desc: '일차함수 그래프를 그립니다.'
     },
     {
         label: '선분',
         syntax: 'AB 또는 D,E',
         example: 'D,E',
-        desc: '두 점을 잇는 선분을 만듭니다.',
-        match: ['선분', ',', 'ab']
+        desc: '두 점을 잇는 선분을 만듭니다.'
     },
     {
         label: '직선',
         syntax: 'Line(A, B)',
         example: 'Line(A,B)',
-        desc: '두 점을 지나는 무한 직선입니다.',
-        match: ['line', '직선']
+        desc: '두 점을 지나는 무한 직선입니다.'
     },
     {
         label: '중점',
         syntax: 'Midpoint(A, B)',
         example: 'Midpoint(A,B)',
-        desc: '두 점의 중점을 만듭니다.',
-        match: ['midpoint', '중점', 'mid']
+        desc: '두 점의 중점을 만듭니다.'
     },
     {
         label: '수직이등분선',
         syntax: 'PerpBisector(A, B)',
         example: 'PerpBisector(A,B)',
-        desc: '선분 AB의 수직이등분선입니다.',
-        match: ['perpbisector', '수직', 'pb']
+        desc: '선분 AB의 수직이등분선입니다.'
     },
     {
         label: '원',
         syntax: 'Circle(A, C)',
         example: 'Circle(A,C)',
-        desc: '중심 A, 둘레 점 C인 원입니다.',
-        match: ['circle', '원']
+        desc: '중심 A, 둘레 점 C인 원입니다.'
     }
 ];
 
@@ -202,11 +195,7 @@ function createAlgeoUI($container) {
         '                    <input type="text" id="algebraInput" placeholder="명령어 입력..." autocomplete="off" />' +
         '                    <button type="button" id="btnAlgebraSubmit">입력</button>' +
         '                </div>' +
-        '                <div class="algebra-assist-wrap">' +
-        '                    <div id="algebraTooltip" class="algebra-tooltip"></div>' +
-        '                    <ul id="algebraSuggest" class="algebra-suggest-list"></ul>' +
-        '                    <div id="algebraCmdDict" class="algebra-cmd-dict"></div>' +
-        '                </div>' +
+        '                <div id="algebraCmdDict" class="algebra-cmd-dict"></div>' +
         '                <div class="algebra-error" id="algebraError"></div>' +
         '            </div>' +
         '        </div>' +
@@ -984,10 +973,7 @@ function AlgeoApp(engine, renderer) {
     this.activePoint = null;          // 현재 마우스 드래그 중인 점 객체
     this.selectedPoints = [];         // 선분/원 작도를 위해 선택된 점 배열
     this.selectedObjectId = null;     // 대수창에서 선택된 객체 ID
-    this.algebraFilteredCommands = []; // 자동완성 필터 결과
-    this.algebraSuggestIndex = -1;     // 자동완성 선택 인덱스
-    this.algebraSuggestOpen = false;   // 자동완성 목록 표시 여부
-    this.algebraCmdDictOpen = false;   // 명령어 사전 패널 표시 여부
+    this.algebraCmdDictOpen = false;  // 명령어 사전 패널 표시 여부
 }
 
 AlgeoApp.prototype.init = function () {
@@ -1809,7 +1795,7 @@ AlgeoApp.prototype.validateAlgebraSelection = function () {
     }
 };
 
-// 대수창 입력 보조 UI 초기화 (자동완성, 툴팁, 명령어 사전)
+// 대수창 입력 보조 UI 초기화 (명령어 사전만)
 AlgeoApp.prototype.initAlgebraInputAssist = function () {
     const self = this;
 
@@ -1828,41 +1814,13 @@ AlgeoApp.prototype.initAlgebraInputAssist = function () {
         self.toggleCmdDict();
     });
 
-    $('#algebraInput').on('input', function () {
-        self.algebraCmdDictOpen = false;
-        $('#algebraCmdDict').removeClass('open');
-        self.updateAlgebraSuggest();
-    });
-
-    $('#algebraInput').on('focus', function () {
-        if ($(this).val()) {
-            self.updateAlgebraSuggest();
-        }
-    });
-
     $('#algebraInput').on('keydown', function (e) {
-        self.handleAlgebraInputKeydown(e);
-    });
-
-    $('#algebraInput').on('blur', function () {
-        setTimeout(function () {
-            self.hideAlgebraSuggest();
-            self.hideAlgebraTooltip();
-        }, 180);
-    });
-
-    $('#algebraSuggest').on('mousedown', '.algebra-suggest-item', function (e) {
-        e.preventDefault();
-        const idx = parseInt($(this).attr('data-idx'), 10);
-        self.applyAlgebraCommand(self.algebraFilteredCommands[idx]);
-        self.handleAlgebraInput();
-    });
-
-    $('#algebraSuggest').on('mouseenter', '.algebra-suggest-item', function () {
-        const idx = parseInt($(this).attr('data-idx'), 10);
-        self.algebraSuggestIndex = idx;
-        self.renderAlgebraSuggest();
-        self.showAlgebraTooltip(self.algebraFilteredCommands[idx]);
+        if (e.keyCode === 13) {
+            self.handleAlgebraInput();
+            e.preventDefault();
+        } else if (e.keyCode === 27) {
+            self.closeCmdDict();
+        }
     });
 
     $('#algebraCmdDict').on('mousedown', function (e) {
@@ -1873,23 +1831,13 @@ AlgeoApp.prototype.initAlgebraInputAssist = function () {
         e.stopPropagation();
     });
 
-    // 명령어 사전 항목 — 한 번 클릭으로 입력·실행
+    // 명령어 사전 항목 클릭 → 입력창에 채우기
     $('#algebraCmdDict').on('click', '.algebra-cmd-item', function (e) {
         e.preventDefault();
         e.stopPropagation();
         const idx = parseInt($(this).attr('data-idx'), 10);
         self.applyAlgebraCommand(ALGEBRA_COMMANDS[idx]);
-        self.closeCmdDict();
-        self.handleAlgebraInput();
-    });
-
-    $('#algebraCmdDict').on('mouseenter', '.algebra-cmd-item', function () {
-        const idx = parseInt($(this).attr('data-idx'), 10);
-        self.showAlgebraTooltip(ALGEBRA_COMMANDS[idx]);
-    });
-
-    $('#algebraCmdDict').on('mouseleave', function () {
-        self.hideAlgebraTooltip();
+        $('#algebraInput').focus();
     });
 
     $(document).on('click', function (e) {
@@ -1903,104 +1851,7 @@ AlgeoApp.prototype.initAlgebraInputAssist = function () {
     });
 };
 
-// 명령어가 입력값과 일치하는지 검사
-AlgeoApp.prototype.matchAlgebraCommand = function (cmd, query) {
-    const q = (query || '').replace(/\s+/g, '').toLowerCase();
-    if (!q) {
-        return true;
-    }
-
-    const fields = [
-        cmd.label,
-        cmd.syntax,
-        cmd.example,
-        cmd.desc
-    ];
-    let i;
-    let text;
-
-    for (i = 0; i < fields.length; i++) {
-        text = (fields[i] || '').replace(/\s+/g, '').toLowerCase();
-        if (text.indexOf(q) >= 0) {
-            return true;
-        }
-    }
-
-    for (i = 0; i < cmd.match.length; i++) {
-        if (q.indexOf(cmd.match[i]) >= 0 || cmd.match[i].indexOf(q) >= 0) {
-            return true;
-        }
-    }
-
-    return false;
-};
-
-// 입력값 기준 명령어 필터
-AlgeoApp.prototype.filterAlgebraCommands = function (query) {
-    const list = [];
-    let i;
-
-    for (i = 0; i < ALGEBRA_COMMANDS.length; i++) {
-        if (this.matchAlgebraCommand(ALGEBRA_COMMANDS[i], query)) {
-            list.push(ALGEBRA_COMMANDS[i]);
-        }
-    }
-
-    return list;
-};
-
-// 자동완성 목록 갱신
-AlgeoApp.prototype.updateAlgebraSuggest = function () {
-    const query = $('#algebraInput').val();
-    const trimmed = (query || '').replace(/^\s+|\s+$/g, '');
-
-    if (!trimmed) {
-        this.hideAlgebraSuggest();
-        this.hideAlgebraTooltip();
-        return;
-    }
-
-    this.algebraFilteredCommands = this.filterAlgebraCommands(query);
-
-    if (this.algebraFilteredCommands.length === 0) {
-        this.hideAlgebraSuggest();
-        this.hideAlgebraTooltip();
-        return;
-    }
-
-    if (this.algebraSuggestIndex >= this.algebraFilteredCommands.length) {
-        this.algebraSuggestIndex = 0;
-    }
-    if (this.algebraSuggestIndex < 0) {
-        this.algebraSuggestIndex = 0;
-    }
-
-    this.algebraSuggestOpen = true;
-    this.renderAlgebraSuggest();
-    this.showAlgebraTooltip(this.algebraFilteredCommands[this.algebraSuggestIndex]);
-};
-
-// 자동완성 목록 렌더
-AlgeoApp.prototype.renderAlgebraSuggest = function () {
-    const $list = $('#algebraSuggest');
-    let html = '';
-    let i;
-    let cmd;
-    let activeClass;
-
-    for (i = 0; i < this.algebraFilteredCommands.length; i++) {
-        cmd = this.algebraFilteredCommands[i];
-        activeClass = i === this.algebraSuggestIndex ? ' active' : '';
-        html += '<li class="algebra-suggest-item' + activeClass + '" data-idx="' + i + '">' +
-            '<span class="suggest-label">' + cmd.label + '</span>' +
-            '<span class="suggest-syntax">' + cmd.syntax + '</span>' +
-            '</li>';
-    }
-
-    $list.html(html).addClass('open');
-};
-
-// 명령어 사전 패널 렌더 (최초 1회)
+// 명령어 사전 패널 렌더
 AlgeoApp.prototype.renderCmdDict = function () {
     const $dict = $('#algebraCmdDict');
     let html = '';
@@ -2012,6 +1863,7 @@ AlgeoApp.prototype.renderCmdDict = function () {
         html += '<div class="algebra-cmd-item" data-idx="' + i + '">' +
             '<span class="cmd-item-label">' + cmd.label + '</span>' +
             '<span class="cmd-item-syntax">' + cmd.syntax + '</span>' +
+            '<span class="cmd-item-desc">' + cmd.desc + '</span>' +
             '</div>';
     }
 
@@ -2022,7 +1874,6 @@ AlgeoApp.prototype.renderCmdDict = function () {
 AlgeoApp.prototype.closeCmdDict = function () {
     this.algebraCmdDictOpen = false;
     $('#algebraCmdDict').removeClass('open');
-    this.hideAlgebraTooltip();
 };
 
 // 명령어 사전 토글
@@ -2030,101 +1881,19 @@ AlgeoApp.prototype.toggleCmdDict = function () {
     this.algebraCmdDictOpen = !this.algebraCmdDictOpen;
     if (this.algebraCmdDictOpen) {
         $('#algebraCmdDict').addClass('open');
-        this.hideAlgebraSuggest();
     } else {
         this.closeCmdDict();
     }
 };
 
-// 툴팁 표시
-AlgeoApp.prototype.showAlgebraTooltip = function (cmd) {
-    if (!cmd) {
-        this.hideAlgebraTooltip();
-        return;
-    }
-
-    const html = '<div class="tooltip-syntax">' + cmd.syntax + '</div>' +
-        '<div class="tooltip-desc">' + cmd.desc + '</div>';
-    $('#algebraTooltip').html(html).addClass('open');
-};
-
-// 툴팁 숨김
-AlgeoApp.prototype.hideAlgebraTooltip = function () {
-    $('#algebraTooltip').removeClass('open').empty();
-};
-
-// 자동완성 숨김
-AlgeoApp.prototype.hideAlgebraSuggest = function () {
-    this.algebraSuggestOpen = false;
-    this.algebraSuggestIndex = -1;
-    $('#algebraSuggest').removeClass('open').empty();
-};
-
-// 입력창에 명령어 예시 적용
+// 명령어 사전에서 선택한 예시를 입력창에 채움
 AlgeoApp.prototype.applyAlgebraCommand = function (cmd) {
     if (!cmd) {
         return;
     }
     $('#algebraInput').val(cmd.example);
-    this.hideAlgebraSuggest();
-};
-
-// 입력창 키보드 처리
-AlgeoApp.prototype.handleAlgebraInputKeydown = function (e) {
-    const key = e.keyCode;
-
-    if (key === 40) {
-        if (!this.algebraSuggestOpen) {
-            this.updateAlgebraSuggest();
-        }
-        if (this.algebraFilteredCommands.length > 0) {
-            this.algebraSuggestIndex += 1;
-            if (this.algebraSuggestIndex >= this.algebraFilteredCommands.length) {
-                this.algebraSuggestIndex = 0;
-            }
-            this.renderAlgebraSuggest();
-            this.showAlgebraTooltip(this.algebraFilteredCommands[this.algebraSuggestIndex]);
-        }
-        e.preventDefault();
-        return;
-    }
-
-    if (key === 38) {
-        if (this.algebraSuggestOpen && this.algebraFilteredCommands.length > 0) {
-            this.algebraSuggestIndex -= 1;
-            if (this.algebraSuggestIndex < 0) {
-                this.algebraSuggestIndex = this.algebraFilteredCommands.length - 1;
-            }
-            this.renderAlgebraSuggest();
-            this.showAlgebraTooltip(this.algebraFilteredCommands[this.algebraSuggestIndex]);
-        }
-        e.preventDefault();
-        return;
-    }
-
-    if (key === 27) {
-        this.hideAlgebraSuggest();
-        this.hideAlgebraTooltip();
-        this.closeCmdDict();
-        return;
-    }
-
-    if (key === 9) {
-        if (this.algebraSuggestOpen && this.algebraFilteredCommands.length > 0) {
-            const pick = this.algebraFilteredCommands[this.algebraSuggestIndex >= 0 ? this.algebraSuggestIndex : 0];
-            this.applyAlgebraCommand(pick);
-            e.preventDefault();
-        }
-        return;
-    }
-
-    if (key === 13) {
-        if (this.algebraSuggestOpen && this.algebraSuggestIndex >= 0) {
-            this.applyAlgebraCommand(this.algebraFilteredCommands[this.algebraSuggestIndex]);
-        }
-        this.handleAlgebraInput();
-        e.preventDefault();
-    }
+    $('#algebraError').text('');
+    this.closeCmdDict();
 };
 
 // 대수창 수식 입력 처리 (예: A = (1, 2))
@@ -2135,8 +1904,7 @@ AlgeoApp.prototype.handleAlgebraInput = function () {
     if (result.success) {
         $('#algebraError').text('');
         $('#algebraInput').val('');
-        this.hideAlgebraSuggest();
-        this.hideAlgebraTooltip();
+        this.closeCmdDict();
         this.updateAlgebraView();
         this.renderer.draw();
     } else {

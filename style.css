@@ -228,86 +228,6 @@
     background-color: var(--accent-hover);
 }
 
-/* 자동완성·툴팁·명령어 사전 컨테이너 */
-.algebra-assist-wrap {
-    position: relative;
-}
-
-/* GeoGebra 스타일 설명 툴팁 */
-.algebra-tooltip {
-    display: none;
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 100%;
-    margin-bottom: 4px;
-    padding: 8px 10px;
-    background-color: #3f3f46;
-    color: #f4f4f5;
-    border-radius: 6px;
-    font-size: 11px;
-    line-height: 1.45;
-    z-index: 20;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
-}
-
-.algebra-tooltip.open {
-    display: block;
-}
-
-.algebra-tooltip .tooltip-syntax {
-    font-weight: 600;
-    margin-bottom: 4px;
-    color: #ffffff;
-}
-
-.algebra-tooltip .tooltip-desc {
-    color: #d4d4d8;
-}
-
-/* 입력 시 자동완성 목록 */
-.algebra-suggest-list {
-    display: none;
-    list-style: none;
-    margin: 0;
-    padding: 4px 0;
-    max-height: 140px;
-    overflow-y: auto;
-    background-color: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    box-shadow: var(--shadow-md);
-}
-
-.algebra-suggest-list.open {
-    display: block;
-}
-
-.algebra-suggest-item {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    padding: 7px 10px;
-    cursor: pointer;
-    transition: var(--transition-fast);
-}
-
-.algebra-suggest-item:hover,
-.algebra-suggest-item.active {
-    background-color: #eff6ff;
-}
-
-.algebra-suggest-item .suggest-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.algebra-suggest-item .suggest-syntax {
-    font-size: 11px;
-    color: var(--text-secondary);
-}
-
 /* 명령어 사전 패널 (토글) */
 .algebra-cmd-dict {
     display: none;
@@ -350,6 +270,12 @@
 .algebra-cmd-item .cmd-item-syntax {
     font-size: 11px;
     color: var(--text-secondary);
+}
+
+.algebra-cmd-item .cmd-item-desc {
+    font-size: 10px;
+    color: #94a3b8;
+    line-height: 1.35;
 }
 
 .algebra-error {
