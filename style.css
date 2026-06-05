@@ -148,6 +148,57 @@
     padding: 12px;
 }
 
+/* 대수창 수식 입력 영역 */
+.sidebar-input-area {
+    padding: 12px;
+    border-top: 1px solid var(--border-color);
+    background-color: #fafafa;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#algebraInput {
+    width: 100%;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    box-sizing: border-box;
+    outline: none;
+    transition: var(--transition-fast);
+}
+
+#algebraInput:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+#btnAlgebraSubmit {
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    background-color: var(--accent-color);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+#btnAlgebraSubmit:hover {
+    background-color: var(--accent-hover);
+}
+
+.algebra-error {
+    min-height: 16px;
+    font-size: 11px;
+    color: #dc2626;
+    line-height: 1.4;
+}
+
 /* 빈 목록 안내 메시지 */
 .empty-msg {
     text-align: center;

@@ -138,6 +138,11 @@ function createAlgeoUI($container) {
         '            <div class="sidebar-content" id="algebraList">' +
         '                <div class="empty-msg">오브젝트가 없습니다.</div>' +
         '            </div>' +
+        '            <div class="sidebar-input-area">' +
+        '                <input type="text" id="algebraInput" placeholder="A = (1, 2)" autocomplete="off" />' +
+        '                <button type="button" id="btnAlgebraSubmit">입력</button>' +
+        '                <div class="algebra-error" id="algebraError"></div>' +
+        '            </div>' +
         '        </div>' +
         '        <!-- 우측 작도 영역 -->' +
         '        <div class="algeo-canvas-container">' +
@@ -164,6 +169,17 @@ AlgeoEngine.prototype.generateId = function () {
     const id = 'obj_' + this.nextId;
     this.nextId += 1;
     return id;
+};
+
+// 이름으로 점 객체 검색
+AlgeoEngine.prototype.findPointByName = function (name) {
+    const list = this.objects;
+    for (let i = 0; i < list.length; i++) {
+        if (list[i].type === 'POINT' && list[i].name === name) {
+            return list[i];
+        }
+    }
+    return null;
 };
 
 // 점 객체 추가
@@ -310,6 +326,7 @@ function AlgeoRenderer(engine, canvas) {
     this.scale = 40;            // 1 수학적 단위가 몇 픽셀인지 (기본: 40px)
     this.offsetX = 0;           // 캔버스 중심에서 원점까지의 픽셀 X 오프셋
     this.offsetY = 0;           // 캔버스 중심에서 원점까지의 픽셀 Y 오프셋
+    this.highlightIds = [];     // 작도 중 강조 표시할 점 ID 목록
 
     this.initViewport();
 }
@@ -492,11 +509,21 @@ AlgeoRenderer.prototype.drawObjects = function () {
         if (obj.type === 'POINT') {
             const sx = this.toScreenX(obj.x);
             const sy = this.toScreenY(obj.y);
+            const isHighlighted = this.highlightIds.indexOf(obj.id) >= 0;
+
+            // 작도 선택 중인 점 강조 링
+            if (isHighlighted) {
+                ctx.beginPath();
+                ctx.arc(sx, sy, 12, 0, 2 * Math.PI);
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
 
             // 점 중심 원
             ctx.beginPath();
             ctx.arc(sx, sy, 6, 0, 2 * Math.PI);
-            ctx.fillStyle = '#ef4444'; // 붉은색 점
+            ctx.fillStyle = isHighlighted ? '#f59e0b' : '#ef4444';
             ctx.fill();
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 1.5;
@@ -543,6 +570,9 @@ AlgeoApp.prototype.init = function () {
 
         self.currentTool = $(this).attr('data-tool');
         self.selectedPoints = []; // 도구 변경 시 선택 점 리스트 초기화
+        self.syncHighlightToRenderer();
+        self.updateCanvasCursor();
+        self.renderer.draw();
     });
 
     // 2. 뷰포트 조작 버튼 이벤트 바인딩
@@ -585,6 +615,42 @@ AlgeoApp.prototype.init = function () {
         const zoomFactor = delta < 0 ? 1.1 : 0.9;
         self.zoomAt(zoomFactor, mouseX, mouseY);
     });
+
+    // 4. 대수창 수식 입력 이벤트
+    $('#btnAlgebraSubmit').on('click', function () {
+        self.handleAlgebraInput();
+    });
+
+    $('#algebraInput').on('keydown', function (e) {
+        if (e.keyCode === 13) {
+            self.handleAlgebraInput();
+        }
+    });
+
+    self.updateCanvasCursor();
+};
+
+// 현재 도구에 맞는 캔버스 커서 설정
+AlgeoApp.prototype.updateCanvasCursor = function () {
+    const $canvas = $(this.renderer.canvas);
+    let cursor = 'default';
+
+    if (this.currentTool === 'MOVE') {
+        cursor = 'grab';
+    } else if (this.currentTool === 'POINT') {
+        cursor = 'crosshair';
+    } else if (this.currentTool === 'SEGMENT' || this.currentTool === 'CIRCLE') {
+        cursor = 'pointer';
+    } else if (this.currentTool === 'DELETE') {
+        cursor = 'not-allowed';
+    }
+
+    $canvas.css('cursor', cursor);
+};
+
+// 작도 중 선택된 점을 렌더러에 전달
+AlgeoApp.prototype.syncHighlightToRenderer = function () {
+    this.renderer.highlightIds = this.selectedPoints.slice();
 };
 
 // 단순 중심 줌
@@ -648,6 +714,7 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
     } else if (this.currentTool === 'SEGMENT' || this.currentTool === 'CIRCLE') {
         if (hitPoint) {
             this.selectedPoints.push(hitPoint.id);
+            this.syncHighlightToRenderer();
 
             // 선분: 두 점 선택 완료 시 작도
             if (this.currentTool === 'SEGMENT' && this.selectedPoints.length === 2) {
@@ -655,11 +722,14 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
                 const p2Id = this.selectedPoints[1];
 
                 if (p1Id !== p2Id) {
-                    const name = 's_' + this.engine.nextId;
+                    const p1 = this.engine.objectMap[p1Id];
+                    const p2 = this.engine.objectMap[p2Id];
+                    const name = p1.name + p2.name;
                     this.engine.addSegment(name, p1Id, p2Id);
                     this.updateAlgebraView();
                 }
                 this.selectedPoints = [];
+                this.syncHighlightToRenderer();
                 r.draw();
             }
             // 원: 중심점과 둘레 점 선택 시 작도
@@ -668,11 +738,15 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
                 const pointId = this.selectedPoints[1];
 
                 if (centerId !== pointId) {
-                    const name = 'c_' + this.engine.nextId;
+                    const center = this.engine.objectMap[centerId];
+                    const name = '⊙' + center.name;
                     this.engine.addCircle(name, centerId, pointId);
                     this.updateAlgebraView();
                 }
                 this.selectedPoints = [];
+                this.syncHighlightToRenderer();
+                r.draw();
+            } else {
                 r.draw();
             }
         }
@@ -797,19 +871,19 @@ AlgeoApp.prototype.distToSegment = function (px, py, ax, ay, bx, by) {
     return Math.sqrt((px - tx) * (px - tx) + (py - ty) * (py - ty));
 };
 
-// 알파벳 순서(A, B, C...)대로 포인트 이름 자동 생성
+// 알파벳 순서(A, B, C...)대로 사용 가능한 포인트 이름 자동 생성
 AlgeoApp.prototype.getNextPointName = function () {
-    const list = this.engine.objects;
     let count = 0;
-    for (let i = 0; i < list.length; i++) {
-        if (list[i].type === 'POINT') {
-            count += 1;
-        }
-    }
+    let name = '';
 
-    const charCode = 65 + (count % 26); // A-Z
-    const suffix = count >= 26 ? Math.floor(count / 26) : '';
-    return String.fromCharCode(charCode) + suffix;
+    do {
+        const charCode = 65 + (count % 26);
+        const suffix = count >= 26 ? String(Math.floor(count / 26)) : '';
+        name = String.fromCharCode(charCode) + suffix;
+        count += 1;
+    } while (this.engine.findPointByName(name) !== null);
+
+    return name;
 };
 
 // 대수창 렌더링 업데이트
@@ -858,5 +932,53 @@ AlgeoApp.prototype.updateAlgebraView = function () {
 
         $list.append(itemHtml);
     }
-}
+};
+
+// 대수창 수식 입력 처리 (예: A = (1, 2))
+AlgeoApp.prototype.handleAlgebraInput = function () {
+    const input = $('#algebraInput').val();
+    const result = this.parseAlgebraInput(input);
+
+    if (result.success) {
+        $('#algebraError').text('');
+        $('#algebraInput').val('');
+        this.updateAlgebraView();
+        this.renderer.draw();
+    } else {
+        $('#algebraError').text(result.message);
+    }
+};
+
+/**
+ * 대수창 수식 파싱 — 점 좌표 정의문 해석
+ * @param {string} input 예: "A = (1, 2)"
+ * @returns {{ success: boolean, message: string }}
+ */
+AlgeoApp.prototype.parseAlgebraInput = function (input) {
+    const trimmed = (input || '').replace(/^\s+|\s+$/g, '');
+    if (!trimmed) {
+        return { success: false, message: '수식을 입력해 주세요.' };
+    }
+
+    // 점 좌표: A = (1, 2)
+    const pointMatch = trimmed.match(/^([A-Za-z][A-Za-z0-9]*)\s*=\s*\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)$/);
+    if (pointMatch) {
+        const name = pointMatch[1];
+        const x = parseFloat(pointMatch[2]);
+        const y = parseFloat(pointMatch[3]);
+        const existing = this.engine.findPointByName(name);
+
+        if (existing) {
+            this.engine.movePoint(existing.id, x, y);
+        } else {
+            this.engine.addPoint(name, x, y);
+        }
+        return { success: true, message: '' };
+    }
+
+    return {
+        success: false,
+        message: '지원 형식: A = (1, 2) — 점 이름과 좌표를 입력하세요.'
+    };
+};
 
