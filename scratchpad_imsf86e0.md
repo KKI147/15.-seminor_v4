@@ -8,3 +8,6 @@
 - [ ] Type `D = (3, 4)` in algebra input and verify point creation
 - [ ] Type `A = (0, 0)` to move existing point A
 - [ ] Verify selection highlight when picking points for segment/circle
+- [ ] Type `y = 2x + 1` and verify purple function graph
+- [ ] Type `y = -x + 3` and verify second function (name: g)
+- [ ] Delete function graph with DELETE tool

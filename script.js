@@ -139,7 +139,7 @@ function createAlgeoUI($container) {
         '                <div class="empty-msg">오브젝트가 없습니다.</div>' +
         '            </div>' +
         '            <div class="sidebar-input-area">' +
-        '                <input type="text" id="algebraInput" placeholder="A = (1, 2)" autocomplete="off" />' +
+        '                <input type="text" id="algebraInput" placeholder="A = (1, 2)  또는  y = 2x + 1" autocomplete="off" />' +
         '                <button type="button" id="btnAlgebraSubmit">입력</button>' +
         '                <div class="algebra-error" id="algebraError"></div>' +
         '            </div>' +
@@ -248,6 +248,47 @@ AlgeoEngine.prototype.addCircle = function (name, centerId, pointId) {
     this.objects.push(circle);
     this.objectMap[id] = circle;
     return circle;
+};
+
+// 이름으로 함수 객체 검색
+AlgeoEngine.prototype.findFunctionByName = function (name) {
+    const list = this.objects;
+    for (let i = 0; i < list.length; i++) {
+        if (list[i].type === 'FUNCTION' && list[i].name === name) {
+            return list[i];
+        }
+    }
+    return null;
+};
+
+// 정규화된 식으로 함수 객체 검색 (동일 식 재입력 시 갱신용)
+AlgeoEngine.prototype.findFunctionByExprKey = function (exprKey) {
+    const list = this.objects;
+    for (let i = 0; i < list.length; i++) {
+        if (list[i].type === 'FUNCTION' && list[i].exprKey === exprKey) {
+            return list[i];
+        }
+    }
+    return null;
+};
+
+// 일차함수 객체 추가 (y = ax + b)
+AlgeoEngine.prototype.addFunction = function (name, expression, exprKey, slope, intercept) {
+    const id = this.generateId();
+    const funcObj = {
+        id: id,
+        type: 'FUNCTION',
+        name: name,
+        expression: expression,
+        exprKey: exprKey,
+        slope: slope,
+        intercept: intercept,
+        parents: [],
+        children: []
+    };
+    this.objects.push(funcObj);
+    this.objectMap[id] = funcObj;
+    return funcObj;
 };
 
 // 특정 객체 이동 (그를 참조하는 모든 자식 객체 재계산 전파)
@@ -466,7 +507,14 @@ AlgeoRenderer.prototype.drawObjects = function () {
     const ctx = this.ctx;
     const list = this.engine.objects;
 
-    // 1단계: 선분(Segment)과 원(Circle) 먼저 그리기 (점보다 뒤에 오도록)
+    // 1단계: 함수(Function) → 선분 → 원 순으로 그리기 (점보다 뒤에 오도록)
+    for (let i = 0; i < list.length; i++) {
+        const obj = list[i];
+        if (obj.type === 'FUNCTION') {
+            this.drawFunction(obj);
+        }
+    }
+
     for (let i = 0; i < list.length; i++) {
         const obj = list[i];
         if (obj.type === 'SEGMENT') {
@@ -535,6 +583,36 @@ AlgeoRenderer.prototype.drawObjects = function () {
             ctx.fillText(obj.name, sx + 8, sy - 8);
         }
     }
+};
+
+// 일차함수 그래프를 현재 뷰포트 x범위에 맞춰 그리기
+AlgeoRenderer.prototype.drawFunction = function (obj) {
+    const ctx = this.ctx;
+    const width = this.canvas.width;
+    const mathXLeft = this.toMathX(0);
+    const mathXRight = this.toMathX(width);
+    const left = Math.min(mathXLeft, mathXRight);
+    const right = Math.max(mathXLeft, mathXRight);
+    const step = (right - left) / width;
+    let started = false;
+
+    ctx.beginPath();
+    for (let mathX = left; mathX <= right; mathX += step) {
+        const mathY = obj.slope * mathX + obj.intercept;
+        const sx = this.toScreenX(mathX);
+        const sy = this.toScreenY(mathY);
+
+        if (!started) {
+            ctx.moveTo(sx, sy);
+            started = true;
+        } else {
+            ctx.lineTo(sx, sy);
+        }
+    }
+
+    ctx.strokeStyle = '#7c3aed';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
 };
 
 
@@ -853,9 +931,46 @@ AlgeoApp.prototype.findObjectAt = function (screenX, screenY) {
                     return obj;
                 }
             }
+        } else if (obj.type === 'FUNCTION') {
+            if (this.isNearFunction(screenX, screenY, obj)) {
+                return obj;
+            }
         }
     }
     return null;
+};
+
+// 마우스 위치가 함수 그래프 곡선 근처인지 판별 (삭제 툴용)
+AlgeoApp.prototype.isNearFunction = function (screenX, screenY, funcObj) {
+    const r = this.renderer;
+    const width = r.canvas.width;
+    const mathXLeft = r.toMathX(0);
+    const mathXRight = r.toMathX(width);
+    const left = Math.min(mathXLeft, mathXRight);
+    const right = Math.max(mathXLeft, mathXRight);
+    const step = (right - left) / width;
+    let prevSx = 0;
+    let prevSy = 0;
+    let hasPrev = false;
+
+    for (let mathX = left; mathX <= right; mathX += step) {
+        const mathY = funcObj.slope * mathX + funcObj.intercept;
+        const sx = r.toScreenX(mathX);
+        const sy = r.toScreenY(mathY);
+
+        if (hasPrev) {
+            const d = this.distToSegment(screenX, screenY, prevSx, prevSy, sx, sy);
+            if (d <= 6) {
+                return true;
+            }
+        }
+
+        prevSx = sx;
+        prevSy = sy;
+        hasPrev = true;
+    }
+
+    return false;
 };
 
 // 점 P에서 선분 AB까지의 픽셀 거리 계산
@@ -884,6 +999,105 @@ AlgeoApp.prototype.getNextPointName = function () {
     } while (this.engine.findPointByName(name) !== null);
 
     return name;
+};
+
+// f, g, h … 순서로 사용 가능한 함수 이름 자동 생성
+AlgeoApp.prototype.getNextFunctionName = function () {
+    const baseNames = ['f', 'g', 'h', 'p', 'q', 'r'];
+    let count = 0;
+    let name = '';
+
+    do {
+        if (count < baseNames.length) {
+            name = baseNames[count];
+        } else {
+            name = 'f' + (count - baseNames.length + 2);
+        }
+        count += 1;
+    } while (this.engine.findFunctionByName(name) !== null);
+
+    return name;
+};
+
+// 함수식 비교용 정규화 (공백·곱셈기호 제거, 소문자 통일)
+AlgeoApp.prototype.normalizeExprKey = function (expr) {
+    return (expr || '').replace(/\s+/g, '').replace(/\*/g, '').toLowerCase();
+};
+
+// 일차함수 우변 파싱 — ax + b 형태 계수 추출
+AlgeoApp.prototype.parseLinearRhs = function (rhs) {
+    const expr = this.normalizeExprKey(rhs);
+
+    if (!expr) {
+        return { success: false, message: '함수식이 비어 있습니다.' };
+    }
+
+    // 상수함수: y = 5
+    if (expr.indexOf('x') === -1) {
+        const val = parseFloat(expr);
+        if (isNaN(val)) {
+            return { success: false, message: '올바른 일차함수식이 아닙니다.' };
+        }
+        return { success: true, slope: 0, intercept: val };
+    }
+
+    const xMatches = expr.match(/x/g);
+    if (!xMatches || xMatches.length > 1) {
+        return { success: false, message: '일차함수만 지원합니다 (x는 한 번만).' };
+    }
+
+    const parts = expr.split('x');
+    const slopePart = parts[0];
+    const interceptPart = parts[1] || '';
+    let slope = 0;
+    let intercept = 0;
+
+    if (slopePart === '' || slopePart === '+') {
+        slope = 1;
+    } else if (slopePart === '-') {
+        slope = -1;
+    } else {
+        slope = parseFloat(slopePart);
+        if (isNaN(slope)) {
+            return { success: false, message: '올바른 일차함수식이 아닙니다.' };
+        }
+    }
+
+    if (interceptPart === '' || interceptPart === '+') {
+        intercept = 0;
+    } else {
+        intercept = parseFloat(interceptPart);
+        if (isNaN(intercept)) {
+            return { success: false, message: '올바른 일차함수식이 아닙니다.' };
+        }
+    }
+
+    return { success: true, slope: slope, intercept: intercept };
+};
+
+// slope·intercept로 대수창 표시용 식 문자열 생성
+AlgeoApp.prototype.formatFunctionExpression = function (slope, intercept) {
+    let expr = 'y = ';
+
+    if (slope === 0) {
+        return expr + intercept;
+    }
+
+    if (slope === 1) {
+        expr += 'x';
+    } else if (slope === -1) {
+        expr += '-x';
+    } else {
+        expr += slope + 'x';
+    }
+
+    if (intercept > 0) {
+        expr += ' + ' + intercept;
+    } else if (intercept < 0) {
+        expr += ' - ' + Math.abs(intercept);
+    }
+
+    return expr;
 };
 
 // 대수창 렌더링 업데이트
@@ -919,6 +1133,8 @@ AlgeoApp.prototype.updateAlgebraView = function () {
                 const radius = Math.sqrt(dx * dx + dy * dy);
                 desc = '원 (중심: ' + center.name + ', 반지름: ' + radius.toFixed(2) + ')';
             }
+        } else if (obj.type === 'FUNCTION') {
+            desc = obj.expression;
         }
 
         const itemHtml = 
@@ -950,8 +1166,8 @@ AlgeoApp.prototype.handleAlgebraInput = function () {
 };
 
 /**
- * 대수창 수식 파싱 — 점 좌표 정의문 해석
- * @param {string} input 예: "A = (1, 2)"
+ * 대수창 수식 파싱 — 점 좌표·일차함수 정의문 해석
+ * @param {string} input 예: "A = (1, 2)", "y = 2x + 1"
  * @returns {{ success: boolean, message: string }}
  */
 AlgeoApp.prototype.parseAlgebraInput = function (input) {
@@ -976,9 +1192,32 @@ AlgeoApp.prototype.parseAlgebraInput = function (input) {
         return { success: true, message: '' };
     }
 
+    // 일차함수: y = 2x + 1
+    const funcMatch = trimmed.match(/^y\s*=\s*(.+)$/i);
+    if (funcMatch) {
+        const linear = this.parseLinearRhs(funcMatch[1]);
+        if (!linear.success) {
+            return { success: false, message: linear.message };
+        }
+
+        const exprKey = this.normalizeExprKey(funcMatch[1]);
+        const expression = this.formatFunctionExpression(linear.slope, linear.intercept);
+        const existingFunc = this.engine.findFunctionByExprKey(exprKey);
+
+        if (existingFunc) {
+            existingFunc.slope = linear.slope;
+            existingFunc.intercept = linear.intercept;
+            existingFunc.expression = expression;
+        } else {
+            const funcName = this.getNextFunctionName();
+            this.engine.addFunction(funcName, expression, exprKey, linear.slope, linear.intercept);
+        }
+        return { success: true, message: '' };
+    }
+
     return {
         success: false,
-        message: '지원 형식: A = (1, 2) — 점 이름과 좌표를 입력하세요.'
+        message: '지원 형식: A = (1, 2) 또는 y = 2x + 1'
     };
 };
 
