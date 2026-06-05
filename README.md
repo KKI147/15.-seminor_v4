@@ -30,6 +30,7 @@ algeomath_1/
 ├── index.html              # 진입점 (common 프레임워크 + script.js 로드)
 ├── script.js               # AlgeoEngine, AlgeoRenderer, AlgeoApp (단일 파일)
 ├── style.css               # 알지오메스 전용 UI 스타일
+├── ui_layout.md            # UI 레이아웃 개편 기록 (AlgeoMath 스타일)
 ├── task.md                 # 단계별 완료 체크리스트 (진행 상황)
 ├── implementation_plan.md  # 초기 아키텍처 설계 문서
 ├── scratchpad_imsf86e0.md  # 수동 테스트 체크리스트
@@ -60,7 +61,21 @@ algeomath_1/
 
 1. `index.html` 을 브라우저에서 엽니다. (로컬 서버 불필요)
 2. `common/js/popscale.js` 가 `#wrap` 스케일을 적용한 뒤 캔버스가 초기화됩니다.
-3. 상단 도구바와 좌측 대수창, 우측 작도 영역이 표시되면 정상입니다.
+3. **좌측 도구 레일** → 카테고리 클릭 → **플라이아웃**에서 도구 선택 후 작도합니다.
+4. **대수창**·**캔버스**·**우측 줌 바**가 보이면 정상입니다.
+
+---
+
+## UI 레이아웃 (AlgeoMath 스타일)
+
+원본 AlgeoMath UI에 맞춰 **좌측 세로 도구 레일 + 플라이아웃** 구조로 개편 중입니다.
+
+| 단계 | 내용 | 상태 |
+|------|------|------|
+| UI-1 | 좌측 레일·플라이아웃·우측 줌 바·레이아웃 껍데기 | ✅ |
+| UI-2 | 대수창 탭, 격자/스냅, 헤더, Undo UI | ⬜ 예정 |
+
+상세 변경 이력·DOM 구조·2단계 계획: [`ui_layout.md`](ui_layout.md)
 
 ---
 
@@ -84,7 +99,7 @@ algeomath_1/
 | 1-6 | 작도 중 선택 점 강조, 객체 이름 규칙 (AB, ⊙A) | ✅ |
 | 1-7 | 대수창 객체 리스트 동적 갱신 | ✅ |
 
-**도구 사용법**
+**도구 사용법** (좌측 레일 → 카테고리 → 플라이아웃에서 선택)
 
 | 도구 | 조작 |
 |------|------|
@@ -229,3 +244,4 @@ algeomath_1/
 | [`task.md`](task.md) | 단계별 완료 체크 (구현 시 업데이트) |
 | [`implementation_plan.md`](implementation_plan.md) | 초기 설계·아키텍처 결정 기록 |
 | [`scratchpad_imsf86e0.md`](scratchpad_imsf86e0.md) | 수동 테스트 시나리오 |
+| [`ui_layout.md`](ui_layout.md) | UI 개편 기록 (레일·플라이아웃·로드맵) |

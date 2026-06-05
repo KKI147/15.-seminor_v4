@@ -12,6 +12,12 @@
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --rail-bg: #ffffff;
+    --rail-bg-hover: #f1f5f9;
+    --rail-active: #2563eb;
+    --rail-border: #e2e8f0;
+    --flyout-bg: #ffffff;
+    --flyout-hover: #f1f5f9;
 }
 
 /* popscale: #wrap 은 common_sci 1920×1020 고정 — width/height 100% 덮어쓰기 금지 */
@@ -33,98 +39,222 @@
 /* 알지오메스 메인 감싸기 (설계 해상도 = common_sci #wrap 1920×1020) */
 .algeo-wrapper {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     width: 1920px;
     height: 1020px;
     background-color: var(--bg-primary);
     font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: var(--text-primary);
+    overflow: hidden;
 }
 
-/* 상단 도구바 */
-.algeo-toolbar {
+/* ── 좌측 패널: 모드 레일 + 도구 레일 + 플라이아웃 (밝은 배경) ── */
+.algeo-left-panel {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 56px;
-    padding: 0 16px;
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(8px);
-    border-bottom: 1px solid var(--border-color);
+    flex-direction: row;
+    flex-shrink: 0;
+    height: 100%;
+    position: relative;
+    z-index: 20;
+    background-color: var(--rail-bg);
+    border-right: 1px solid var(--rail-border);
     box-shadow: var(--shadow-sm);
-    z-index: 10;
 }
 
-/* 도구바 버튼 공통 */
-.tool-btn, .action-btn {
+/* 모드 전환 레일 (작도 모드 표시) */
+.algeo-mode-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 40px;
+    padding: 8px 0;
+    background-color: #f8fafc;
+    border-right: 1px solid var(--rail-border);
+}
+
+.mode-rail-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 38px;
-    height: 38px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background-color: var(--bg-secondary);
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
-    transition: var(--transition-fast);
-    position: relative;
+    width: 32px;
+    height: 32px;
+    margin-bottom: 4px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 16px;
+    cursor: default;
 }
 
-.tool-btn:hover, .action-btn:hover {
-    background-color: #f1f5f9;
-    border-color: #cbd5e1;
-    transform: translateY(-1px);
-}
-
-.tool-btn:active, .action-btn:active {
-    transform: translateY(0);
-}
-
-/* 활성화된 도구 버튼 */
-.tool-btn.active {
-    background-color: var(--accent-color);
-    border-color: var(--accent-color);
+.mode-rail-btn.active {
+    background-color: var(--rail-active);
     color: #ffffff;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
 }
 
-/* 버튼 아이콘 대체 텍스트/이모지용 텍스트 스타일링 */
-.tool-btn[data-tool="MOVE"]::before { content: "✋"; font-size: 16px; }
-.tool-btn[data-tool="MOVE"].active::before { color: #ffffff; }
-.tool-btn[data-tool="POINT"]::before { content: "●"; font-size: 12px; color: #ef4444; }
-.tool-btn[data-tool="POINT"].active::before { color: #ffffff; }
-.tool-btn[data-tool="SEGMENT"]::before { content: "―"; font-size: 14px; color: #2563eb; }
-.tool-btn[data-tool="SEGMENT"].active::before { color: #ffffff; }
-.tool-btn[data-tool="LINE"]::before { content: "↔"; font-size: 14px; color: #4f46e5; }
-.tool-btn[data-tool="LINE"].active::before { color: #ffffff; }
-.tool-btn[data-tool="MIDPOINT"]::before { content: "M"; font-size: 13px; font-weight: 700; color: #8b5cf6; }
-.tool-btn[data-tool="MIDPOINT"].active::before { color: #ffffff; }
-.tool-btn[data-tool="PERP_BISECTOR"]::before { content: "⊥"; font-size: 16px; color: #0891b2; }
-.tool-btn[data-tool="PERP_BISECTOR"].active::before { color: #ffffff; }
-.tool-btn[data-tool="PARALLEL_LINE"]::before { content: "∥"; font-size: 15px; color: #ea580c; }
-.tool-btn[data-tool="PARALLEL_LINE"].active::before { color: #ffffff; }
-.tool-btn[data-tool="PERP_LINE"]::before { content: "⟂"; font-size: 15px; color: #e11d48; }
-.tool-btn[data-tool="PERP_LINE"].active::before { color: #ffffff; }
-.tool-btn[data-tool="CIRCLE"]::before { content: "○"; font-size: 16px; color: #059669; }
-.tool-btn[data-tool="CIRCLE"].active::before { color: #ffffff; }
-.tool-btn[data-tool="DELETE"]::before { content: "🗑"; font-size: 14px; }
-
-/* 툴바 구분선 */
-.toolbar-divider {
-    width: 1px;
-    height: 24px;
-    background-color: var(--border-color);
-    margin: 0 4px;
+/* 도구 카테고리 레일 */
+.algeo-tool-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 48px;
+    padding: 8px 0;
+    background-color: var(--rail-bg);
+    border-right: 1px solid var(--rail-border);
+    gap: 2px;
 }
 
-/* 메인 프레임 (사이드바 + 캔버스) */
-.algeo-main {
+.tool-rail-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.tool-rail-btn:hover {
+    background-color: var(--rail-bg-hover);
+    border-color: var(--rail-border);
+}
+
+.tool-rail-btn.active {
+    background-color: #eff6ff;
+    border-color: #bfdbfe;
+}
+
+.tool-rail-btn.open {
+    background-color: var(--rail-active);
+    border-color: var(--rail-active);
+}
+
+.tool-rail-btn.open .rail-icon {
+    color: #ffffff !important;
+}
+
+.tool-rail-btn .rail-icon {
+    font-size: 18px;
+    line-height: 1;
+    font-weight: 600;
+}
+
+/* 카테고리별 레일 아이콘 색상 */
+.tool-rail-btn[data-category="pointer"] .rail-icon { color: #475569; }
+.tool-rail-btn[data-category="point"] .rail-icon { color: #ef4444; }
+.tool-rail-btn[data-category="line"] .rail-icon { color: #2563eb; }
+.tool-rail-btn[data-category="circle"] .rail-icon { color: #059669; }
+.tool-rail-btn[data-category="edit"] .rail-icon { color: #dc2626; }
+
+/* 도구 플라이아웃 서브메뉴 */
+.algeo-tool-flyout {
+    display: none;
+    position: absolute;
+    left: 88px;
+    top: 8px;
+    min-width: 200px;
+    max-width: 260px;
+    background-color: var(--flyout-bg);
+    border: 1px solid var(--rail-border);
+    border-radius: 8px;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    z-index: 30;
+}
+
+.algeo-tool-flyout.open {
+    display: block;
+}
+
+.flyout-header {
+    padding: 10px 14px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+    background-color: #f8fafc;
+    border-bottom: 1px solid var(--rail-border);
+    letter-spacing: 0.02em;
+}
+
+.flyout-body {
+    display: flex;
+    flex-direction: column;
+    padding: 4px 0;
+}
+
+.flyout-tool-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 14px;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.flyout-tool-item:hover {
+    background-color: var(--flyout-hover);
+}
+
+.flyout-tool-item.active {
+    background-color: #eff6ff;
+    color: var(--rail-active);
+}
+
+.flyout-tool-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    font-size: 15px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+/* 플라이아웃 도구별 아이콘 색상 */
+.flyout-tool-item[data-tool="MOVE"] .flyout-tool-icon { color: #475569; }
+.flyout-tool-item[data-tool="POINT"] .flyout-tool-icon { color: #ef4444; }
+.flyout-tool-item[data-tool="MIDPOINT"] .flyout-tool-icon { color: #8b5cf6; }
+.flyout-tool-item[data-tool="SEGMENT"] .flyout-tool-icon { color: #2563eb; }
+.flyout-tool-item[data-tool="LINE"] .flyout-tool-icon { color: #4f46e5; }
+.flyout-tool-item[data-tool="PERP_BISECTOR"] .flyout-tool-icon { color: #0891b2; }
+.flyout-tool-item[data-tool="PARALLEL_LINE"] .flyout-tool-icon { color: #ea580c; }
+.flyout-tool-item[data-tool="PERP_LINE"] .flyout-tool-icon { color: #e11d48; }
+.flyout-tool-item[data-tool="CIRCLE"] .flyout-tool-icon { color: #059669; }
+.flyout-tool-item[data-tool="DELETE"] .flyout-tool-icon { color: #dc2626; }
+
+.flyout-tool-item.active .flyout-tool-icon {
+    color: var(--rail-active);
+}
+
+.flyout-tool-label {
+    flex: 1;
+}
+
+.flyout-shortcut {
+    font-size: 11px;
+    color: var(--text-secondary);
+    padding: 2px 6px;
+    border: 1px solid var(--rail-border);
+    border-radius: 4px;
+    background-color: #f8fafc;
+}
+
+/* ── 작업 영역: 대수창 + 캔버스 ── */
+.algeo-workspace {
     display: flex;
     flex: 1;
-    width: 100%;
-    height: calc(100% - 56px);
+    min-width: 0;
+    height: 100%;
     overflow: hidden;
 }
 
@@ -138,6 +268,7 @@
     flex-direction: column;
     box-shadow: var(--shadow-sm);
     z-index: 5;
+    flex-shrink: 0;
 }
 
 .sidebar-header {
@@ -363,12 +494,13 @@
     overflow: hidden;
 }
 
-/* 우측 작도 캔버스 컨테이너 */
+/* 캔버스 + 우측 뷰 컨트롤 바 */
 .algeo-canvas-container {
     flex: 1;
     height: 100%;
     position: relative;
     background-color: #ffffff;
+    min-width: 0;
 }
 
 #algeoCanvas {
@@ -376,4 +508,41 @@
     height: 100%;
     display: block;
     cursor: default;
+}
+
+/* 캔버스 우측 상단 줌·뷰 버튼 (2단계에서 격자·스냅 추가 예정) */
+.algeo-right-bar {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 10;
+}
+
+.right-bar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.92);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    transition: var(--transition-fast);
+}
+
+.right-bar-btn:hover {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.right-bar-btn:active {
+    transform: scale(0.96);
 }

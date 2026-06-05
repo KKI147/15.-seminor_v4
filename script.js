@@ -58,6 +58,83 @@ const ALGEBRA_COMMANDS = [
     }
 ];
 
+// 좌측 도구 레일 카테고리 (플라이아웃 서브메뉴 구성)
+const ALGEO_TOOL_CATEGORIES = [
+    {
+        id: 'pointer',
+        icon: '↖',
+        title: '이동·선택',
+        tools: [
+            { tool: 'MOVE', label: '이동', icon: '✋' }
+        ]
+    },
+    {
+        id: 'point',
+        icon: '●',
+        title: '점',
+        tools: [
+            { tool: 'POINT', label: '점', icon: '●', shortcut: 'D' },
+            { tool: 'MIDPOINT', label: '중점', icon: 'M', shortcut: 'M' }
+        ]
+    },
+    {
+        id: 'line',
+        icon: '╱',
+        title: '선',
+        tools: [
+            { tool: 'SEGMENT', label: '선분', icon: '―' },
+            { tool: 'LINE', label: '직선', icon: '↔' },
+            { tool: 'PERP_BISECTOR', label: '수직이등분선', icon: '⊥' },
+            { tool: 'PARALLEL_LINE', label: '평행선', icon: '∥' },
+            { tool: 'PERP_LINE', label: '수직선', icon: '⟂' }
+        ]
+    },
+    {
+        id: 'circle',
+        icon: '○',
+        title: '원',
+        tools: [
+            { tool: 'CIRCLE', label: '원', icon: '○' }
+        ]
+    },
+    {
+        id: 'edit',
+        icon: '✂',
+        title: '편집',
+        tools: [
+            { tool: 'DELETE', label: '삭제', icon: '✕' }
+        ]
+    }
+];
+
+// 도구 ID가 속한 카테고리 검색
+function findToolCategoryId(toolId) {
+    let i;
+    let j;
+    for (i = 0; i < ALGEO_TOOL_CATEGORIES.length; i++) {
+        const cat = ALGEO_TOOL_CATEGORIES[i];
+        for (j = 0; j < cat.tools.length; j++) {
+            if (cat.tools[j].tool === toolId) {
+                return cat.id;
+            }
+        }
+    }
+    return 'pointer';
+}
+
+// 좌측 도구 레일 버튼 HTML 생성
+function buildToolRailHtml() {
+    let html = '';
+    let i;
+    for (i = 0; i < ALGEO_TOOL_CATEGORIES.length; i++) {
+        const cat = ALGEO_TOOL_CATEGORIES[i];
+        html += '<button type="button" class="tool-rail-btn" data-category="' + cat.id + '" title="' + cat.title + '">';
+        html += '<span class="rail-icon">' + cat.icon + '</span>';
+        html += '</button>';
+    }
+    return html;
+}
+
 function contentScript(_idx, _content) {
     contentsIdx = _idx;
     contents = _content;
@@ -171,29 +248,20 @@ function createAlgeoUI($container) {
         height: '100%'
     });
 
-    // 알지오메스 메인 컨테이너 구조 생성
-    const layoutHtml = 
+    // 알지오메스 메인 컨테이너 — AlgeoMath 스타일 좌측 레일 + 작업 영역
+    const layoutHtml =
         '<div class="algeo-wrapper">' +
-        '    <!-- 상단 도구바 -->' +
-        '    <div class="algeo-toolbar">' +
-        '        <button class="tool-btn active" data-tool="MOVE" title="이동 (손 도구)"></button>' +
-        '        <button class="tool-btn" data-tool="POINT" title="점"></button>' +
-        '        <button class="tool-btn" data-tool="SEGMENT" title="선분"></button>' +
-        '        <button class="tool-btn" data-tool="LINE" title="직선"></button>' +
-        '        <button class="tool-btn" data-tool="MIDPOINT" title="중점"></button>' +
-        '        <button class="tool-btn" data-tool="PERP_BISECTOR" title="수직이등분선"></button>' +
-        '        <button class="tool-btn" data-tool="PARALLEL_LINE" title="평행선"></button>' +
-        '        <button class="tool-btn" data-tool="PERP_LINE" title="수직선"></button>' +
-        '        <button class="tool-btn" data-tool="CIRCLE" title="원"></button>' +
-        '        <button class="tool-btn" data-tool="DELETE" title="삭제"></button>' +
-        '        <span class="toolbar-divider"></span>' +
-        '        <button class="action-btn" id="btnZoomIn" title="확대">+</button>' +
-        '        <button class="action-btn" id="btnZoomOut" title="축소">-</button>' +
-        '        <button class="action-btn" id="btnResetView" title="원점 이동">⌂</button>' +
+        '    <div class="algeo-left-panel">' +
+        '        <div class="algeo-mode-rail">' +
+        '            <button type="button" class="mode-rail-btn active" title="기하 작도" disabled>⌗</button>' +
+        '        </div>' +
+        '        <div class="algeo-tool-rail" id="toolRail">' + buildToolRailHtml() + '</div>' +
+        '        <div class="algeo-tool-flyout" id="toolFlyout">' +
+        '            <div class="flyout-header" id="flyoutHeader"></div>' +
+        '            <div class="flyout-body" id="flyoutBody"></div>' +
+        '        </div>' +
         '    </div>' +
-        '    <!-- 메인 레이아웃 (사이드바 + 캔버스) -->' +
-        '    <div class="algeo-main">' +
-        '        <!-- 좌측 대수창 sidebar -->' +
+        '    <div class="algeo-workspace">' +
         '        <div class="algeo-sidebar">' +
         '            <div class="sidebar-header">' +
         '                <h3>대수창</h3>' +
@@ -206,16 +274,20 @@ function createAlgeoUI($container) {
         '                    <button type="button" id="btnCmdDict" class="cmd-dict-btn">명령어 사전</button>' +
         '                </div>' +
         '                <div class="algebra-input-row">' +
-        '                    <input type="text" id="algebraInput" placeholder="명령어 입력..." autocomplete="off" />' +
+        '                    <input type="text" id="algebraInput" placeholder="입력" autocomplete="off" />' +
         '                    <button type="button" id="btnAlgebraSubmit">입력</button>' +
         '                </div>' +
         '                <div id="algebraCmdDict" class="algebra-cmd-dict"></div>' +
         '                <div class="algebra-error" id="algebraError"></div>' +
         '            </div>' +
         '        </div>' +
-        '        <!-- 우측 작도 영역 -->' +
         '        <div class="algeo-canvas-container">' +
         '            <canvas id="algeoCanvas"></canvas>' +
+        '            <div class="algeo-right-bar">' +
+        '                <button type="button" class="right-bar-btn" id="btnZoomIn" title="확대">+</button>' +
+        '                <button type="button" class="right-bar-btn" id="btnZoomOut" title="축소">−</button>' +
+        '                <button type="button" class="right-bar-btn" id="btnResetView" title="원점 이동">⌂</button>' +
+        '            </div>' +
         '        </div>' +
         '    </div>' +
         '</div>';
@@ -856,35 +928,84 @@ AlgeoRenderer.prototype.drawGrid = function () {
         ctx.lineTo(width, y);
         ctx.stroke();
 
-        // 눈금 숫자 라벨 그리기 (수직축)
+        // 눈금 숫자 라벨 (Y축 오른쪽)
         const mathY = Number(this.toMathY(y).toFixed(2));
         if (mathY !== 0 && Math.abs(y - this.offsetY) > 5) {
             ctx.fillStyle = '#64748b';
             ctx.font = '10px Outfit, sans-serif';
-            ctx.fillText(mathY, this.offsetX + 8, y + 4);
+            ctx.fillText(String(mathY), this.offsetX + 8, y + 4);
         }
     }
 
     // X-Y 축 그리기
-    ctx.strokeStyle = '#334155';
+    this.drawAxes(ctx, width, height);
+};
+
+// X축·Y축 선, 원점, 축 이름(x·y) 및 양의 방향 화살표
+AlgeoRenderer.prototype.drawAxes = function (ctx, width, height) {
+    const ox = this.offsetX;
+    const oy = this.offsetY;
+    const axisColor = '#1e293b';
+    const labelColor = '#0f172a';
+
+    ctx.strokeStyle = axisColor;
     ctx.lineWidth = 2;
 
-    // X축
-    ctx.beginPath();
-    ctx.moveTo(0, this.offsetY);
-    ctx.lineTo(width, this.offsetY);
-    ctx.stroke();
+    // X축 (y = 0 수평선)
+    if (oy >= -2 && oy <= height + 2) {
+        ctx.beginPath();
+        ctx.moveTo(0, oy);
+        ctx.lineTo(width, oy);
+        ctx.stroke();
+    }
 
-    // Y축
-    ctx.beginPath();
-    ctx.moveTo(this.offsetX, 0);
-    ctx.lineTo(this.offsetX, height);
-    ctx.stroke();
+    // Y축 (x = 0 수직선)
+    if (ox >= -2 && ox <= width + 2) {
+        ctx.beginPath();
+        ctx.moveTo(ox, 0);
+        ctx.lineTo(ox, height);
+        ctx.stroke();
+    }
 
-    // 원점 표시
-    ctx.fillStyle = '#334155';
+    ctx.fillStyle = labelColor;
     ctx.font = 'bold 11px Outfit, sans-serif';
-    ctx.fillText('O', this.offsetX - 12, this.offsetY + 14);
+
+    // 원점 O (양축이 모두 보일 때)
+    if (ox >= 12 && ox <= width - 4 && oy >= 12 && oy <= height - 4) {
+        ctx.fillText('O', ox - 14, oy + 14);
+    }
+
+    // X축 라벨·화살표 (오른쪽 양의 방향)
+    if (oy >= 14 && oy <= height - 14) {
+        const tipX = width - 8;
+        ctx.beginPath();
+        ctx.moveTo(tipX - 10, oy - 4);
+        ctx.lineTo(tipX, oy);
+        ctx.lineTo(tipX - 10, oy + 4);
+        ctx.closePath();
+        ctx.fillStyle = axisColor;
+        ctx.fill();
+        ctx.fillStyle = labelColor;
+        ctx.font = 'bold 13px Outfit, sans-serif';
+        ctx.fillText('x', width - 26, oy - 8);
+    }
+
+    // Y축 라벨·화살표 (위쪽 양의 방향, 축 왼쪽에 y 표기)
+    if (ox >= 28 && ox <= width - 14) {
+        const tipY = 10;
+        ctx.beginPath();
+        ctx.moveTo(ox - 4, tipY + 10);
+        ctx.lineTo(ox, tipY);
+        ctx.lineTo(ox + 4, tipY + 10);
+        ctx.closePath();
+        ctx.fillStyle = axisColor;
+        ctx.fill();
+        ctx.fillStyle = labelColor;
+        ctx.font = 'bold 13px Outfit, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText('y', ox - 10, tipY + 4);
+        ctx.textAlign = 'left';
+    }
 };
 
 AlgeoRenderer.prototype.drawObjects = function () {
@@ -1122,6 +1243,7 @@ function AlgeoApp(engine, renderer) {
     this.selectedPoints = [];         // 선분/원 작도를 위해 선택된 점 배열
     this.selectedObjectId = null;     // 대수창에서 선택된 객체 ID
     this.algebraCmdDictOpen = false;  // 명령어 사전 패널 표시 여부
+    this.openToolCategoryId = null;   // 열린 도구 플라이아웃 카테고리 ID
 }
 
 AlgeoApp.prototype.init = function () {
@@ -1131,17 +1253,8 @@ AlgeoApp.prototype.init = function () {
     self.renderer.resize();
     self.renderer.draw();
 
-    // 1. 도구바 버튼 클릭 처리 (jQuery 위임 활용)
-    $('.algeo-toolbar').on('click', '.tool-btn', function () {
-        $('.tool-btn').removeClass('active');
-        $(this).addClass('active');
-
-        self.currentTool = $(this).attr('data-tool');
-        self.selectedPoints = []; // 도구 변경 시 선택 점 리스트 초기화
-        self.syncHighlightToRenderer();
-        self.updateCanvasCursor();
-        self.renderer.draw();
-    });
+    // 1. 좌측 도구 레일·플라이아웃
+    self.initToolRail();
 
     // 2. 뷰포트 조작 버튼 이벤트 바인딩
     $('#btnZoomIn').on('click', function () {
@@ -1193,7 +1306,119 @@ AlgeoApp.prototype.init = function () {
         self.selectAlgebraObject(objId);
     });
 
+    self.selectTool('MOVE');
     self.updateCanvasCursor();
+};
+
+// 좌측 도구 레일·플라이아웃 이벤트 초기화
+AlgeoApp.prototype.initToolRail = function () {
+    const self = this;
+
+    $('#toolRail').on('click', '.tool-rail-btn', function (e) {
+        e.stopPropagation();
+        const categoryId = $(this).attr('data-category');
+        self.toggleToolCategory(categoryId);
+    });
+
+    $('#toolFlyout').on('click', '.flyout-tool-item', function (e) {
+        e.stopPropagation();
+        const toolId = $(this).attr('data-tool');
+        self.selectTool(toolId);
+        self.closeToolFlyout();
+    });
+
+    $('#toolFlyout').on('mousedown', function (e) {
+        e.stopPropagation();
+    });
+
+    $('.algeo-left-panel').on('mousedown', function (e) {
+        e.stopPropagation();
+    });
+
+    $(document).on('click', function () {
+        self.closeToolFlyout();
+    });
+};
+
+// 도구 카테고리 플라이아웃 토글
+AlgeoApp.prototype.toggleToolCategory = function (categoryId) {
+    if (this.openToolCategoryId === categoryId) {
+        this.closeToolFlyout();
+        return;
+    }
+    this.openToolCategoryId = categoryId;
+    this.renderToolFlyout(categoryId);
+    $('#toolFlyout').addClass('open');
+    this.syncToolRailUI();
+};
+
+// 플라이아웃 닫기
+AlgeoApp.prototype.closeToolFlyout = function () {
+    this.openToolCategoryId = null;
+    $('#toolFlyout').removeClass('open');
+    this.syncToolRailUI();
+};
+
+// 플라이아웃 본문 렌더링
+AlgeoApp.prototype.renderToolFlyout = function (categoryId) {
+    let i;
+    let j;
+    let cat = null;
+
+    for (i = 0; i < ALGEO_TOOL_CATEGORIES.length; i++) {
+        if (ALGEO_TOOL_CATEGORIES[i].id === categoryId) {
+            cat = ALGEO_TOOL_CATEGORIES[i];
+            break;
+        }
+    }
+    if (!cat) {
+        return;
+    }
+
+    $('#flyoutHeader').text(cat.title);
+
+    let bodyHtml = '';
+    for (j = 0; j < cat.tools.length; j++) {
+        const item = cat.tools[j];
+        const isActive = item.tool === this.currentTool;
+        const activeClass = isActive ? ' active' : '';
+        const shortcutHtml = item.shortcut
+            ? '<span class="flyout-shortcut">' + item.shortcut + '</span>'
+            : '';
+
+        bodyHtml += '<button type="button" class="flyout-tool-item' + activeClass + '" data-tool="' + item.tool + '">';
+        bodyHtml += '<span class="flyout-tool-icon">' + item.icon + '</span>';
+        bodyHtml += '<span class="flyout-tool-label">' + item.label + '</span>';
+        bodyHtml += shortcutHtml;
+        bodyHtml += '</button>';
+    }
+
+    $('#flyoutBody').html(bodyHtml);
+};
+
+// 작도 도구 선택 및 UI 동기화
+AlgeoApp.prototype.selectTool = function (toolId) {
+    this.currentTool = toolId;
+    this.selectedPoints = [];
+    this.syncHighlightToRenderer();
+    this.syncToolRailUI();
+    this.updateCanvasCursor();
+    this.renderer.draw();
+};
+
+// 레일·플라이아웃 활성 상태 갱신
+AlgeoApp.prototype.syncToolRailUI = function () {
+    const categoryId = findToolCategoryId(this.currentTool);
+
+    $('.tool-rail-btn').removeClass('active open');
+    $('.tool-rail-btn[data-category="' + categoryId + '"]').addClass('active');
+
+    if (this.openToolCategoryId) {
+        $('.tool-rail-btn[data-category="' + this.openToolCategoryId + '"]').addClass('open');
+    }
+
+    $('.flyout-tool-item').removeClass('active');
+    $('.flyout-tool-item[data-tool="' + this.currentTool + '"]').addClass('active');
 };
 
 // 대수창 항목 선택 및 캔버스 하이라이트 연동
