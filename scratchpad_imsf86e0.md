@@ -14,3 +14,6 @@
 - [ ] Create points A=(0,0), B=(3,0), then type `AB` for segment
 - [ ] Type `⊙(A, C)` or `⊙AC` for circle with center A
 - [ ] Re-type `AB` and verify no duplicate segment
+- [ ] Click algebra list item and verify cyan highlight on canvas
+- [ ] Click same item again to deselect
+- [ ] Click empty canvas to clear selection

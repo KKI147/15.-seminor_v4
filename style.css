@@ -229,12 +229,20 @@
     border: 1px solid #e2e8f0;
     border-radius: 8px;
     transition: var(--transition-fast);
+    cursor: pointer;
 }
 
 .algebra-item:hover {
     background-color: #f1f5f9;
     border-color: #cbd5e1;
     box-shadow: var(--shadow-sm);
+}
+
+/* 대수창에서 선택된 항목 */
+.algebra-item.active {
+    background-color: #ecfeff;
+    border-color: #06b6d4;
+    box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
 }
 
 /* 오브젝트 컬러 인디케이터 */

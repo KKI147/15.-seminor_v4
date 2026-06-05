@@ -407,6 +407,7 @@ function AlgeoRenderer(engine, canvas) {
     this.offsetX = 0;           // 캔버스 중심에서 원점까지의 픽셀 X 오프셋
     this.offsetY = 0;           // 캔버스 중심에서 원점까지의 픽셀 Y 오프셋
     this.highlightIds = [];     // 작도 중 강조 표시할 점 ID 목록
+    this.selectedObjectId = null; // 대수창에서 선택된 객체 ID
 
     this.initViewport();
 }
@@ -550,21 +551,32 @@ AlgeoRenderer.prototype.drawObjects = function () {
     for (let i = 0; i < list.length; i++) {
         const obj = list[i];
         if (obj.type === 'FUNCTION') {
-            this.drawFunction(obj);
+            this.drawFunction(obj, obj.id === this.selectedObjectId);
         }
     }
 
     for (let i = 0; i < list.length; i++) {
         const obj = list[i];
+        const isSelected = obj.id === this.selectedObjectId;
+
         if (obj.type === 'SEGMENT') {
             const p1 = this.engine.objectMap[obj.p1Id];
             const p2 = this.engine.objectMap[obj.p2Id];
             if (p1 && p2) {
+                if (isSelected) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.toScreenX(p1.x), this.toScreenY(p1.y));
+                    ctx.lineTo(this.toScreenX(p2.x), this.toScreenY(p2.y));
+                    ctx.strokeStyle = 'rgba(6, 182, 212, 0.35)';
+                    ctx.lineWidth = 10;
+                    ctx.stroke();
+                }
+
                 ctx.beginPath();
                 ctx.moveTo(this.toScreenX(p1.x), this.toScreenY(p1.y));
                 ctx.lineTo(this.toScreenX(p2.x), this.toScreenY(p2.y));
-                ctx.strokeStyle = '#2563eb'; // 푸른색 선분
-                ctx.lineWidth = 3;
+                ctx.strokeStyle = isSelected ? '#06b6d4' : '#2563eb';
+                ctx.lineWidth = isSelected ? 4 : 3;
                 ctx.stroke();
             }
         } else if (obj.type === 'CIRCLE') {
@@ -574,17 +586,22 @@ AlgeoRenderer.prototype.drawObjects = function () {
                 const dx = point.x - center.x;
                 const dy = point.y - center.y;
                 const radius = Math.sqrt(dx * dx + dy * dy);
+                const cx = this.toScreenX(center.x);
+                const cy = this.toScreenY(center.y);
+                const screenRadius = radius * this.scale;
+
+                if (isSelected) {
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, screenRadius, 0, 2 * Math.PI);
+                    ctx.strokeStyle = 'rgba(6, 182, 212, 0.35)';
+                    ctx.lineWidth = 10;
+                    ctx.stroke();
+                }
 
                 ctx.beginPath();
-                ctx.arc(
-                    this.toScreenX(center.x),
-                    this.toScreenY(center.y),
-                    radius * this.scale,
-                    0,
-                    2 * Math.PI
-                );
-                ctx.strokeStyle = '#059669'; // 녹색 원
-                ctx.lineWidth = 2;
+                ctx.arc(cx, cy, screenRadius, 0, 2 * Math.PI);
+                ctx.strokeStyle = isSelected ? '#06b6d4' : '#059669';
+                ctx.lineWidth = isSelected ? 3.5 : 2;
                 ctx.stroke();
             }
         }
@@ -597,6 +614,16 @@ AlgeoRenderer.prototype.drawObjects = function () {
             const sx = this.toScreenX(obj.x);
             const sy = this.toScreenY(obj.y);
             const isHighlighted = this.highlightIds.indexOf(obj.id) >= 0;
+            const isSelected = obj.id === this.selectedObjectId;
+
+            // 대수창 선택 강조 링
+            if (isSelected) {
+                ctx.beginPath();
+                ctx.arc(sx, sy, 14, 0, 2 * Math.PI);
+                ctx.strokeStyle = '#06b6d4';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+            }
 
             // 작도 선택 중인 점 강조 링
             if (isHighlighted) {
@@ -610,7 +637,13 @@ AlgeoRenderer.prototype.drawObjects = function () {
             // 점 중심 원
             ctx.beginPath();
             ctx.arc(sx, sy, 6, 0, 2 * Math.PI);
-            ctx.fillStyle = isHighlighted ? '#f59e0b' : '#ef4444';
+            if (isSelected) {
+                ctx.fillStyle = '#06b6d4';
+            } else if (isHighlighted) {
+                ctx.fillStyle = '#f59e0b';
+            } else {
+                ctx.fillStyle = '#ef4444';
+            }
             ctx.fill();
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 1.5;
@@ -625,7 +658,7 @@ AlgeoRenderer.prototype.drawObjects = function () {
 };
 
 // 일차함수 그래프를 현재 뷰포트 x범위에 맞춰 그리기
-AlgeoRenderer.prototype.drawFunction = function (obj) {
+AlgeoRenderer.prototype.drawFunction = function (obj, isSelected) {
     const ctx = this.ctx;
     const width = this.canvas.width;
     const mathXLeft = this.toMathX(0);
@@ -649,8 +682,27 @@ AlgeoRenderer.prototype.drawFunction = function (obj) {
         }
     }
 
-    ctx.strokeStyle = '#7c3aed';
-    ctx.lineWidth = 2.5;
+    if (isSelected) {
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.35)';
+        ctx.lineWidth = 8;
+        ctx.stroke();
+        ctx.beginPath();
+        started = false;
+        for (let mathX = left; mathX <= right; mathX += step) {
+            const mathY = obj.slope * mathX + obj.intercept;
+            const sx = this.toScreenX(mathX);
+            const sy = this.toScreenY(mathY);
+            if (!started) {
+                ctx.moveTo(sx, sy);
+                started = true;
+            } else {
+                ctx.lineTo(sx, sy);
+            }
+        }
+    }
+
+    ctx.strokeStyle = isSelected ? '#06b6d4' : '#7c3aed';
+    ctx.lineWidth = isSelected ? 3.5 : 2.5;
     ctx.stroke();
 };
 
@@ -671,6 +723,7 @@ function AlgeoApp(engine, renderer) {
 
     this.activePoint = null;          // 현재 마우스 드래그 중인 점 객체
     this.selectedPoints = [];         // 선분/원 작도를 위해 선택된 점 배열
+    this.selectedObjectId = null;     // 대수창에서 선택된 객체 ID
 }
 
 AlgeoApp.prototype.init = function () {
@@ -744,7 +797,44 @@ AlgeoApp.prototype.init = function () {
         }
     });
 
+    // 5. 대수창 항목 클릭 → 캔버스 객체 하이라이트
+    $('#algebraList').on('click', '.algebra-item', function () {
+        const objId = $(this).attr('data-id');
+        self.selectAlgebraObject(objId);
+    });
+
     self.updateCanvasCursor();
+};
+
+// 대수창 항목 선택 및 캔버스 하이라이트 연동
+AlgeoApp.prototype.selectAlgebraObject = function (objId) {
+    if (this.selectedObjectId === objId) {
+        this.selectedObjectId = null;
+    } else {
+        this.selectedObjectId = objId;
+    }
+    this.renderer.selectedObjectId = this.selectedObjectId;
+    this.syncAlgebraItemActiveState();
+    this.renderer.draw();
+};
+
+// 대수창 리스트의 선택(active) 스타일 갱신
+AlgeoApp.prototype.syncAlgebraItemActiveState = function () {
+    $('#algebraList .algebra-item').removeClass('active');
+    if (this.selectedObjectId) {
+        $('#algebraList .algebra-item[data-id="' + this.selectedObjectId + '"]').addClass('active');
+    }
+};
+
+// 대수창 선택 해제 (삭제·캔버스 빈 곳 클릭 시)
+AlgeoApp.prototype.clearAlgebraSelection = function () {
+    if (!this.selectedObjectId) {
+        return;
+    }
+    this.selectedObjectId = null;
+    this.renderer.selectedObjectId = null;
+    this.syncAlgebraItemActiveState();
+    this.renderer.draw();
 };
 
 // 현재 도구에 맞는 캔버스 커서 설정
@@ -811,7 +901,8 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
             // 점 드래그 시작
             this.activePoint = hitPoint;
         } else {
-            // 빈 공간 클릭 -> 캔버스 패닝 시작
+            // 빈 공간 클릭 -> 선택 해제 후 캔버스 패닝 시작
+            this.clearAlgebraSelection();
             this.isDraggingCanvas = true;
             this.dragStart.x = mouseX;
             this.dragStart.y = mouseY;
@@ -871,13 +962,15 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
         // 객체 삭제
         if (hitPoint) {
             this.engine.deleteObject(hitPoint.id);
+            this.validateAlgebraSelection();
             this.updateAlgebraView();
             r.draw();
         } else {
-            // 다른 도형(선분, 원) 삭제 체크
+            // 다른 도형(선분, 원, 함수) 삭제 체크
             const hitObj = this.findObjectAt(mouseX, mouseY);
             if (hitObj) {
                 this.engine.deleteObject(hitObj.id);
+                this.validateAlgebraSelection();
                 this.updateAlgebraView();
                 r.draw();
             }
@@ -1286,6 +1379,17 @@ AlgeoApp.prototype.updateAlgebraView = function () {
             '</div>';
 
         $list.append(itemHtml);
+    }
+
+    this.validateAlgebraSelection();
+    this.syncAlgebraItemActiveState();
+};
+
+// 삭제 등으로 선택 객체가 없어졌는지 확인
+AlgeoApp.prototype.validateAlgebraSelection = function () {
+    if (this.selectedObjectId && !this.engine.objectMap[this.selectedObjectId]) {
+        this.selectedObjectId = null;
+        this.renderer.selectedObjectId = null;
     }
 };
 
