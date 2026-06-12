@@ -2,7 +2,7 @@
 
 알지오메스(AlgeoMath)의 핵심 기능 — 기하 작도, 대수창 연동, 종속성 엔진 — 을 단계별로 재현하는 프로젝트입니다.
 
-**배포 주소**: [https://kki147.github.io/algeomath/](https://kki147.github.io/algeomath/)
+**배포 주소**: [[https://kki147.github.io/algeomath/](https://kki147.github.io/algeomath/](https://kki147.github.io/15.-seminor_v4/))
 
 > **진행 방식**: 이 README의 로드맵 순서대로 구현합니다.  
 > 완료 여부는 [`task.md`](task.md) 에서 체크하며, 세부 설계는 [`implementation_plan.md`](implementation_plan.md) 를 참고합니다.
