@@ -95,6 +95,16 @@ const ALGEBRA_TYPE_ORDER = {
 // Undo 스택 최대 깊이
 const ALGEO_UNDO_MAX = 50;
 
+// popscale(#wrap) 줌 계수 — 화면 픽셀 ↔ 설계 좌표(1920×1020) 변환에 사용
+function getPopscaleFactor() {
+    if (typeof FORTEACHERCD !== 'undefined' && FORTEACHERCD.responsive &&
+        FORTEACHERCD.responsive.baseContainerSize &&
+        FORTEACHERCD.responsive.baseContainerSize.zoom > 0) {
+        return FORTEACHERCD.responsive.baseContainerSize.zoom;
+    }
+    return 1;
+}
+
 // 좌측 도구 레일 카테고리 (플라이아웃 서브메뉴 구성)
 const ALGEO_TOOL_CATEGORIES = [
     {
@@ -261,8 +271,11 @@ const ALGEO_TOOL_GUIDES = {
     }
 };
 
-// 캔버스 객체 가시성 팔레트 (AlgeoMath 스타일 — 선명한 색·굵은 선)
-const ALGEO_VIS = {
+// 캔버스·UI 테마 localStorage 키
+const ALGEO_THEME_STORAGE_KEY = 'algeo_theme';
+
+// 라이트 모드 캔버스 팔레트
+const ALGEO_VIS_LIGHT = {
     point: '#e11d48',
     midpoint: '#7c3aed',
     segment: '#1d4ed8',
@@ -283,15 +296,84 @@ const ALGEO_VIS = {
     grid: '#d8e0ea',
     gridLabel: '#475569',
     axis: '#0f172a',
-    // 대수창·캔버스 선택 강조 (객체 고유색과 무관한 통일 스타일)
+    canvasBg: '#ffffff',
+    labelHalo: '#ffffff',
+    highlightPoint: '#f59e0b',
     selectionStroke: '#0891b2',
     selectionHalo: '#ffffff',
     selectionFill: 'rgba(8, 145, 178, 0.14)',
     selectionDash: [7, 5],
     selectionLineWidth: 3.5,
     selectionHaloWidth: 7,
-    selectionPointRing: 16
+    selectionPointRing: 16,
+    previewSegment: 'rgba(37, 99, 235, 0.65)',
+    previewLine: 'rgba(79, 70, 229, 0.55)',
+    previewParallel: 'rgba(234, 88, 12, 0.55)',
+    previewPerp: 'rgba(225, 29, 72, 0.55)',
+    previewCircle: 'rgba(4, 120, 87, 0.55)',
+    previewCircleGuide: 'rgba(4, 120, 87, 0.35)',
+    previewCircleRay: 'rgba(4, 120, 87, 0.25)',
+    previewPolygon: 'rgba(180, 83, 9, 0.85)',
+    previewPolygonEdge: 'rgba(180, 83, 9, 0.55)',
+    previewPolygonFill: 'rgba(180, 83, 9, 0.1)',
+    functionLabel: '#5b21b6'
 };
+
+// 다크 모드 캔버스 팔레트 — 배경·격자 대비 + 객체색 약간 밝게
+const ALGEO_VIS_DARK = {
+    point: '#fb7185',
+    midpoint: '#a78bfa',
+    segment: '#60a5fa',
+    line: '#818cf8',
+    perpBisector: '#22d3ee',
+    parallel: '#fb923c',
+    perpLine: '#f472b6',
+    circle: '#34d399',
+    arc: '#2dd4bf',
+    angle: '#c084fc',
+    angleFill: 'rgba(192, 132, 252, 0.22)',
+    polygon: '#fbbf24',
+    polygonFill: 'rgba(251, 191, 36, 0.18)',
+    function: '#a78bfa',
+    pointRadius: 7,
+    midpointRadius: 6,
+    pointStroke: '#f1f5f9',
+    grid: '#334155',
+    gridLabel: '#94a3b8',
+    axis: '#e2e8f0',
+    canvasBg: '#0f172a',
+    labelHalo: '#0f172a',
+    highlightPoint: '#fbbf24',
+    selectionStroke: '#22d3ee',
+    selectionHalo: '#0f172a',
+    selectionFill: 'rgba(34, 211, 238, 0.2)',
+    selectionDash: [7, 5],
+    selectionLineWidth: 3.5,
+    selectionHaloWidth: 7,
+    selectionPointRing: 16,
+    previewSegment: 'rgba(96, 165, 250, 0.7)',
+    previewLine: 'rgba(129, 140, 248, 0.65)',
+    previewParallel: 'rgba(251, 146, 60, 0.65)',
+    previewPerp: 'rgba(244, 114, 182, 0.65)',
+    previewCircle: 'rgba(52, 211, 153, 0.65)',
+    previewCircleGuide: 'rgba(52, 211, 153, 0.4)',
+    previewCircleRay: 'rgba(52, 211, 153, 0.28)',
+    previewPolygon: 'rgba(251, 191, 36, 0.9)',
+    previewPolygonEdge: 'rgba(251, 191, 36, 0.6)',
+    previewPolygonFill: 'rgba(251, 191, 36, 0.12)',
+    functionLabel: '#c4b5fd'
+};
+
+// 현재 활성 캔버스 팔레트 (setTheme 시 갱신)
+let ALGEO_VIS = ALGEO_VIS_LIGHT;
+
+// 테마에 맞는 캔버스 팔레트 반환
+function getAlgeoVisPalette(theme) {
+    if (theme === 'dark') {
+        return ALGEO_VIS_DARK;
+    }
+    return ALGEO_VIS_LIGHT;
+}
 
 // 도구 ID가 속한 카테고리 검색
 function findToolCategoryId(toolId) {
@@ -466,7 +548,7 @@ function createAlgeoUI($container) {
 
     // 알지오메스 메인 컨테이너 — AlgeoMath 스타일 좌측 레일 + 작업 영역
     const layoutHtml =
-        '<div class="algeo-wrapper">' +
+        '<div class="algeo-wrapper" data-theme="light">' +
         '    <div class="algeo-left-panel">' +
         '        <div class="algeo-mode-rail">' +
         '            <button type="button" class="mode-rail-btn active" title="기하 작도" disabled>⌗</button>' +
@@ -537,6 +619,7 @@ function createAlgeoUI($container) {
         '                <p id="toolGuideTips" class="tool-guide-tips"></p>' +
         '            </div>' +
         '            <div class="algeo-right-bar">' +
+        '                <button type="button" class="right-bar-btn" id="btnToggleTheme" title="다크 모드" aria-label="다크 모드">🌙</button>' +
         '                <button type="button" class="right-bar-btn" id="btnZoomIn" title="확대">+</button>' +
         '                <button type="button" class="right-bar-btn" id="btnZoomOut" title="축소">−</button>' +
         '                <button type="button" class="right-bar-btn" id="btnResetView" title="원점 이동">⌂</button>' +
@@ -1401,7 +1484,9 @@ AlgeoRenderer.prototype.resize = function () {
 
 // 전체 다시 그리기
 AlgeoRenderer.prototype.draw = function () {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    const ctx = this.ctx;
+    ctx.fillStyle = ALGEO_VIS.canvasBg;
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     // 1. 배경 격자(Grid) 그리기
     this.drawGrid();
@@ -1658,7 +1743,7 @@ AlgeoRenderer.prototype.drawPointShape = function (obj) {
     if (isHighlighted) {
         ctx.beginPath();
         ctx.arc(sx, sy, radius + 9, 0, 2 * Math.PI);
-        ctx.strokeStyle = '#f59e0b';
+        ctx.strokeStyle = ALGEO_VIS.highlightPoint;
         ctx.lineWidth = 3;
         ctx.stroke();
     }
@@ -1666,7 +1751,7 @@ AlgeoRenderer.prototype.drawPointShape = function (obj) {
     ctx.beginPath();
     ctx.arc(sx, sy, radius, 0, 2 * Math.PI);
     if (isHighlighted) {
-        ctx.fillStyle = '#f59e0b';
+        ctx.fillStyle = ALGEO_VIS.highlightPoint;
     } else if (isMid) {
         ctx.fillStyle = ALGEO_VIS.midpoint;
     } else {
@@ -1697,7 +1782,7 @@ AlgeoRenderer.prototype.drawCanvasLabel = function (text, x, y, options) {
     ctx.textBaseline = 'alphabetic';
 
     if (useHalo) {
-        ctx.strokeStyle = '#ffffff';
+        ctx.strokeStyle = ALGEO_VIS.labelHalo;
         ctx.lineWidth = 4;
         ctx.lineJoin = 'round';
         ctx.strokeText(text, x, y);
@@ -1769,7 +1854,7 @@ AlgeoRenderer.prototype.drawToolPreview = function (preview) {
         ctx.beginPath();
         ctx.moveTo(this.toScreenX(p1.x), this.toScreenY(p1.y));
         ctx.lineTo(this.toScreenX(preview.mathX), this.toScreenY(preview.mathY));
-        ctx.strokeStyle = 'rgba(37, 99, 235, 0.65)';
+        ctx.strokeStyle = ALGEO_VIS.previewSegment;
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         ctx.stroke();
@@ -1785,7 +1870,7 @@ AlgeoRenderer.prototype.drawToolPreview = function (preview) {
         if (!end) { return; }
         ctx.save();
         ctx.setLineDash([8, 5]);
-        this.drawLine({ x: p1.x, y: p1.y }, p2, 'rgba(79, 70, 229, 0.55)', [8, 5], 2.5);
+        this.drawLine({ x: p1.x, y: p1.y }, p2, ALGEO_VIS.previewLine, [8, 5], 2.5);
         ctx.restore();
         return;
     }
@@ -1802,7 +1887,7 @@ AlgeoRenderer.prototype.drawToolPreview = function (preview) {
         }
         if (!linePts) { return; }
         const color = preview.type === 'PARALLEL_LINE'
-            ? 'rgba(234, 88, 12, 0.55)' : 'rgba(225, 29, 72, 0.55)';
+            ? ALGEO_VIS.previewParallel : ALGEO_VIS.previewPerp;
         const dash = preview.type === 'PARALLEL_LINE' ? [10, 5] : [6, 4];
         ctx.save();
         this.drawLine(linePts.p1, linePts.p2, color, dash, 2.5);
@@ -1837,14 +1922,14 @@ AlgeoRenderer.prototype.drawToolPreview = function (preview) {
         ctx.setLineDash([6, 4]);
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, 2 * Math.PI);
-        ctx.strokeStyle = 'rgba(4, 120, 87, 0.55)';
+        ctx.strokeStyle = ALGEO_VIS.previewCircle;
         ctx.lineWidth = 2;
         ctx.stroke();
         ctx.setLineDash([]);
         ctx.beginPath();
         ctx.moveTo(cx, cy);
         ctx.lineTo(this.toScreenX(preview.mathX), this.toScreenY(preview.mathY));
-        ctx.strokeStyle = 'rgba(4, 120, 87, 0.35)';
+        ctx.strokeStyle = ALGEO_VIS.previewCircleGuide;
         ctx.lineWidth = 1.5;
         ctx.stroke();
         ctx.restore();
@@ -1863,7 +1948,7 @@ AlgeoRenderer.prototype.drawToolPreview = function (preview) {
         ctx.save();
         ctx.beginPath();
         ctx.arc(sweep.cx, sweep.cy, sweep.r, 0, 2 * Math.PI);
-        ctx.strokeStyle = 'rgba(4, 120, 87, 0.25)';
+        ctx.strokeStyle = ALGEO_VIS.previewCircleRay;
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
@@ -1901,7 +1986,7 @@ AlgeoRenderer.prototype.drawToolPreview = function (preview) {
 
         ctx.save();
         ctx.setLineDash([]);
-        ctx.strokeStyle = 'rgba(180, 83, 9, 0.85)';
+        ctx.strokeStyle = ALGEO_VIS.previewPolygon;
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
@@ -1916,7 +2001,7 @@ AlgeoRenderer.prototype.drawToolPreview = function (preview) {
         }
 
         ctx.setLineDash([6, 4]);
-        ctx.strokeStyle = 'rgba(180, 83, 9, 0.55)';
+        ctx.strokeStyle = ALGEO_VIS.previewPolygonEdge;
         ctx.beginPath();
         ctx.moveTo(screenPts[screenPts.length - 1].x, screenPts[screenPts.length - 1].y);
         ctx.lineTo(cursorX, cursorY);
@@ -1931,7 +2016,7 @@ AlgeoRenderer.prototype.drawToolPreview = function (preview) {
 
         if (screenPts.length >= 3) {
             ctx.setLineDash([]);
-            ctx.fillStyle = 'rgba(180, 83, 9, 0.1)';
+            ctx.fillStyle = ALGEO_VIS.previewPolygonFill;
             ctx.beginPath();
             ctx.moveTo(screenPts[0].x, screenPts[0].y);
             for (i = 1; i < screenPts.length; i++) {
@@ -2099,7 +2184,7 @@ AlgeoRenderer.prototype.drawAngleShape = function (ray1, vertex, ray2) {
         this.drawCanvasLabel(degrees.toFixed(1) + '\u00B0', lx, ly + 4, {
             align: 'center',
             font: 'bold 12px Outfit, sans-serif',
-            color: '#5b21b6'
+            color: ALGEO_VIS.functionLabel
         });
     }
 };
@@ -2481,10 +2566,13 @@ function AlgeoApp(engine, renderer) {
     this.isRestoringHistory = false;  // Undo/Redo 복원 중 (기록 중복 방지)
     this.dragSnapshot = null;         // 점 드래그 시작 시점 스냅샷
     this.dragMoved = false;           // 드래그 중 좌표 변경 여부
+    this.theme = 'light';             // UI·캔버스 테마: light | dark
 }
 
 AlgeoApp.prototype.init = function () {
     const self = this;
+
+    self.initTheme();
 
     // 캔버스 사이즈 조절 및 최초 렌더링 (뷰포트 스케일은 popscale이 담당)
     self.renderer.resize();
@@ -2725,7 +2813,10 @@ AlgeoApp.prototype.selectTool = function (toolId) {
     this.guideCollapsed = false;
     $('#toolGuide').removeClass('collapsed');
     $('#btnCollapseGuide').text('\u2212').attr('title', '안내 접기');
-    this.setGuideVisible(true);
+    if (!this.guideHidden) {
+        $('#toolGuide').removeClass('hidden');
+        $('#btnOpenGuide').removeClass('visible');
+    }
     this.clearToolDraft();
     this.syncToolRailUI();
     this.updateCanvasCursor();
@@ -2860,10 +2951,11 @@ AlgeoApp.prototype.initToolGuide = function () {
         const guideEl = $guide[0];
         const containerRect = containerEl.getBoundingClientRect();
         const guideRect = guideEl.getBoundingClientRect();
+        const factor = getPopscaleFactor();
 
         if (!$guide.hasClass('is-positioned')) {
-            guideStartLeft = guideRect.left - containerRect.left;
-            guideStartTop = guideRect.top - containerRect.top;
+            guideStartLeft = (guideRect.left - containerRect.left) / factor;
+            guideStartTop = (guideRect.top - containerRect.top) / factor;
             $guide.addClass('is-positioned');
             $guide.css({
                 left: guideStartLeft + 'px',
@@ -2884,8 +2976,9 @@ AlgeoApp.prototype.initToolGuide = function () {
             return;
         }
 
-        const dx = e.clientX - dragStartX;
-        const dy = e.clientY - dragStartY;
+        const factor = getPopscaleFactor();
+        const dx = (e.clientX - dragStartX) / factor;
+        const dy = (e.clientY - dragStartY) / factor;
         let newLeft = guideStartLeft + dx;
         let newTop = guideStartTop + dy;
         const containerW = $container.width();
@@ -4326,6 +4419,62 @@ function escapeHtmlText(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
 }
+
+// 테마 적용 — UI data-theme + 캔버스 팔레트 + localStorage
+AlgeoApp.prototype.setTheme = function (theme, skipSave) {
+    const nextTheme = theme === 'dark' ? 'dark' : 'light';
+
+    this.theme = nextTheme;
+    $('.algeo-wrapper').attr('data-theme', nextTheme);
+    ALGEO_VIS = getAlgeoVisPalette(nextTheme);
+
+    if (!skipSave) {
+        try {
+            localStorage.setItem(ALGEO_THEME_STORAGE_KEY, nextTheme);
+        } catch (ignoreErr) {
+            // localStorage 미지원 환경 무시
+        }
+    }
+
+    this.syncThemeToggleUI();
+    this.renderer.draw();
+};
+
+// 테마 토글 버튼 아이콘·라벨 갱신
+AlgeoApp.prototype.syncThemeToggleUI = function () {
+    const $btn = $('#btnToggleTheme');
+    if (!$btn.length) {
+        return;
+    }
+    if (this.theme === 'dark') {
+        $btn.text('\u2600').attr('title', '라이트 모드').attr('aria-label', '라이트 모드');
+    } else {
+        $btn.text('\uD83C\uDF19').attr('title', '다크 모드').attr('aria-label', '다크 모드');
+    }
+};
+
+// 저장된 테마 복원 및 토글 버튼 바인딩
+AlgeoApp.prototype.initTheme = function () {
+    const self = this;
+    let saved = null;
+
+    try {
+        saved = localStorage.getItem(ALGEO_THEME_STORAGE_KEY);
+    } catch (ignoreErr) {
+        saved = null;
+    }
+
+    if (saved === 'dark' || saved === 'light') {
+        this.setTheme(saved, true);
+    } else {
+        this.setTheme('light', true);
+    }
+
+    $('#btnToggleTheme').on('click', function (e) {
+        e.stopPropagation();
+        self.setTheme(self.theme === 'light' ? 'dark' : 'light');
+    });
+};
 
 // Undo/Redo — 엔진 상태 캡처
 AlgeoApp.prototype.captureEngineState = function () {

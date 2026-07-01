@@ -61,10 +61,12 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 | **각도** | 변1 → 꼭짓점 → 마우스 조절 → 확정 |
 | **평행·수직** | 기준 2점 → 마우스 미리보기 → 통과점 |
 | **다각형** | 꼭짓점 순 클릭 → 첫 점/Enter로 닫기 |
-| **접기 `−`** | 가이드 내용만 접기 |
-| **닫기 `✕`** | 가이드 패널 전체 숨김 → `▶ 안내` 탭으로 다시 열기 |
-| **드래그** | `.tool-guide-head` 드래그로 패널 위치 이동 |
+| **접기 `−`** | 가이드 내용만 접기 — 도구 전환 시 **펼침** (✕ 닫기와 별개) |
+| **닫기 `✕`** | 가이드 패널 전체 숨김 → **▶ 안내**를 누르기 전까지 **자동으로 다시 열리지 않음** |
+| **드래그** | `.tool-guide-head` 드래그로 패널 위치 이동 (`getPopscaleFactor()` 보정) |
 | **Esc** | `constructionDraft` / 선택 점 작도 중 취소 |
+
+> **좌표·드래그**: `#wrap` popscale 적용 시 화면 픽셀 → 설계 좌표 변환에 **factor** 필요. [`README.md`](README.md) 「좌표·드래그와 popscale factor」 참고.
 
 - 상태: `AlgeoApp.constructionDraft` + `renderer.drawToolPreview()`
 - 대수창 호: `Arc(A,B,C)` — C가 호 위 조절점
@@ -83,6 +85,21 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 - `Enter` 또는 **적용** 버튼으로 반영 → `#algebraError` 검증 메시지
 
 ## Undo·수식 히스토리 (4-2)
+
+- 대수창 헤더 **「대수창」** 옆 `↶` / `↷` 버튼 (`.sidebar-undo-group`)
+- 단축키 **Ctrl+Z** / **Ctrl+Y** (입력창 포커스 시 제외)
+- 대수창 하단 **작업 기록** — Undo 스택 라벨 + 수식 히스토리 (클릭 시 입력창에 채움)
+- 작도·삭제·속성 편집·수식 입력마다 엔진 스냅샷 저장 (최대 50단계)
+
+## 다크/라이트 테마 (5-3)
+
+- `.algeo-wrapper[data-theme="light"|"dark"]` — CSS 변수로 UI 전체 전환
+- 캔버스: `ALGEO_VIS_LIGHT` / `ALGEO_VIS_DARK` (`setTheme` 시 `renderer.draw()`)
+- 우측 바 최상단 **🌙** / **☀** (`#btnToggleTheme`)
+- `localStorage` 키 `algeo_theme` — 새로고침 후 유지
+- `common/` 영역은 변경 없음 (알지오 작업 영역만 테마 적용)
+
+---
 
 - 대수창 헤더 **「대수창」** 옆 `↶` / `↷` 버튼 (`.sidebar-undo-group`)
 - 단축키 **Ctrl+Z** / **Ctrl+Y** (입력창 포커스 시 제외)
@@ -142,6 +159,7 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 - [x] 대수창 `생성순` / `종류순` 탭
 - [ ] 입력창 `+` 버튼 스타일
 - [ ] 우측 바: 격자 on/off, 스냅(자석) 토글
+- [x] 우측 바: 다크/라이트 테마 토글 (`#btnToggleTheme`, 5-3)
 - [x] 대수창 헤더 Undo/Redo UI (4-2)
 - [ ] 상단 파란 헤더 (저장·로그인 — 껍데기 또는 5-4 연동)
 - [ ] 도구 단축키 실제 동작 (5-2)

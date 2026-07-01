@@ -13,8 +13,13 @@
 3. **호(Arc)는 중심→시작→끝 3클릭 방식이 아니다.**  
    → **끝점 2개 + 호 위 조절점**으로 호 모양을 결정한다 (외접원 3점 호).
 4. **플라이아웃**: 참고 사이트처럼 아이콘 + **짧은 hint**(조작 안내)로 도구 의미를 바로 알 수 있게 한다.
-5. **Esc**: 작도 중(`constructionDraft` / `selectedPoints`) 취소. **✕** 버튼은 **가이드 패널 닫기**.
+5. **Esc**: 작도 중(`constructionDraft` / `selectedPoints`) 취소. **✕** 버튼은 **가이드 패널 닫기** (▶ 안내 전까지 숨김 유지).
 6. **빈 곳 클릭으로 점 자동 생성**은 선분·직선·원·호(끝점)에 허용. 중점·수직이등분선·각도(1·2단계)·평행/수직(기준 2점)은 **기존 점 클릭** 위주.
+
+### popscale `factor` (드래그·DOM 좌표)
+
+`#wrap`은 `popscale.js`로 스케일됩니다. 캔버스 **밖** UI에서 `clientX`·`getBoundingClientRect`를 설계 좌표(`left`/`top`)로 쓸 때는 **`FORTEACHERCD.responsive.baseContainerSize.zoom`으로 나눕니다.**  
+자세한 표와 `getPopscaleFactor()` 설명은 [`README.md`](README.md) 「좌표·드래그와 popscale factor」 참고.
 
 ---
 
@@ -150,6 +155,7 @@
 | 생성순 / 종류순 탭 | ✅ UI-2 |
 | 속성 인라인 편집 (점·선분·원·함수) | ✅ 4-1 |
 | 입력창 `+` 버튼 스타일 | ⬜ UI-2 |
+| 다크/라이트 테마 (UI+캔버스) | ✅ 5-3 |
 
 ---
 
@@ -157,9 +163,10 @@
 
 ### 기능 로드맵 연동
 
-1. **4-3** — 슬라이더 변수 연동 (또는 UI-2 격자·스냅 토글).
-2. **UI-2** — 입력창 `+` 버튼, 헤더 껍데기.
-3. **5-2 단축키** — `D`, `M` 등 `ALGEO_TOOL_CATEGORIES[].shortcut` 실제 연동.
+1. **4-3** — 슬라이더 변수 연동.
+2. **UI-2** — 격자·스냅 토글, 입력창 `+` 버튼, 헤더 껍데기.
+3. **5-1** — 터치 이벤트.
+4. **5-2 단축키** — `D`, `M` 등 `ALGEO_TOOL_CATEGORIES[].shortcut` 실제 연동.
 
 ### UX-4 도구 가이드 (완료)
 
@@ -169,7 +176,9 @@
 |------|------|
 | **정적 패널** | 도구 선택 시 `#toolGuide` — 요약 + 번호 단계 + 팁 |
 | **동적 하ighlight** | `getGuideActiveStepIndex()` — `constructionDraft` / `selectedPoints` 반영 |
-| **접기** | `#btnCollapseGuide` — 도구 전환 시 자동 펼침 |
+| **접기** | `#btnCollapseGuide` — 도구 전환 시 자동 펼침 (✕ 닫기와 별개) |
+| **닫기** | `#btnCloseGuide` — **▶ 안내** 전까지 숨김 유지 (도구·대수창 전환 시 자동 재표시 없음) |
+| **드래그** | 헤더 드래그 — `getPopscaleFactor()` (`FORTEACHERCD.responsive.baseContainerSize.zoom`) 로 보정 |
 | **2차 예정** | Canvas 고스트 데모, SVG 아이콘 |
 
 ### UX 개선 후보 (미구현)
@@ -190,10 +199,10 @@
 5. 평행/수직: 기준 2점 → 미리보기 → 통과점
 6. 다각형: A → B → C → … → 첫 점 A 재클릭(또는 Enter) → `Polygon(A,B,C,…)` 대수창 일치
 7. Esc로 작도 취소
-8. ✕ 로 가이드 패널 닫기 → ▶ 안내 탭으로 복원
-9. 가이드 헤더 드래그로 위치 이동
-8. 대수창 토글 후 캔버스 크기·격자 정상
-9. 플라이아웃 hint 가독성
+8. ✕ 로 가이드 닫기 → 도구·대수창 전환해도 숨김 유지 → ▶ 안내로만 복원
+9. 가이드 헤더 드래그 — 마우스와 패널 위치 일치 (factor 보정)
+10. 대수창 토글 후 캔버스 크기·격자 정상
+11. 플라이아웃 hint 가독성
 
 ---
 

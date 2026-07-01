@@ -1,14 +1,21 @@
 /* algeomath/style.css */
 
-/* 폰트 및 공통 변수 정의 */
-:root {
+/* 폰트 및 테마 변수 — light 기본, dark는 .algeo-wrapper[data-theme="dark"] */
+:root,
+.algeo-wrapper[data-theme="light"] {
     --bg-primary: #f8fafc;
     --bg-secondary: #ffffff;
     --border-color: #e2e8f0;
     --text-primary: #0f172a;
     --text-secondary: #64748b;
+    --text-muted: #475569;
+    --text-faint: #94a3b8;
     --accent-color: #2563eb;
     --accent-hover: #1d4ed8;
+    --accent-soft-bg: #eff6ff;
+    --accent-soft-border: #bfdbfe;
+    --on-accent: #ffffff;
+    --accent-focus-ring: rgba(37, 99, 235, 0.15);
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -18,6 +25,108 @@
     --rail-border: #e2e8f0;
     --flyout-bg: #ffffff;
     --flyout-hover: #f1f5f9;
+    --surface-muted: #f8fafc;
+    --surface-header: #fafafa;
+    --surface-input: #fafafa;
+    --surface-elevated: #ffffff;
+    --surface-hover: #f1f5f9;
+    --input-border: #cbd5e1;
+    --canvas-bg: #ffffff;
+    --panel-inset-border: #f1f5f9;
+    --history-panel-border: #e2e8f0;
+    --selection-item-bg: #ecfeff;
+    --selection-item-border: #0891b2;
+    --selection-item-ring: rgba(8, 145, 178, 0.35);
+    --selection-item-inset: rgba(8, 145, 178, 0.15);
+    --error-color: #dc2626;
+    --formula-tag-bg: #dbeafe;
+    --formula-tag-text: #1d4ed8;
+    --history-hover: #eff6ff;
+    --guide-bg: rgba(255, 255, 255, 0.96);
+    --guide-border: #0891b2;
+    --guide-shadow: 0 4px 16px rgba(8, 145, 178, 0.18), 0 1px 4px rgba(15, 23, 42, 0.08);
+    --guide-icon-bg: #ecfeff;
+    --guide-icon-color: #0891b2;
+    --guide-step-border: #f1f5f9;
+    --guide-step-num-bg: #f1f5f9;
+    --guide-step-num-color: #94a3b8;
+    --guide-step-active-color: #0f172a;
+    --guide-step-done-color: #94a3b8;
+    --guide-step-done-num-bg: #cffafe;
+    --guide-step-done-num-color: #0891b2;
+    --guide-tips-border: #e2e8f0;
+    --guide-close-hover-bg: #fef2f2;
+    --guide-close-hover-border: #fca5a5;
+    --guide-close-hover-color: #dc2626;
+    --right-bar-bg: rgba(255, 255, 255, 0.92);
+    --indicator-border: rgba(15, 23, 42, 0.12);
+    --algebra-item-bg: #ffffff;
+    --algebra-item-border: #cbd5e1;
+    --field-bg: #ffffff;
+    --input-text: #0f172a;
+}
+
+.algeo-wrapper[data-theme="dark"] {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --border-color: #334155;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #cbd5e1;
+    --text-faint: #64748b;
+    --accent-color: #3b82f6;
+    --accent-hover: #60a5fa;
+    --accent-soft-bg: rgba(59, 130, 246, 0.15);
+    --accent-soft-border: rgba(59, 130, 246, 0.35);
+    --on-accent: #ffffff;
+    --accent-focus-ring: rgba(59, 130, 246, 0.25);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 4px 12px -1px rgba(0, 0, 0, 0.45);
+    --rail-bg: #1e293b;
+    --rail-bg-hover: #334155;
+    --rail-active: #3b82f6;
+    --rail-border: #334155;
+    --flyout-bg: #1e293b;
+    --flyout-hover: #334155;
+    --surface-muted: #0f172a;
+    --surface-header: #1e293b;
+    --surface-input: #1e293b;
+    --surface-elevated: #334155;
+    --surface-hover: #334155;
+    --input-border: #475569;
+    --canvas-bg: #0f172a;
+    --panel-inset-border: #334155;
+    --history-panel-border: #334155;
+    --selection-item-bg: rgba(34, 211, 238, 0.12);
+    --selection-item-border: #22d3ee;
+    --selection-item-ring: rgba(34, 211, 238, 0.35);
+    --selection-item-inset: rgba(34, 211, 238, 0.12);
+    --error-color: #f87171;
+    --formula-tag-bg: rgba(59, 130, 246, 0.2);
+    --formula-tag-text: #93c5fd;
+    --history-hover: rgba(59, 130, 246, 0.12);
+    --guide-bg: rgba(30, 41, 59, 0.97);
+    --guide-border: #22d3ee;
+    --guide-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(34, 211, 238, 0.15);
+    --guide-icon-bg: rgba(34, 211, 238, 0.15);
+    --guide-icon-color: #22d3ee;
+    --guide-step-border: #334155;
+    --guide-step-num-bg: #334155;
+    --guide-step-num-color: #94a3b8;
+    --guide-step-active-color: #f1f5f9;
+    --guide-step-done-color: #64748b;
+    --guide-step-done-num-bg: rgba(34, 211, 238, 0.15);
+    --guide-step-done-num-color: #22d3ee;
+    --guide-tips-border: #475569;
+    --guide-close-hover-bg: rgba(248, 113, 113, 0.12);
+    --guide-close-hover-border: #f87171;
+    --guide-close-hover-color: #fca5a5;
+    --right-bar-bg: rgba(30, 41, 59, 0.95);
+    --indicator-border: rgba(241, 245, 249, 0.15);
+    --algebra-item-bg: #1e293b;
+    --algebra-item-border: #475569;
+    --field-bg: #0f172a;
+    --input-text: #f1f5f9;
 }
 
 /* popscale: #wrap 은 common_sci 1920×1020 고정 — width/height 100% 덮어쓰기 금지 */
@@ -46,6 +155,16 @@
     font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: var(--text-primary);
     overflow: hidden;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* common_sci 전역 * { color:#000 } 보정 — 테마 텍스트 상속 */
+.algeo-wrapper {
+    color: var(--text-primary);
+}
+
+.algeo-wrapper *:not(.rail-icon):not(.flyout-tool-icon) {
+    color: inherit;
 }
 
 /* ── 좌측 패널: 모드 레일 + 도구 레일 + 플라이아웃 (밝은 배경) ── */
@@ -68,7 +187,7 @@
     align-items: center;
     width: 40px;
     padding: 8px 0;
-    background-color: #f8fafc;
+    background-color: var(--surface-muted);
     border-right: 1px solid var(--rail-border);
 }
 
@@ -89,7 +208,7 @@
 
 .mode-rail-btn.active {
     background-color: var(--rail-active);
-    color: #ffffff;
+    color: var(--on-accent);
 }
 
 /* 도구 카테고리 레일 */
@@ -123,8 +242,8 @@
 }
 
 .tool-rail-btn.active {
-    background-color: #eff6ff;
-    border-color: #bfdbfe;
+    background-color: var(--accent-soft-bg);
+    border-color: var(--accent-soft-border);
 }
 
 .tool-rail-btn.open {
@@ -174,7 +293,7 @@
     font-size: 12px;
     font-weight: 700;
     color: var(--text-primary);
-    background-color: #f8fafc;
+    background-color: var(--surface-muted);
     border-bottom: 1px solid var(--rail-border);
     letter-spacing: 0.02em;
 }
@@ -206,7 +325,7 @@
 }
 
 .flyout-tool-item.active {
-    background-color: #eff6ff;
+    background-color: var(--accent-soft-bg);
     color: var(--rail-active);
 }
 
@@ -262,7 +381,7 @@
     padding: 2px 6px;
     border: 1px solid var(--rail-border);
     border-radius: 4px;
-    background-color: #f8fafc;
+    background-color: var(--surface-muted);
 }
 
 /* ── 작업 영역: 대수창 + 캔버스 ── */
@@ -303,7 +422,7 @@
     gap: 8px;
     padding: 16px;
     border-bottom: 1px solid var(--border-color);
-    background-color: #fafafa;
+    background-color: var(--surface-header);
     flex-shrink: 0;
 }
 
@@ -332,9 +451,9 @@
     width: 26px;
     height: 26px;
     padding: 0;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--input-border);
     border-radius: 4px;
-    background-color: #ffffff;
+    background-color: var(--field-bg);
     color: var(--text-primary);
     font-size: 14px;
     line-height: 1;
@@ -345,7 +464,7 @@
 .sidebar-undo-btn:hover:not(:disabled) {
     color: var(--accent-color);
     border-color: var(--accent-color);
-    background-color: #eff6ff;
+    background-color: var(--accent-soft-bg);
 }
 
 .sidebar-undo-btn:disabled {
@@ -390,7 +509,7 @@
     flex-shrink: 0;
     padding: 10px 12px;
     border-bottom: 1px solid var(--border-color);
-    background-color: #f8fafc;
+    background-color: var(--surface-muted);
     max-height: 160px;
     overflow-y: auto;
 }
@@ -412,7 +531,7 @@
 .algebra-props-title .props-type {
     font-size: 10px;
     font-weight: 600;
-    color: #64748b;
+    color: var(--text-secondary);
     margin-left: 4px;
 }
 
@@ -429,17 +548,19 @@
     gap: 2px;
     font-size: 11px;
     font-weight: 600;
-    color: #475569;
+    color: var(--text-muted);
     min-width: 72px;
 }
 
 .prop-input {
     width: 72px;
     padding: 4px 6px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--input-border);
     border-radius: 4px;
     font-size: 12px;
     font-family: inherit;
+    background-color: var(--field-bg);
+    color: var(--input-text);
 }
 
 .prop-input:focus {
@@ -452,7 +573,7 @@
     border: none;
     border-radius: 4px;
     background-color: var(--accent-color);
-    color: #ffffff;
+    color: var(--on-accent);
     font-size: 11px;
     font-weight: 600;
     font-family: inherit;
@@ -461,13 +582,13 @@
 }
 
 .prop-apply-btn:hover {
-    background-color: #1d4ed8;
+    background-color: var(--accent-hover);
 }
 
 .props-readonly {
     margin: 0 0 6px;
     font-size: 11px;
-    color: #64748b;
+    color: var(--text-secondary);
     width: 100%;
 }
 
@@ -479,7 +600,7 @@
 
 .props-note {
     font-size: 11px !important;
-    color: #64748b !important;
+    color: var(--text-secondary) !important;
     line-height: 1.4;
 }
 
@@ -492,7 +613,7 @@
     padding: 0;
     border: 1px solid var(--border-color);
     border-radius: 6px;
-    background-color: #ffffff;
+    background-color: var(--field-bg);
     color: var(--text-secondary);
     font-size: 12px;
     line-height: 1;
@@ -504,7 +625,7 @@
 .sidebar-toggle-btn:hover {
     color: var(--accent-color);
     border-color: var(--accent-color);
-    background-color: #eff6ff;
+    background-color: var(--accent-soft-bg);
 }
 
 /* 대수창 접힘 시 캔버스 좌측에 표시되는 열기 탭 */
@@ -520,7 +641,7 @@
     border: 1px solid var(--border-color);
     border-left: none;
     border-radius: 0 8px 8px 0;
-    background-color: #ffffff;
+    background-color: var(--field-bg);
     color: var(--text-primary);
     font-size: 12px;
     font-weight: 600;
@@ -538,7 +659,7 @@
 .algebra-reopen-btn:hover {
     color: var(--accent-color);
     border-color: var(--accent-color);
-    background-color: #eff6ff;
+    background-color: var(--accent-soft-bg);
 }
 
 .algebra-reopen-btn span {
@@ -558,7 +679,7 @@
 .sidebar-input-area {
     padding: 10px 12px 12px;
     border-top: 1px solid var(--border-color);
-    background-color: #fafafa;
+    background-color: var(--surface-header);
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -567,9 +688,9 @@
 
 /* 작업·수식 히스토리 패널 (4-2) */
 .algebra-history-panel {
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--history-panel-border);
     border-radius: 6px;
-    background-color: #ffffff;
+    background-color: var(--field-bg);
     overflow: hidden;
 }
 
@@ -578,8 +699,8 @@
     align-items: center;
     gap: 4px;
     padding: 6px 8px;
-    border-bottom: 1px solid #e2e8f0;
-    background-color: #f8fafc;
+    border-bottom: 1px solid var(--history-panel-border);
+    background-color: var(--surface-muted);
 }
 
 .history-title {
@@ -600,7 +721,7 @@
     padding: 4px 8px;
     font-size: 11px;
     line-height: 1.35;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--panel-inset-border);
 }
 
 .algebra-history-list li:last-child {
@@ -613,7 +734,7 @@
 }
 
 .history-action-item {
-    color: #475569;
+    color: var(--text-muted);
 }
 
 .history-action-label {
@@ -632,15 +753,15 @@
 }
 
 .history-formula-item:hover {
-    background-color: #eff6ff;
+    background-color: var(--history-hover);
 }
 
 .history-formula-tag {
     flex-shrink: 0;
     padding: 1px 4px;
     border-radius: 3px;
-    background-color: #dbeafe;
-    color: #1d4ed8;
+    background-color: var(--formula-tag-bg);
+    color: var(--formula-tag-text);
     font-size: 9px;
     font-weight: 700;
 }
@@ -690,11 +811,13 @@
     box-sizing: border-box;
     outline: none;
     transition: var(--transition-fast);
+    background-color: var(--field-bg);
+    color: var(--input-text);
 }
 
 #algebraInput:focus {
     border-color: var(--accent-color);
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    box-shadow: 0 0 0 2px var(--accent-focus-ring);
 }
 
 #btnAlgebraSubmit {
@@ -704,7 +827,7 @@
     border: none;
     border-radius: 6px;
     background-color: var(--accent-color);
-    color: #ffffff;
+    color: var(--on-accent);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -720,7 +843,7 @@
     display: none;
     max-height: 150px;
     overflow-y: auto;
-    background-color: #ffffff;
+    background-color: var(--field-bg);
     border: 1px solid var(--border-color);
     border-radius: 6px;
     box-shadow: var(--shadow-md);
@@ -736,7 +859,7 @@
     gap: 1px;
     padding: 7px 10px;
     cursor: pointer;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--panel-inset-border);
     transition: var(--transition-fast);
 }
 
@@ -745,7 +868,7 @@
 }
 
 .algebra-cmd-item:hover {
-    background-color: #f8fafc;
+    background-color: var(--surface-muted);
 }
 
 .algebra-cmd-item .cmd-item-label {
@@ -761,14 +884,14 @@
 
 .algebra-cmd-item .cmd-item-desc {
     font-size: 10px;
-    color: #94a3b8;
+    color: var(--text-faint);
     line-height: 1.35;
 }
 
 .algebra-error {
     min-height: 14px;
     font-size: 11px;
-    color: #dc2626;
+    color: var(--error-color);
     line-height: 1.4;
 }
 
@@ -787,24 +910,23 @@
     gap: 12px;
     padding: 10px 12px;
     margin-bottom: 8px;
-    background-color: #ffffff;
-    border: 1px solid #cbd5e1;
+    background-color: var(--algebra-item-bg);
+    border: 1px solid var(--algebra-item-border);
     border-radius: 8px;
     transition: var(--transition-fast);
     cursor: pointer;
 }
 
 .algebra-item:hover {
-    background-color: #f1f5f9;
-    border-color: #cbd5e1;
+    background-color: var(--surface-hover);
+    border-color: var(--input-border);
     box-shadow: var(--shadow-sm);
 }
 
-/* 대수창에서 선택된 항목 — 시안 강조 (캔버스 선택 스타일과 통일) */
 .algebra-item.active {
-    background-color: #ecfeff;
-    border-color: #0891b2;
-    box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.35), inset 0 0 0 1px rgba(8, 145, 178, 0.15);
+    background-color: var(--selection-item-bg);
+    border-color: var(--selection-item-border);
+    box-shadow: 0 0 0 2px var(--selection-item-ring), inset 0 0 0 1px var(--selection-item-inset);
 }
 
 /* 오브젝트 컬러 인디케이터 (캔버스 ALGEO_VIS 팔레트와 동기화) */
@@ -813,7 +935,7 @@
     height: 10px;
     border-radius: 50%;
     flex-shrink: 0;
-    border: 1px solid rgba(15, 23, 42, 0.12);
+    border: 1px solid var(--indicator-border);
 }
 
 .obj-color-indicator.point { background-color: #e11d48; }
@@ -844,7 +966,7 @@
 
 .obj-desc {
     font-size: 12px;
-    color: #475569;
+    color: var(--text-muted);
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
@@ -855,7 +977,7 @@
     flex: 1;
     height: 100%;
     position: relative;
-    background-color: #ffffff;
+    background-color: var(--canvas-bg);
     min-width: 0;
 }
 
@@ -885,7 +1007,7 @@
     height: 36px;
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    background-color: rgba(255, 255, 255, 0.92);
+    background-color: var(--right-bar-bg);
     box-shadow: var(--shadow-sm);
     cursor: pointer;
     font-size: 16px;
@@ -895,8 +1017,8 @@
 }
 
 .right-bar-btn:hover {
-    background-color: #f1f5f9;
-    border-color: #cbd5e1;
+    background-color: var(--surface-hover);
+    border-color: var(--input-border);
 }
 
 .right-bar-btn:active {
@@ -911,10 +1033,10 @@
     z-index: 11;
     max-width: min(360px, calc(100% - 80px));
     padding: 12px 14px;
-    border: 1px solid #0891b2;
+    border: 1px solid var(--guide-border);
     border-radius: 10px;
-    background-color: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 4px 16px rgba(8, 145, 178, 0.18), 0 1px 4px rgba(15, 23, 42, 0.08);
+    background-color: var(--guide-bg);
+    box-shadow: var(--guide-shadow);
     pointer-events: auto;
 }
 
@@ -937,7 +1059,7 @@
 
 .algeo-tool-guide.dragging {
     opacity: 0.92;
-    box-shadow: 0 8px 24px rgba(8, 145, 178, 0.28);
+    box-shadow: var(--shadow-md);
 }
 
 .tool-guide-head {
@@ -961,8 +1083,8 @@
     width: 32px;
     height: 32px;
     border-radius: 8px;
-    background-color: #ecfeff;
-    color: #0891b2;
+    background-color: var(--guide-icon-bg);
+    color: var(--guide-icon-color);
     font-size: 16px;
     font-weight: 700;
     line-height: 1;
@@ -984,7 +1106,7 @@
 
 .tool-guide-summary {
     font-size: 12px;
-    color: #475569;
+    color: var(--text-muted);
     line-height: 1.4;
 }
 
@@ -993,10 +1115,10 @@
     width: 24px;
     height: 24px;
     padding: 0;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--input-border);
     border-radius: 6px;
-    background-color: #ffffff;
-    color: #64748b;
+    background-color: var(--field-bg);
+    color: var(--text-secondary);
     font-size: 14px;
     line-height: 1;
     cursor: pointer;
@@ -1004,9 +1126,9 @@
 }
 
 .tool-guide-collapse:hover {
-    color: #0891b2;
-    border-color: #0891b2;
-    background-color: #ecfeff;
+    color: var(--guide-icon-color);
+    border-color: var(--guide-border);
+    background-color: var(--guide-icon-bg);
 }
 
 .tool-guide-close {
@@ -1014,10 +1136,10 @@
     width: 24px;
     height: 24px;
     padding: 0;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--input-border);
     border-radius: 6px;
-    background-color: #ffffff;
-    color: #64748b;
+    background-color: var(--field-bg);
+    color: var(--text-secondary);
     font-size: 12px;
     line-height: 1;
     cursor: pointer;
@@ -1025,9 +1147,9 @@
 }
 
 .tool-guide-close:hover {
-    color: #dc2626;
-    border-color: #fca5a5;
-    background-color: #fef2f2;
+    color: var(--guide-close-hover-color);
+    border-color: var(--guide-close-hover-border);
+    background-color: var(--guide-close-hover-bg);
 }
 
 /* 가이드 닫힘 시 좌하단 다시 열기 탭 */
@@ -1040,16 +1162,16 @@
     align-items: center;
     gap: 4px;
     padding: 8px 10px;
-    border: 1px solid #0891b2;
+    border: 1px solid var(--guide-border);
     border-radius: 8px;
-    background-color: rgba(255, 255, 255, 0.96);
-    color: #0891b2;
+    background-color: var(--guide-bg);
+    color: var(--guide-icon-color);
     font-size: 12px;
     font-weight: 600;
     font-family: inherit;
     line-height: 1;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(8, 145, 178, 0.15);
+    box-shadow: var(--guide-shadow);
     transition: var(--transition-fast);
 }
 
@@ -1058,8 +1180,8 @@
 }
 
 .tool-guide-reopen-btn:hover {
-    background-color: #ecfeff;
-    border-color: #0e7490;
+    background-color: var(--guide-icon-bg);
+    border-color: var(--guide-icon-color);
 }
 
 .tool-guide-reopen-btn span {
@@ -1079,8 +1201,8 @@
     padding: 6px 0;
     font-size: 12px;
     line-height: 1.45;
-    color: #64748b;
-    border-top: 1px solid #f1f5f9;
+    color: var(--text-secondary);
+    border-top: 1px solid var(--guide-step-border);
 }
 
 .tool-guide-step:first-child {
@@ -1095,42 +1217,110 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background-color: #f1f5f9;
-    color: #94a3b8;
+    background-color: var(--guide-step-num-bg);
+    color: var(--guide-step-num-color);
     font-size: 11px;
     font-weight: 700;
 }
 
 .tool-guide-step.active {
-    color: #0f172a;
+    color: var(--guide-step-active-color);
     font-weight: 600;
 }
 
 .tool-guide-step.active .step-num {
-    background-color: #0891b2;
-    color: #ffffff;
-    box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.25);
+    background-color: var(--guide-icon-color);
+    color: var(--on-accent);
+    box-shadow: 0 0 0 3px var(--selection-item-ring);
 }
 
 .tool-guide-step.done {
-    color: #94a3b8;
+    color: var(--guide-step-done-color);
 }
 
 .tool-guide-step.done .step-num {
-    background-color: #cffafe;
-    color: #0891b2;
+    background-color: var(--guide-step-done-num-bg);
+    color: var(--guide-step-done-num-color);
 }
 
 .tool-guide-step.done .step-text {
     text-decoration: line-through;
-    text-decoration-color: #cbd5e1;
+    text-decoration-color: var(--input-border);
 }
 
 .tool-guide-tips {
     margin: 8px 0 0;
     padding-top: 8px;
-    border-top: 1px dashed #e2e8f0;
+    border-top: 1px dashed var(--guide-tips-border);
     font-size: 11px;
-    color: #64748b;
+    color: var(--text-secondary);
     line-height: 1.4;
 }
+
+/* 테마 semantic 텍스트 색 — common * #000 / inherit 보정 위에 재적용 */
+.algeo-wrapper .mode-rail-btn { color: var(--text-secondary); }
+.algeo-wrapper .mode-rail-btn.active { color: var(--on-accent); }
+.algeo-wrapper .tool-rail-btn.open .rail-icon { color: var(--on-accent) !important; }
+.algeo-wrapper .flyout-header { color: var(--text-primary); }
+.algeo-wrapper .flyout-tool-item { color: var(--text-primary); }
+.algeo-wrapper .flyout-tool-item.active { color: var(--rail-active); }
+.algeo-wrapper .flyout-tool-hint { color: var(--text-secondary); }
+.algeo-wrapper .flyout-shortcut { color: var(--text-secondary); }
+.algeo-wrapper .sidebar-header h3 { color: var(--text-primary); }
+.algeo-wrapper .sidebar-undo-btn { color: var(--text-primary); }
+.algeo-wrapper .sidebar-undo-btn:hover:not(:disabled) { color: var(--accent-color); }
+.algeo-wrapper .algebra-tab-btn { color: var(--text-secondary); }
+.algeo-wrapper .algebra-tab-btn:hover { color: var(--text-primary); }
+.algeo-wrapper .algebra-tab-btn.active { color: var(--accent-color); }
+.algeo-wrapper .algebra-props-placeholder { color: var(--text-secondary); }
+.algeo-wrapper .algebra-props-title { color: var(--text-primary); }
+.algeo-wrapper .algebra-props-title .props-type { color: var(--text-secondary); }
+.algeo-wrapper .prop-field { color: var(--text-muted); }
+.algeo-wrapper .prop-input { color: var(--input-text); }
+.algeo-wrapper .prop-apply-btn { color: var(--on-accent); }
+.algeo-wrapper .props-readonly { color: var(--text-secondary); }
+.algeo-wrapper .algebra-props-readonly p { color: var(--text-primary); }
+.algeo-wrapper .props-note { color: var(--text-secondary) !important; }
+.algeo-wrapper .sidebar-toggle-btn { color: var(--text-secondary); }
+.algeo-wrapper .sidebar-toggle-btn:hover { color: var(--accent-color); }
+.algeo-wrapper .algebra-reopen-btn { color: var(--text-primary); }
+.algeo-wrapper .algebra-reopen-btn:hover { color: var(--accent-color); }
+.algeo-wrapper .history-title { color: var(--text-secondary); }
+.algeo-wrapper .history-empty { color: var(--text-secondary); }
+.algeo-wrapper .history-action-item { color: var(--text-muted); }
+.algeo-wrapper .history-formula-text { color: var(--text-primary); }
+.algeo-wrapper .history-formula-tag { color: var(--formula-tag-text); }
+.algeo-wrapper .cmd-dict-btn { color: var(--text-secondary); }
+.algeo-wrapper .cmd-dict-btn:hover { color: var(--accent-color); }
+.algeo-wrapper #algebraInput { color: var(--input-text); }
+.algeo-wrapper #btnAlgebraSubmit { color: var(--on-accent); }
+.algeo-wrapper .algebra-cmd-item .cmd-item-label { color: var(--text-primary); }
+.algeo-wrapper .algebra-cmd-item .cmd-item-syntax { color: var(--text-secondary); }
+.algeo-wrapper .algebra-cmd-item .cmd-item-desc { color: var(--text-faint); }
+.algeo-wrapper .algebra-error { color: var(--error-color); }
+.algeo-wrapper .empty-msg { color: var(--text-secondary); }
+.algeo-wrapper .obj-name { color: var(--text-primary); }
+.algeo-wrapper .obj-desc { color: var(--text-muted); }
+.algeo-wrapper .right-bar-btn { color: var(--text-primary); }
+.algeo-wrapper .tool-guide-head-text strong { color: var(--text-primary); }
+.algeo-wrapper .tool-guide-summary { color: var(--text-muted); }
+.algeo-wrapper .tool-guide-icon { color: var(--guide-icon-color); }
+.algeo-wrapper .tool-guide-collapse { color: var(--text-secondary); }
+.algeo-wrapper .tool-guide-collapse:hover { color: var(--guide-icon-color); }
+.algeo-wrapper .tool-guide-close { color: var(--text-secondary); }
+.algeo-wrapper .tool-guide-close:hover { color: var(--guide-close-hover-color); }
+.algeo-wrapper .tool-guide-reopen-btn { color: var(--guide-icon-color); }
+.algeo-wrapper .tool-guide-step { color: var(--text-secondary); }
+.algeo-wrapper .tool-guide-step .step-text { color: inherit; }
+.algeo-wrapper .tool-guide-step.active { color: var(--guide-step-active-color); }
+.algeo-wrapper .tool-guide-step.active .step-num { color: var(--on-accent); }
+.algeo-wrapper .tool-guide-step.done { color: var(--guide-step-done-color); }
+.algeo-wrapper .tool-guide-step.done .step-num { color: var(--guide-step-done-num-color); }
+.algeo-wrapper .tool-guide-step .step-num { color: var(--guide-step-num-color); }
+.algeo-wrapper .tool-guide-tips { color: var(--text-secondary); }
+.algeo-wrapper .algebra-props-readonly p,
+.algeo-wrapper .props-readonly p,
+.algeo-wrapper .algebra-props-placeholder,
+.algeo-wrapper .history-action-label { color: inherit; }
+.algeo-wrapper .prop-field,
+.algeo-wrapper .algebra-props-form label { color: var(--text-muted); }
