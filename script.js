@@ -139,67 +139,67 @@ function getCanvasMousePos(canvas, e) {
 const ALGEO_TOOL_CATEGORIES = [
     {
         id: 'pointer',
-        icon: '✋',
+        iconId: 'cat-pointer',
         title: '이동·선택',
         tools: [
-            { tool: 'MOVE', label: '이동', icon: '✋', hint: '객체·점 드래그 / 빈 곳 Pan' }
+            { tool: 'MOVE', label: '이동', iconId: 'move', hint: '객체·점 드래그 / 빈 곳 Pan' }
         ]
     },
     {
         id: 'point',
-        icon: '●',
+        iconId: 'cat-point',
         title: '점',
         tools: [
-            { tool: 'POINT', label: '점', icon: '●', shortcut: 'D', hint: '빈 곳 클릭' },
-            { tool: 'MIDPOINT', label: '중점', icon: '◎', shortcut: 'M', hint: '점 2개 선택' }
+            { tool: 'POINT', label: '점', iconId: 'point', shortcut: 'D', hint: '빈 곳 클릭' },
+            { tool: 'MIDPOINT', label: '중점', iconId: 'midpoint', shortcut: 'M', hint: '점 2개 선택' }
         ]
     },
     {
         id: 'line',
-        icon: '／',
+        iconId: 'cat-line',
         title: '선',
         tools: [
-            { tool: 'SEGMENT', label: '선분', icon: '―', hint: '점1 → 드래그 → 점2' },
-            { tool: 'LINE', label: '직선', icon: '↔', hint: '점1 → 드래그 → 점2' },
-            { tool: 'PERP_BISECTOR', label: '수직이등분선', icon: '⊥', hint: '점 2개 선택' },
-            { tool: 'PARALLEL_LINE', label: '평행선', icon: '∥', hint: '기준2점 → 통과점' },
-            { tool: 'PERP_LINE', label: '수직선', icon: '┴', hint: '기준2점 → 통과점' },
-            { tool: 'ANGLE', label: '각도', icon: '∠', hint: '변1 → 꼭짓점 → 조절' }
+            { tool: 'SEGMENT', label: '선분', iconId: 'segment', hint: '점1 → 드래그 → 점2' },
+            { tool: 'LINE', label: '직선', iconId: 'line', hint: '점1 → 드래그 → 점2' },
+            { tool: 'PERP_BISECTOR', label: '수직이등분선', iconId: 'perp_bisector', hint: '점 2개 선택' },
+            { tool: 'PARALLEL_LINE', label: '평행선', iconId: 'parallel_line', hint: '기준2점 → 통과점' },
+            { tool: 'PERP_LINE', label: '수직선', iconId: 'perp_line', hint: '기준2점 → 통과점' },
+            { tool: 'ANGLE', label: '각도', iconId: 'angle', hint: '변1 → 꼭짓점 → 조절' }
         ]
     },
     {
         id: 'polygon',
-        icon: '⬡',
+        iconId: 'cat-polygon',
         title: '다각형',
         tools: [
-            { tool: 'POLYGON', label: '다각형', icon: '⬡', shortcut: 'P', hint: '꼭짓점 클릭 → 첫 점으로 닫기' }
+            { tool: 'POLYGON', label: '다각형', iconId: 'polygon', shortcut: 'P', hint: '꼭짓점 클릭 → 첫 점으로 닫기' }
             // 6-4: REGULAR_POLYGON_SIDE, REGULAR_POLYGON_CENTER, ANGLE_GIVEN 등 추가 예정
         ]
     },
     {
         id: 'circle',
-        icon: '◯',
+        iconId: 'cat-circle',
         title: '원',
         tools: [
-            { tool: 'CIRCLE', label: '원', icon: '◯', hint: '중심 → 드래그 → 확정' },
-            { tool: 'ARC', label: '호', icon: '◠', hint: '끝점2 → 호위점' }
+            { tool: 'CIRCLE', label: '원', iconId: 'circle', hint: '중심 → 드래그 → 확정' },
+            { tool: 'ARC', label: '호', iconId: 'arc', hint: '끝점2 → 호위점' }
         ]
     },
     {
         id: 'slider',
-        icon: '⇔',
+        iconId: 'cat-slider',
         title: '슬라이더',
         tools: [
-            { tool: 'SLIDER', label: '슬라이더', icon: '⇔', hint: '캔버스 클릭 생성' }
+            { tool: 'SLIDER', label: '슬라이더', iconId: 'slider', hint: '캔버스 클릭 생성' }
         ]
     },
     {
         id: 'edit',
-        icon: '⌫',
+        iconId: 'cat-edit',
         title: '편집',
         tools: [
-            { tool: 'HIDE_OBJECT', label: '대상 숨기기', icon: '◌', shortcut: 'H', hint: '객체 클릭' },
-            { tool: 'DELETE', label: '삭제', icon: '⌫', hint: '객체 클릭' }
+            { tool: 'HIDE_OBJECT', label: '대상 숨기기', iconId: 'hide_object', shortcut: 'H', hint: '객체 클릭' },
+            { tool: 'DELETE', label: '삭제', iconId: 'delete', hint: '객체 클릭' }
         ]
     }
 ];
@@ -558,7 +558,7 @@ function findToolMeta(toolId) {
             if (item.tool === toolId) {
                 return {
                     label: item.label,
-                    icon: item.icon,
+                    iconId: item.iconId || resolveAlgeoIconId(item.tool),
                     hint: item.hint || '',
                     guide: ALGEO_TOOL_GUIDES[toolId] || null
                 };
@@ -568,7 +568,7 @@ function findToolMeta(toolId) {
 
     return {
         label: toolId,
-        icon: '?',
+        iconId: resolveAlgeoIconId(toolId),
         hint: '',
         guide: ALGEO_TOOL_GUIDES[toolId] || null
     };
@@ -581,7 +581,7 @@ function buildToolRailHtml() {
     for (i = 0; i < ALGEO_TOOL_CATEGORIES.length; i++) {
         const cat = ALGEO_TOOL_CATEGORIES[i];
         html += '<button type="button" class="tool-rail-btn" data-category="' + cat.id + '" title="' + cat.title + '">';
-        html += '<span class="rail-icon">' + cat.icon + '</span>';
+        html += renderAlgeoIcon(cat.iconId, 'rail-icon-tile');
         html += '</button>';
     }
     return html;
@@ -705,7 +705,9 @@ function createAlgeoUI($container) {
         '<div class="algeo-wrapper" data-theme="light">' +
         '    <div class="algeo-left-panel">' +
         '        <div class="algeo-mode-rail">' +
-        '            <button type="button" class="mode-rail-btn active" title="기하 작도" disabled>⌗</button>' +
+        '            <button type="button" class="mode-rail-btn active" title="기하 작도" disabled>' +
+        renderAlgeoIcon('geometry', 'mode-icon', true) +
+        '            </button>' +
         '        </div>' +
         '        <div class="algeo-tool-rail" id="toolRail">' + buildToolRailHtml() + '</div>' +
         '        <div class="algeo-tool-flyout" id="toolFlyout">' +
@@ -761,7 +763,7 @@ function createAlgeoUI($container) {
         '            <canvas id="algeoCanvas"></canvas>' +
         '            <div class="algeo-tool-guide" id="toolGuide">' +
         '                <div class="tool-guide-head" title="드래그하여 위치 이동">' +
-        '                    <span class="tool-guide-icon" id="toolGuideIcon">✋</span>' +
+        '                    <span class="tool-guide-icon" id="toolGuideIcon">' + renderAlgeoIcon('move', 'guide-icon-tile') + '</span>' +
         '                    <div class="tool-guide-head-text">' +
         '                        <strong id="toolGuideTitle">이동</strong>' +
         '                        <span id="toolGuideSummary" class="tool-guide-summary"></span>' +
@@ -774,11 +776,21 @@ function createAlgeoUI($container) {
         '            </div>' +
             '            <div class="algeo-right-bar-wrap">' +
             '                <div class="algeo-right-bar">' +
-            '                    <button type="button" class="right-bar-btn" id="btnShortcutHelp" title="단축키 안내 (?)" aria-label="단축키 안내">⌨</button>' +
-            '                    <button type="button" class="right-bar-btn" id="btnToggleTheme" title="다크 모드" aria-label="다크 모드">🌙</button>' +
-            '                    <button type="button" class="right-bar-btn" id="btnZoomIn" title="확대">+</button>' +
-            '                    <button type="button" class="right-bar-btn" id="btnZoomOut" title="축소">−</button>' +
-            '                    <button type="button" class="right-bar-btn" id="btnResetView" title="원점 이동">⌂</button>' +
+            '                    <button type="button" class="right-bar-btn" id="btnShortcutHelp" title="단축키 안내 (?)" aria-label="단축키 안내">' +
+            renderAlgeoIcon('shortcuts', 'bar-icon', true) +
+            '                    </button>' +
+            '                    <button type="button" class="right-bar-btn" id="btnToggleTheme" title="다크 모드" aria-label="다크 모드">' +
+            renderAlgeoIcon('theme', 'bar-icon', true) +
+            '                    </button>' +
+            '                    <button type="button" class="right-bar-btn" id="btnZoomIn" title="확대">' +
+            renderAlgeoIcon('zoom-in', 'bar-icon', true) +
+            '                    </button>' +
+            '                    <button type="button" class="right-bar-btn" id="btnZoomOut" title="축소">' +
+            renderAlgeoIcon('zoom-out', 'bar-icon', true) +
+            '                    </button>' +
+            '                    <button type="button" class="right-bar-btn" id="btnResetView" title="원점 이동">' +
+            renderAlgeoIcon('reset-view', 'bar-icon', true) +
+            '                    </button>' +
             '                </div>' +
             '                <div class="algeo-shortcut-panel" id="shortcutPanel" aria-hidden="true">' +
             '                    <div class="shortcut-panel-head">' +
@@ -3401,7 +3413,7 @@ AlgeoApp.prototype.renderToolFlyout = function (categoryId) {
             : '';
 
         bodyHtml += '<button type="button" class="flyout-tool-item' + activeClass + '" data-tool="' + item.tool + '">';
-        bodyHtml += '<span class="flyout-tool-icon">' + item.icon + '</span>';
+        bodyHtml += renderAlgeoIcon(item.iconId || item.tool, 'flyout-icon-tile');
         bodyHtml += '<span class="flyout-tool-text">';
         bodyHtml += '<span class="flyout-tool-label">' + item.label + '</span>';
         bodyHtml += hintHtml;
@@ -3829,7 +3841,7 @@ AlgeoApp.prototype.syncToolGuide = function () {
     let stepClass;
     let tips;
 
-    $('#toolGuideIcon').text(meta.icon);
+    $('#toolGuideIcon').html(renderAlgeoIcon(meta.iconId, 'guide-icon-tile'));
     $('#toolGuideTitle').text(meta.label);
 
     if (!guide) {
@@ -5435,9 +5447,9 @@ AlgeoApp.prototype.syncThemeToggleUI = function () {
         return;
     }
     if (this.theme === 'dark') {
-        $btn.text('\u2600').attr('title', '라이트 모드').attr('aria-label', '라이트 모드');
+        $btn.html(renderAlgeoIcon('sun', 'bar-icon', true)).attr('title', '라이트 모드').attr('aria-label', '라이트 모드');
     } else {
-        $btn.text('\uD83C\uDF19').attr('title', '다크 모드').attr('aria-label', '다크 모드');
+        $btn.html(renderAlgeoIcon('theme', 'bar-icon', true)).attr('title', '다크 모드').attr('aria-label', '다크 모드');
     }
 };
 
