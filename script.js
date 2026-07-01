@@ -164,8 +164,16 @@ const ALGEO_TOOL_CATEGORIES = [
             { tool: 'PERP_BISECTOR', label: '수직이등분선', icon: '⊥', hint: '점 2개 선택' },
             { tool: 'PARALLEL_LINE', label: '평행선', icon: '∥', hint: '기준2점 → 통과점' },
             { tool: 'PERP_LINE', label: '수직선', icon: '┴', hint: '기준2점 → 통과점' },
-            { tool: 'ANGLE', label: '각도', icon: '∠', hint: '변1 → 꼭짓점 → 조절' },
-            { tool: 'POLYGON', label: '다각형', icon: '⬡', hint: '꼭짓점 클릭 → 첫 점으로 닫기' }
+            { tool: 'ANGLE', label: '각도', icon: '∠', hint: '변1 → 꼭짓점 → 조절' }
+        ]
+    },
+    {
+        id: 'polygon',
+        icon: '⬡',
+        title: '다각형',
+        tools: [
+            { tool: 'POLYGON', label: '다각형', icon: '⬡', shortcut: 'P', hint: '꼭짓점 클릭 → 첫 점으로 닫기' }
+            // 6-4: REGULAR_POLYGON_SIDE, REGULAR_POLYGON_CENTER, ANGLE_GIVEN 등 추가 예정
         ]
     },
     {
@@ -376,6 +384,14 @@ const ALGEO_SHORTCUTS = [
         category: 'tool',
         active: false,
         desc: '중점 도구를 선택합니다.'
+    },
+    {
+        id: 'tool_polygon',
+        keys: 'P',
+        label: '다각형 도구',
+        category: 'tool',
+        active: false,
+        desc: '다각형 도구를 선택합니다.'
     },
     {
         id: 'draw_cancel',

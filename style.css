@@ -265,6 +265,7 @@
 .tool-rail-btn[data-category="pointer"] .rail-icon { color: #475569; }
 .tool-rail-btn[data-category="point"] .rail-icon { color: #ef4444; }
 .tool-rail-btn[data-category="line"] .rail-icon { color: #2563eb; }
+.tool-rail-btn[data-category="polygon"] .rail-icon { color: #b45309; }
 .tool-rail-btn[data-category="circle"] .rail-icon { color: #059669; }
 .tool-rail-btn[data-category="slider"] .rail-icon { color: #2563eb; }
 .tool-rail-btn[data-category="edit"] .rail-icon { color: #dc2626; }
