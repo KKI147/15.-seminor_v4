@@ -416,11 +416,29 @@ const ALGEO_SHORTCUTS = [
         category: 'view',
         active: true,
         desc: '단축키 목록 패널을 열거나 닫습니다.'
+    },
+    {
+        id: 'toggle_grid',
+        keys: 'G',
+        label: '격자 표시',
+        category: 'view',
+        active: true,
+        desc: '캔버스 격자·눈금 표시를 켜거나 끕니다.'
+    },
+    {
+        id: 'toggle_snap',
+        keys: 'N',
+        label: '격자 스냅',
+        category: 'view',
+        active: true,
+        desc: '점 배치·이동 시 격자 교차점에 맞춥니다.'
     }
 ];
 
 // 캔버스·UI 테마 localStorage 키
 const ALGEO_THEME_STORAGE_KEY = 'algeo_theme';
+const ALGEO_GRID_VISIBLE_KEY = 'algeo_grid_visible';
+const ALGEO_SNAP_ENABLED_KEY = 'algeo_snap_enabled';
 
 // 라이트 모드 캔버스 팔레트
 const ALGEO_VIS_LIGHT = {
@@ -781,6 +799,12 @@ function createAlgeoUI($container) {
             '                    </button>' +
             '                    <button type="button" class="right-bar-btn" id="btnToggleTheme" title="다크 모드" aria-label="다크 모드">' +
             renderAlgeoIcon('theme', 'bar-icon', true) +
+            '                    </button>' +
+            '                    <button type="button" class="right-bar-btn active" id="btnToggleGrid" title="격자 숨기기 (G)" aria-label="격자 표시 토글">' +
+            renderAlgeoIcon('grid', 'bar-icon', true) +
+            '                    </button>' +
+            '                    <button type="button" class="right-bar-btn" id="btnToggleSnap" title="격자 스냅 켜기 (N)" aria-label="격자 스냅 토글">' +
+            renderAlgeoIcon('snap', 'bar-icon', true) +
             '                    </button>' +
             '                    <button type="button" class="right-bar-btn" id="btnZoomIn" title="확대">' +
             renderAlgeoIcon('zoom-in', 'bar-icon', true) +
@@ -1936,6 +1960,8 @@ function AlgeoRenderer(engine, canvas) {
     this.highlightIds = [];     // 작도 중 강조 표시할 점 ID 목록
     this.selectedObjectId = null; // 대수창에서 선택된 객체 ID
     this.toolPreview = null;    // 호·원 작도 중 실시간 미리보기
+    this.showGrid = true;       // 격자·눈금 표시
+    this.snapEnabled = false;   // 격자 스냅(자석)
 
     this.initViewport();
 }
@@ -1965,6 +1991,42 @@ AlgeoRenderer.prototype.toMathY = function (screenY) {
     return (this.offsetY - screenY) / this.scale;
 };
 
+// 현재 줌에 맞는 격자 간격(수학 단위)
+AlgeoRenderer.prototype.getGridSpacing = function () {
+    if (this.scale < 10) {
+        return 10;
+    }
+    if (this.scale < 25) {
+        return 5;
+    }
+    if (this.scale < 80) {
+        return 1;
+    }
+    if (this.scale < 200) {
+        return 0.5;
+    }
+    return 0.1;
+};
+
+// 격자 스냅 — 수학 좌표를 격자 교차점에 맞춤
+AlgeoRenderer.prototype.snapMathCoord = function (value) {
+    const spacing = this.getGridSpacing();
+    const steps = Math.round(value / spacing);
+
+    return Math.round(steps * spacing * 1e12) / 1e12;
+};
+
+AlgeoRenderer.prototype.snapMathPoint = function (mathX, mathY) {
+    if (!this.snapEnabled) {
+        return { x: mathX, y: mathY };
+    }
+
+    return {
+        x: this.snapMathCoord(mathX),
+        y: this.snapMathCoord(mathY)
+    };
+};
+
 // 캔버스 크기 맞춤 조절 (1920×1080 설계 좌표 기준, popscale은 #wrap transform으로 처리)
 AlgeoRenderer.prototype.resize = function () {
     const parent = this.canvas.parentElement;
@@ -1991,8 +2053,12 @@ AlgeoRenderer.prototype.draw = function () {
     ctx.fillStyle = ALGEO_VIS.canvasBg;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // 1. 배경 격자(Grid) 그리기
-    this.drawGrid();
+    // 1. 배경 격자(Grid) 또는 축만
+    if (this.showGrid) {
+        this.drawGrid();
+    } else {
+        this.drawAxes(ctx, this.canvas.width, this.canvas.height);
+    }
 
     // 2. 수학 객체들 그리기
     this.drawObjects();
@@ -2016,14 +2082,7 @@ AlgeoRenderer.prototype.drawGrid = function () {
     const width = this.canvas.width;
     const height = this.canvas.height;
 
-    // 스케일에 기반하여 격자 간격 동적 조정
-    let gridSpacing = 1;
-    if (this.scale < 10) { gridSpacing = 10; }
-    else if (this.scale < 25) { gridSpacing = 5; }
-    else if (this.scale < 80) { gridSpacing = 1; }
-    else if (this.scale < 200) { gridSpacing = 0.5; }
-    else { gridSpacing = 0.1; }
-
+    const gridSpacing = this.getGridSpacing();
     const pxSpacing = gridSpacing * this.scale;
 
     // 격자선 펜 설정
@@ -3171,6 +3230,7 @@ AlgeoApp.prototype.init = function () {
     const self = this;
 
     self.initTheme();
+    self.initViewToggles();
 
     // 캔버스 사이즈 조절 및 최초 렌더링 (뷰포트 스케일은 popscale이 담당)
     self.renderer.resize();
@@ -3284,6 +3344,22 @@ AlgeoApp.prototype.init = function () {
                 return;
             }
             self.toggleShortcutPanel();
+            e.preventDefault();
+            return;
+        }
+        if (e.keyCode === 71 && !e.ctrlKey && !e.altKey) {
+            if ($(e.target).closest('input, textarea').length) {
+                return;
+            }
+            self.setGridVisible(!self.renderer.showGrid);
+            e.preventDefault();
+            return;
+        }
+        if (e.keyCode === 78 && !e.ctrlKey && !e.altKey) {
+            if ($(e.target).closest('input, textarea').length) {
+                return;
+            }
+            self.setSnapEnabled(!self.renderer.snapEnabled);
             e.preventDefault();
             return;
         }
@@ -3451,16 +3527,21 @@ AlgeoApp.prototype.clearToolDraft = function () {
     this.syncToolGuide();
 };
 
+// 화면 좌표 → 수학 좌표 (스냅 옵션 반영)
+AlgeoApp.prototype.screenToMath = function (screenX, screenY) {
+    const r = this.renderer;
+
+    return r.snapMathPoint(r.toMathX(screenX), r.toMathY(screenY));
+};
+
 // 클릭 위치의 점 ID 반환 — 없으면 새 점 생성
 AlgeoApp.prototype.resolvePointAtClick = function (mouseX, mouseY, hitPoint) {
     if (hitPoint) {
         return hitPoint.id;
     }
-    const r = this.renderer;
-    const mathX = r.toMathX(mouseX);
-    const mathY = r.toMathY(mouseY);
+    const math = this.screenToMath(mouseX, mouseY);
     const name = this.getNextPointName();
-    const pt = this.engine.addPoint(name, mathX, mathY);
+    const pt = this.engine.addPoint(name, math.x, math.y);
     this.updateAlgebraView();
     return pt.id;
 };
@@ -3471,9 +3552,8 @@ AlgeoApp.prototype.updateToolPreviewFromMouse = function (mouseX, mouseY) {
     const draft = this.constructionDraft;
     if (!draft) { return; }
 
-    const mathX = r.toMathX(mouseX);
-    const mathY = r.toMathY(mouseY);
-    const preview = { type: draft.type, mathX: mathX, mathY: mathY };
+    const math = this.screenToMath(mouseX, mouseY);
+    const preview = { type: draft.type, mathX: math.x, mathY: math.y };
 
     if (draft.type === 'SEGMENT' || draft.type === 'LINE') {
         preview.p1Id = draft.p1Id;
@@ -4034,16 +4114,15 @@ AlgeoApp.prototype.handleAngleMouseDown = function (e, hitPoint) {
             ray2Id = hitPoint.id;
         } else {
             const vertex = this.engine.objectMap[draft.vertexId];
-            const mathX = r.toMathX(mouseX);
-            const mathY = r.toMathY(mouseY);
-            const dx = mathX - vertex.x;
-            const dy = mathY - vertex.y;
+            const math = this.screenToMath(mouseX, mouseY);
+            const dx = math.x - vertex.x;
+            const dy = math.y - vertex.y;
             if (Math.sqrt(dx * dx + dy * dy) < 0.05) {
                 r.draw();
                 return;
             }
             const ray2Name = this.getNextPointName();
-            const ray2Pt = this.engine.addPoint(ray2Name, mathX, mathY);
+            const ray2Pt = this.engine.addPoint(ray2Name, math.x, math.y);
             ray2Id = ray2Pt.id;
             this.updateAlgebraView();
         }
@@ -4204,9 +4283,8 @@ AlgeoApp.prototype.confirmArcDraft = function (mouseX, mouseY, hitPoint) {
     if (hitPoint && hitPoint.id !== draft.p1Id && hitPoint.id !== draft.p2Id) {
         guideId = hitPoint.id;
     } else {
-        const mathX = r.toMathX(mouseX);
-        const mathY = r.toMathY(mouseY);
-        const guidePt = r.getGuidePointOnCircumcircle(p1, p2, mathX, mathY);
+        const math = this.screenToMath(mouseX, mouseY);
+        const guidePt = r.getGuidePointOnCircumcircle(p1, p2, math.x, math.y);
         const center = this.engine.computeCircumcenter(
             p1.x, p1.y, p2.x, p2.y, guidePt.x, guidePt.y
         );
@@ -4267,16 +4345,15 @@ AlgeoApp.prototype.confirmCircleDraft = function (mouseX, mouseY, hitPoint) {
     if (hitPoint && hitPoint.id !== draft.centerId) {
         pointId = hitPoint.id;
     } else {
-        const mathX = r.toMathX(mouseX);
-        const mathY = r.toMathY(mouseY);
-        const dx = mathX - center.x;
-        const dy = mathY - center.y;
+        const math = this.screenToMath(mouseX, mouseY);
+        const dx = math.x - center.x;
+        const dy = math.y - center.y;
         if (Math.sqrt(dx * dx + dy * dy) < 0.05) {
             r.draw();
             return;
         }
         const ptName = this.getNextPointName();
-        const pt = this.engine.addPoint(ptName, mathX, mathY);
+        const pt = this.engine.addPoint(ptName, math.x, math.y);
         pointId = pt.id;
         this.updateAlgebraView();
     }
@@ -4380,8 +4457,7 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
     const hitPoint = this.findPointAt(mouseX, mouseY);
 
     if (this.currentTool === 'MOVE') {
-        const mathX = r.toMathX(mouseX);
-        const mathY = r.toMathY(mouseY);
+        const math = this.screenToMath(mouseX, mouseY);
         const hitSlider = this.findSliderAt(mouseX, mouseY);
         let hitObj;
         let pointIds;
@@ -4394,7 +4470,7 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
                 this.setCanvasCursor('grabbing');
             } else {
                 this.selectAlgebraObject(hitSlider.id);
-                this.beginTranslateDrag([], hitSlider.id, mathX, mathY);
+                this.beginTranslateDrag([], hitSlider.id, math.x, math.y);
             }
             this.syncToolGuide();
             return;
@@ -4406,7 +4482,7 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
                 if (hitPoint.type === 'POINT') {
                     this.selectAlgebraObject(hitPoint.id);
                 }
-                this.beginTranslateDrag(pointIds, null, mathX, mathY);
+                this.beginTranslateDrag(pointIds, null, math.x, math.y);
                 this.syncToolGuide();
                 return;
             }
@@ -4421,14 +4497,14 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
             }
             if (hitObj.type === 'SLIDER') {
                 this.selectAlgebraObject(hitObj.id);
-                this.beginTranslateDrag([], hitObj.id, mathX, mathY);
+                this.beginTranslateDrag([], hitObj.id, math.x, math.y);
                 this.syncToolGuide();
                 return;
             }
             pointIds = this.engine.collectFreePointIdsForObject(hitObj);
             if (pointIds.length > 0) {
                 this.selectAlgebraObject(hitObj.id);
-                this.beginTranslateDrag(pointIds, null, mathX, mathY);
+                this.beginTranslateDrag(pointIds, null, math.x, math.y);
                 this.syncToolGuide();
                 return;
             }
@@ -4444,11 +4520,10 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
     } else if (this.currentTool === 'POINT') {
         // 빈 공간에 점 생성
         if (!hitPoint) {
-            const mathX = r.toMathX(mouseX);
-            const mathY = r.toMathY(mouseY);
+            const math = this.screenToMath(mouseX, mouseY);
             const name = this.getNextPointName();
             this.recordHistory('점 생성');
-            this.engine.addPoint(name, mathX, mathY);
+            this.engine.addPoint(name, math.x, math.y);
             this.updateAlgebraView();
             r.draw();
         }
@@ -4479,10 +4554,9 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
                 r.draw();
             }
         } else {
-            const mathX = r.toMathX(mouseX);
-            const mathY = r.toMathY(mouseY);
+            const math = this.screenToMath(mouseX, mouseY);
             this.recordHistory('슬라이더 생성');
-            this.createSliderAtMath(mathX, mathY);
+            this.createSliderAtMath(math.x, math.y);
             this.updateAlgebraView();
             r.draw();
         }
@@ -4575,10 +4649,9 @@ AlgeoApp.prototype.handleMouseMove = function (e) {
         r.draw();
     } else if (this.dragTranslate) {
         this.dragMoved = true;
-        const mathX = r.toMathX(mouseX);
-        const mathY = r.toMathY(mouseY);
-        const dx = mathX - this.dragTranslate.lastMathX;
-        const dy = mathY - this.dragTranslate.lastMathY;
+        const math = this.screenToMath(mouseX, mouseY);
+        const dx = math.x - this.dragTranslate.lastMathX;
+        const dy = math.y - this.dragTranslate.lastMathY;
         let slider;
 
         if (this.dragTranslate.pointIds.length > 0) {
@@ -4591,8 +4664,8 @@ AlgeoApp.prototype.handleMouseMove = function (e) {
                 slider.anchorY += dy;
             }
         }
-        this.dragTranslate.lastMathX = mathX;
-        this.dragTranslate.lastMathY = mathY;
+        this.dragTranslate.lastMathX = math.x;
+        this.dragTranslate.lastMathY = math.y;
         this.updateAlgebraView();
         r.draw();
     } else if (this.constructionDraft) {
@@ -5474,6 +5547,94 @@ AlgeoApp.prototype.initTheme = function () {
         e.stopPropagation();
         self.setTheme(self.theme === 'light' ? 'dark' : 'light');
     });
+};
+
+// 격자·스냅 토글 초기화 (localStorage 복원)
+AlgeoApp.prototype.initViewToggles = function () {
+    const self = this;
+    let gridSaved = null;
+    let snapSaved = null;
+
+    try {
+        gridSaved = localStorage.getItem(ALGEO_GRID_VISIBLE_KEY);
+        snapSaved = localStorage.getItem(ALGEO_SNAP_ENABLED_KEY);
+    } catch (ignoreErr) {
+        gridSaved = null;
+        snapSaved = null;
+    }
+
+    if (gridSaved === '0') {
+        this.renderer.showGrid = false;
+    } else if (gridSaved === '1') {
+        this.renderer.showGrid = true;
+    }
+
+    if (snapSaved === '1') {
+        this.renderer.snapEnabled = true;
+    } else if (snapSaved === '0') {
+        this.renderer.snapEnabled = false;
+    }
+
+    this.syncViewToggleUI();
+
+    $('#btnToggleGrid').on('click', function (e) {
+        e.stopPropagation();
+        self.setGridVisible(!self.renderer.showGrid);
+    });
+
+    $('#btnToggleSnap').on('click', function (e) {
+        e.stopPropagation();
+        self.setSnapEnabled(!self.renderer.snapEnabled);
+    });
+};
+
+// 격자 표시 설정
+AlgeoApp.prototype.setGridVisible = function (visible) {
+    this.renderer.showGrid = !!visible;
+
+    try {
+        localStorage.setItem(ALGEO_GRID_VISIBLE_KEY, visible ? '1' : '0');
+    } catch (ignoreErr) {
+        // localStorage 미지원 환경 무시
+    }
+
+    this.syncViewToggleUI();
+    this.renderer.draw();
+};
+
+// 격자 스냅 설정
+AlgeoApp.prototype.setSnapEnabled = function (enabled) {
+    this.renderer.snapEnabled = !!enabled;
+
+    try {
+        localStorage.setItem(ALGEO_SNAP_ENABLED_KEY, enabled ? '1' : '0');
+    } catch (ignoreErr) {
+        // localStorage 미지원 환경 무시
+    }
+
+    this.syncViewToggleUI();
+};
+
+// 격자·스냅 토글 버튼 상태 갱신
+AlgeoApp.prototype.syncViewToggleUI = function () {
+    const $grid = $('#btnToggleGrid');
+    const $snap = $('#btnToggleSnap');
+
+    if ($grid.length) {
+        if (this.renderer.showGrid) {
+            $grid.addClass('active').attr('title', '격자 숨기기 (G)').attr('aria-label', '격자 숨기기');
+        } else {
+            $grid.removeClass('active').attr('title', '격자 표시 (G)').attr('aria-label', '격자 표시');
+        }
+    }
+
+    if ($snap.length) {
+        if (this.renderer.snapEnabled) {
+            $snap.addClass('active').attr('title', '격자 스냅 끄기 (N)').attr('aria-label', '격자 스냅 끄기');
+        } else {
+            $snap.removeClass('active').attr('title', '격자 스냅 켜기 (N)').attr('aria-label', '격자 스냅 켜기');
+        }
+    }
 };
 
 // Undo/Redo — 엔진 상태 캡처

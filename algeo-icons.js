@@ -107,6 +107,15 @@ const ALGEO_ICON_PATHS = {
         '<rect x="5" y="7" width="14" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/>' +
         '<line x1="8" y1="11" x2="11" y2="11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>' +
         '<line x1="8" y1="14" x2="16" y2="14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>',
+    grid: '' +
+        '<line x1="5" y1="9" x2="19" y2="9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>' +
+        '<line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>' +
+        '<line x1="5" y1="15" x2="19" y2="15" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>' +
+        '<line x1="9" y1="7" x2="9" y2="17" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>' +
+        '<line x1="15" y1="7" x2="15" y2="17" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>',
+    snap: '' +
+        '<path d="M8 8c0-3 2.5-5 4-5s4 2 4 5v5c0 1.5-1 2.5-2 3l-2 3-2-3c-1-.5-2-1.5-2-3V8z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>' +
+        '<line x1="10" y1="18" x2="14" y2="18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
     geometry: '' +
         '<line x1="5" y1="9" x2="19" y2="9" stroke="currentColor" stroke-width="1.3"/>' +
         '<line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="1.3"/>' +
