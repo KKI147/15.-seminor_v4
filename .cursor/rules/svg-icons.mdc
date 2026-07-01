@@ -1,0 +1,28 @@
+---
+description: UI 아이콘은 algeo-icons.js 인라인 SVG만 사용 (유니코드·이모지 금지)
+alwaysApply: true
+---
+
+# SVG 아이콘 전용 (필수)
+
+**앞으로 모든 UI 아이콘은 인라인 SVG만 사용합니다.** 유니코드·이모지 문자(✋, ●, ⌫, ―, ↔ 등)를 버튼·레일·플라이아웃·가이드·우측 바에 넣지 마세요.
+
+## 구현
+
+| 항목 | 규칙 |
+|------|------|
+| 정의 | [`algeo-icons.js`](algeo-icons.js) — `ALGEO_ICON_PATHS`, `renderAlgeoIcon()` |
+| 도구·카테고리 | `ALGEO_TOOL_CATEGORIES` — **`iconId`만** (`icon` 문자열 필드 금지) |
+| 로드 순서 | `index.html`: `algeo-icons.js` → `script.js` |
+| 상세 문서 | [`icon_guidelines.md`](icon_guidelines.md) — 추가 절차·체크리스트 |
+
+## 신규 도구·버튼 추가 시
+
+1. `ALGEO_ICON_PATHS`에 SVG path 추가
+2. `iconId` 연결
+3. 다크 모드 가시성 확인 (`--right-bar-icon`, `.algeo-icon-svg`)
+4. `tool_catalog.md` 갱신
+
+## 예외 (소수)
+
+대수창 눈(◉/○), Undo(↶↷) 등 **대수창 전용** 텍스트 기호만 허용. **도구·뷰 UI는 예외 없이 SVG.**

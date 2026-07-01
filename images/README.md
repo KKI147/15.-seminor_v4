@@ -21,9 +21,16 @@
 
 ---
 
-## 아이콘 활용
+## 아이콘 (런타임)
 
-1. **1차 (5단계)**: 플라이아웃 레이아웃·문구 검증 — 유니코드/문자 아이콘
-2. **2차 (12단계)**: 스샷과 유사한 SVG 스프라이트 (`images/icons/` 예정, `common/` 미수정)
+**UI 아이콘은 이 PNG가 아니라 코드의 인라인 SVG입니다.**
 
-이 PNG 파일은 **런타임 에셋이 아닌 설계 참고용**입니다.
+| 항목 | 내용 |
+|------|------|
+| 구현 파일 | [`algeo-icons.js`](../algeo-icons.js) |
+| 규칙 문서 | [`icon_guidelines.md`](../icon_guidelines.md) |
+| 연결 | `ALGEO_TOOL_CATEGORIES[].iconId` → `renderAlgeoIcon()` |
+
+- PNG 스샷 = **레이아웃·문구·도형 의미** 참고용 (런타임 에셋 아님).
+- 신규 도구·카테고리 추가 시 **유니코드 문자 아이콘 금지**, SVG path만 추가.
+- 52종 전체 stub 아이콘은 5~6단계에서 `ALGEO_ICON_PATHS`에 순차 추가.

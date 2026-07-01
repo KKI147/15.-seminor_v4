@@ -59,6 +59,8 @@
     --guide-close-hover-border: #fca5a5;
     --guide-close-hover-color: #dc2626;
     --right-bar-bg: rgba(255, 255, 255, 0.92);
+    --right-bar-icon: #0f172a;
+    --right-bar-icon-hover: #2563eb;
     --indicator-border: rgba(15, 23, 42, 0.12);
     --algebra-item-bg: #ffffff;
     --algebra-item-border: #cbd5e1;
@@ -121,7 +123,9 @@
     --guide-close-hover-bg: rgba(248, 113, 113, 0.12);
     --guide-close-hover-border: #f87171;
     --guide-close-hover-color: #fca5a5;
-    --right-bar-bg: rgba(30, 41, 59, 0.95);
+    --right-bar-bg: rgba(51, 65, 85, 0.96);
+    --right-bar-icon: #e2e8f0;
+    --right-bar-icon-hover: #93c5fd;
     --indicator-border: rgba(241, 245, 249, 0.15);
     --algebra-item-bg: #1e293b;
     --algebra-item-border: #475569;
@@ -1092,18 +1096,35 @@
     cursor: pointer;
     font-size: 16px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--right-bar-icon);
     transition: var(--transition-fast);
+}
+
+/* bar-icon SVG는 currentColor — 전역 inherit 제외 보정 */
+.right-bar-btn .algeo-icon,
+.right-bar-btn .algeo-icon-svg {
+    color: var(--right-bar-icon);
 }
 
 .right-bar-btn:hover {
     background-color: var(--surface-hover);
     border-color: var(--input-border);
+    color: var(--right-bar-icon-hover, var(--accent-color));
+}
+
+.right-bar-btn:hover .algeo-icon,
+.right-bar-btn:hover .algeo-icon-svg {
+    color: var(--right-bar-icon-hover, var(--accent-color));
 }
 
 .right-bar-btn.active {
     background-color: var(--accent-color);
     border-color: var(--accent-color);
+    color: var(--on-accent);
+}
+
+.right-bar-btn.active .algeo-icon,
+.right-bar-btn.active .algeo-icon-svg {
     color: var(--on-accent);
 }
 
@@ -1546,8 +1567,10 @@
 .algeo-wrapper .empty-msg { color: var(--text-secondary); }
 .algeo-wrapper .obj-name { color: var(--text-primary); }
 .algeo-wrapper .obj-desc { color: var(--text-muted); }
-.algeo-wrapper .right-bar-btn { color: var(--text-primary); }
+.algeo-wrapper .right-bar-btn { color: var(--right-bar-icon); }
 .algeo-wrapper .right-bar-btn.active { color: var(--on-accent); }
+.algeo-wrapper .right-bar-btn .algeo-icon-svg { color: var(--right-bar-icon); }
+.algeo-wrapper .right-bar-btn.active .algeo-icon-svg { color: var(--on-accent); }
 .algeo-wrapper .shortcut-panel-head strong { color: var(--text-primary); }
 .algeo-wrapper .shortcut-panel-close { color: var(--text-secondary); }
 .algeo-wrapper .shortcut-panel-close:hover { color: var(--guide-close-hover-color); }

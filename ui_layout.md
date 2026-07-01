@@ -45,8 +45,8 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 
 - 상단 가로 툴바 **제거**
 - 캔버스가 세로 전체 높이 사용
-- 우측 바 자리 확보 (2단계에서 격자·스냅 버튼 추가 예정)
-- 레일·플라이아웃: **밝은 배경** + 카테고리/도구별 **색상 아이콘** (가시성 개선)
+- 우측 바: 격자·스냅·줌·테마·단축키 (**SVG**, `bar-icon`) — 4-5 ✅
+- 레일·플라이아웃: **밝은 배경** + **SVG 아이콘** (흰 타일 + 기하 도형) — [`icon_guidelines.md`](icon_guidelines.md)
 - 캔버스: `ALGEO_VIS` 팔레트 — AlgeoMath 참고 선명한 색·굵은 선·라벨 흰 외곽선
 
 ## 인터랙티브 작도 (AlgeoMath UX)
@@ -112,15 +112,19 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 
 > **목표 구조 (52종)**: [`tool_catalog.md`](tool_catalog.md) · 스크린샷: [`images/README.md`](images/README.md)
 
-### 현재 (`ALGEO_TOOL_CATEGORIES` — 5카테고리)
+### 현재 (`ALGEO_TOOL_CATEGORIES` — 7카테고리, SVG `iconId`)
 
-| 카테고리 ID | 레일 아이콘 | 플라이아웃 도구 |
-|-------------|------------|----------------|
-| `pointer` | ✋ | 이동 (MOVE) |
-| `point` | ● | 점 (POINT), 중점 (MIDPOINT) |
-| `line` | ／ | 선분, 직선, 수직이등분선, 평행선, 수직선, 각도, 다각형 |
-| `circle` | ◯ | 원 (CIRCLE), 호 (ARC) |
-| `edit` | ⌫ | 삭제 (DELETE) |
+| 카테고리 ID | 레일 `iconId` | 플라이아웃 도구 |
+|-------------|---------------|----------------|
+| `pointer` | `cat-pointer` | 이동 (MOVE) |
+| `point` | `cat-point` | 점, 중점 |
+| `line` | `cat-line` | 선분, 직선, 수직이등분선, 평행선, 수직선, 각도 |
+| `polygon` | `cat-polygon` | 다각형 |
+| `circle` | `cat-circle` | 원, 호 |
+| `slider` | `cat-slider` | 슬라이더 |
+| `edit` | `cat-edit` | 숨기기, 삭제 |
+
+- 아이콘 렌더: `algeo-icons.js` → `renderAlgeoIcon()` (유니코드 문자 **사용 안 함**)
 
 ### 목표 (원본 AlgeoMath — 9+1)
 
@@ -176,11 +180,12 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 | 항목 | 로드맵 | 상태 |
 |------|--------|------|
 | 대수창 토글 · 탭 · Undo | 4-1, 4-2 | ✅ |
-| 격자 on/off, 스냅 | **4-5** | ⬜ |
+| 격자 on/off, 스냅 | **4-5** | ✅ |
 | 레일 9+1 · 플라이아웃 52종 | **5단계** | ⬜ |
 | 테마 토글 | **12-1** | ✅ |
-| 단축키 | **12-3** | ⬜ |
-| SVG 아이콘 | **12-5** | ⬜ |
+| 단축키 | **12-3** | 🔄 (G, N, H, ? 등 일부) |
+| SVG 아이콘 (핵심 UI) | **12-5** | ✅ [`icon_guidelines.md`](icon_guidelines.md) |
+| SVG 아이콘 (52종 전체) | **5~6단계** | ⬜ stub 도구별 `iconId` |
 | 저장·헤더 | **12-4**, 11-3 | ⬜ |
 
 전체 도구: [`tool_catalog.md`](tool_catalog.md)

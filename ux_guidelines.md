@@ -2,7 +2,8 @@
 
 > **목적**: 사용자 UX 지시·피드백·구현 상태를 한곳에 모아, 이후 작업(3-5 다각형, UI-2 등)에서도 AlgeoMath 원본 수준의 조작감을 이어가기 위한 문서입니다.  
 > **참고 원본**: [AlgeoMath 작도 화면](https://www.algeomath.kr/algeo/algeomath/app/make)  
-> **관련 코드**: `script.js` (`ALGEO_TOOL_CATEGORIES`, `constructionDraft`, `drawToolPreview`), `style.css`
+> **관련 코드**: `script.js` (`ALGEO_TOOL_CATEGORIES`, `constructionDraft`, `drawToolPreview`), `style.css`  
+> **아이콘 (필수)**: [`icon_guidelines.md`](icon_guidelines.md) — **UI 아이콘은 SVG만** (`algeo-icons.js`)
 
 ---
 
@@ -35,7 +36,7 @@
 | 다각형 `constructionDraft.vertexIds` | ✅ | 미리보기·Enter/첫 점 닫기·`Polygon(A,B,C,…)` |
 | 대수창 토글 (접기/펼치기) | ✅ | `#btnToggleAlgebra`, `#btnOpenAlgebra` |
 | **도구 사용 가이드 패널** | ✅ | `#toolGuide`, `ALGEO_TOOL_GUIDES`, `syncToolGuide()` |
-| 선분/직선 아이콘 | ✅ | 사용자 선호: `―`, `↔` (▬, ∞ 사용 안 함) |
+| **SVG 도구·뷰 아이콘** | ✅ | `algeo-icons.js`, `iconId` — [`icon_guidelines.md`](icon_guidelines.md) |
 | 캔버스 가시성 `ALGEO_VIS` | ✅ | 굵은 선, 라벨 흰 외곽선, 각도 연보라 채움 |
 
 ---
@@ -86,19 +87,20 @@
 
 ---
 
-## 4. 플라이아웃 아이콘 (현재)
+## 4. 아이콘 (SVG 전용)
 
-| 카테고리 | 레일 | 도구 | 아이콘 |
-|----------|------|------|--------|
-| pointer | ✋ | 이동 | ✋ |
-| point | ● | 점 / 중점 | ● / ◎ |
-| line | ／ | 선분 / 직선 | **―** / **↔** |
-| line | | 수직이등분 / 평행 / 수직 / 각 / **다각형** | ⊥ / ∥ / ┴ / ∠ / **⬡** |
-| circle | ◯ | 원 / 호 | ◯ / ◠ |
-| edit | ⌫ | 삭제 | ⌫ |
+> **상세 규칙·추가 방법**: [`icon_guidelines.md`](icon_guidelines.md) — 작업 시 반드시 참고.
 
-- **선분·직선 아이콘**: 사용자가 `▬`, `∞`보다 **`―`, `↔` 선호** — 변경 시 사용자 확인 필요.
-- 향후 **SVG 아이콘 세트**로 교체 예정 (`ui_layout.md` 2단계).
+| 영역 | 구현 | 비고 |
+|------|------|------|
+| 레일 카테고리 | `cat-pointer` … `cat-edit` | 흰 타일 + 기하 SVG |
+| 플라이아웃 도구 | `move`, `segment`, `polygon` … | 다크 메뉴 + 동일 타일 |
+| 가이드 헤더 | `renderAlgeoIcon(meta.iconId)` | 도구·격자·스냅 가이드 |
+| 우측 바 | `bar-icon`, `noTile` | `currentColor` + `--right-bar-icon` |
+
+- **유니코드·이모지 아이콘(✋, ●, ⌫) 사용 금지** — `ALGEO_TOOL_CATEGORIES`는 **`iconId`만**.
+- 선분·직선 등 **도형 의미**는 SVG path로 표현 (과거 `―`/`↔` 문자 아이콘은 폐기).
+- 미구현 52종 도구 추가 시에도 동일하게 `algeo-icons.js`에 path 추가 후 `iconId` 연결.
 
 ---
 
@@ -179,14 +181,14 @@
 | **접기** | `#btnCollapseGuide` — 도구 전환 시 자동 펼침 (✕ 닫기와 별개) |
 | **닫기** | `#btnCloseGuide` — **▶ 안내** 전까지 숨김 유지 (도구·대수창 전환 시 자동 재표시 없음) |
 | **드래그** | 헤더 드래그 — `getPopscaleFactor()` (`FORTEACHERCD.responsive.baseContainerSize.zoom`) 로 보정 |
-| **2차 예정** | Canvas 고스트 데모, SVG 아이콘 |
+| **2차 예정** | Canvas 고스트 데모 |
 
 ### UX 개선 후보 (미구현)
 
 - [ ] ~~작도 중 **단계 안내**~~ → UX-4 패널로 대체 (캔버스 하단)
 - [ ] 수직이등분선·중점도 **선택 점 하이라이트** 강화 (이미 부분 적용)
 - [ ] 터치 디바이스용 작도 (5단계)
-- [ ] SVG/비트맵 **도구 아이콘** (원본 AlgeoMath 자산 참고)
+- [ ] Canvas **고스트 데모** (작도 미리보기 강화)
 - [ ] 다각형·호 드래그 시 **조절점 핸들** 표시
 - [ ] 대수창 토글 상태 **localStorage** 저장 (선택)
 
@@ -212,7 +214,7 @@
 |------|------|
 | UI-1 | 좌측 레일·플라이아웃·우측 줌 바 (`ui_layout.md`) |
 | UX-1 | `constructionDraft` 통합, 호 3점 모델, 도구별 미리보기, 플라이아웃 hint |
-| UX-2 | 대수창 토글, 선분/직선 아이콘 `―`/`↔` 복원 |
+| UX-2 | 대수창 토글 ✅, 격자·스냅 ✅, SVG 아이콘 [`icon_guidelines.md`](icon_guidelines.md) |
 | UX-3 | 다각형 작도 — `constructionDraft` + 미리보기 + Enter/첫 점 닫기 |
 | UX-4 | 도구 가이드 — `ALGEO_TOOL_GUIDES` + `#toolGuide` + 동적 단계 |
 

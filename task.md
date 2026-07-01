@@ -16,10 +16,11 @@
 
 > [`ui_layout.md`](ui_layout.md) · [`ux_guidelines.md`](ux_guidelines.md)
 
-- `[x]` UI-1 좌측 레일 + 플라이아웃 (5카테고리)
-- `[ ]` UI-2 격자/스냅, 헤더 ← **4-5 완료** (격자·스냅 우측 바)
+- `[x]` UI-1 좌측 레일 + 플라이아웃 (7카테고리, SVG)
+- `[x]` UI-2 격자/스냅 우측 바
     - `[x]` 대수창 표시/숨김 · 생성순/종류순 · Undo UI
 - `[x]` UX-1 ~ UX-4 작도 미리보기 · 가이드 패널
+- 아이콘 규칙 (SVG 전용, **앞으로 모든 UI 아이콘 동일**): [`icon_guidelines.md`](icon_guidelines.md) · [`.cursor/rules/svg-icons.mdc`](.cursor/rules/svg-icons.mdc)
 
 ---
 
@@ -40,7 +41,7 @@
 - `[ ]` 5-1 `ALGEO_TOOL_CATEGORIES` 재구성 (목표 구조: [`tool_catalog.md`](tool_catalog.md))
 - `[ ]` 5-2 미구현 도구 `stub` 등록
 - `[ ]` 5-3 단축키 골격 (D, I, M, S, L, P, H, …)
-- `[ ]` 5-4 플라이아웃·레일 스타일 정렬
+- `[ ]` 5-4 플라이아웃·레일 스타일 정렬 (SVG 아이콘 유지 — [`icon_guidelines.md`](icon_guidelines.md))
 
 ---
 
@@ -94,7 +95,8 @@
 - `[ ]` 12-2 터치 이벤트
 - `[ ]` 12-3 키보드 단축키 완성
 - `[ ]` 12-4 파일 저장·불러오기
-- `[ ]` 12-5 도구 SVG 아이콘
+- `[x]` 12-5 도구 SVG 아이콘 — **핵심 UI** (레일·플라이아웃·가이드·우측 바) [`icon_guidelines.md`](icon_guidelines.md)
+- `[ ]` 12-5b 52종 stub 도구 SVG (`algeo-icons.js`에 순차 추가)
 
 ---
 

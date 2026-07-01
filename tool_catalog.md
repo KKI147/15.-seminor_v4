@@ -35,7 +35,7 @@
 | 8 | `draw` | 펜·꾸미기 | 5종 | 144405 | 8단계 |
 | 9 | `settings` | 설정 ⚙ | (패널) | (레일만) | 4-5 · 11단계 |
 
-**현재 코드** (`ALGEO_TOOL_CATEGORIES`): `pointer` · `point` · `line`(다각형 포함) · `circle` · `edit` — **5카테고리, 17도구**
+**현재 코드** (`ALGEO_TOOL_CATEGORIES`): `pointer` · `point` · `line` · `polygon` · `circle` · `slider` · `edit` — **7카테고리, 19도구**, 아이콘 **SVG** ([`icon_guidelines.md`](icon_guidelines.md))
 
 ---
 
@@ -146,8 +146,9 @@
 
 새 도구 추가 시 체크리스트:
 
+0. **아이콘** — [`icon_guidelines.md`](icon_guidelines.md): `algeo-icons.js` + `iconId` (**유니코드 `icon` 금지**)
 1. `tool_catalog.md` — `toolId` · 상태 갱신
-2. `ALGEO_TOOL_CATEGORIES` — 카테고리·`hint`·`shortcut`·`status`
+2. `ALGEO_TOOL_CATEGORIES` — 카테고리·`iconId`·`hint`·`shortcut`·`status`
 3. `ALGEO_TOOL_GUIDES` — 가이드 단계
 4. `AlgeoEngine` — `type` · `parents` · `recompute`
 5. `AlgeoRenderer` — `draw*` · hit test
@@ -171,7 +172,7 @@
 | 9단계 | 9 | 변환·타일 |
 | 10단계 | 3 | 그림·동영상·표 |
 | 11단계 | 3 | 블록코딩·사용자도구·설정 |
-| 12단계 | — | 터치·단축키·저장·아이콘 SVG |
+| 12단계 | — | 터치·단축키·저장·**아이콘 SVG** ([`icon_guidelines.md`](icon_guidelines.md)) |
 
 ---
 

@@ -1,6 +1,7 @@
 /**
  * AlgeoMath 스타일 기하 도구 아이콘 (인라인 SVG)
- * 신규 도구: ALGEO_ICON_PATHS에 id 추가 후 카테고리 iconId에 연결
+ * 규칙·체크리스트: icon_guidelines.md
+ * 신규 도구: ALGEO_ICON_PATHS에 id 추가 → ALGEO_TOOL_CATEGORIES[].iconId 연결
  */
 const ALGEO_ICON_INK = '#1a1a1a';
 const ALGEO_ICON_RED = '#e53935';

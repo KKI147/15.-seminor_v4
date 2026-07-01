@@ -132,7 +132,7 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 
 ---
 
-### 4단계 — 대수창·객체 인프라 🔄 진행 중
+### 4단계 — 대수창·객체 인프라 ✅ 완료
 
 대수 연동·표시 제어 등 **이후 모든 도구가 공유하는 기반**을 먼저 완성합니다.
 
@@ -142,7 +142,7 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 | 4-2 | Undo / 수식 히스토리 | ✅ | — |
 | 4-3 | 슬라이더 변수 연동 | ✅ | `SLIDER` |
 | 4-4 | 객체 표시/숨김 | ✅ | `HIDE_OBJECT`, 대수창 눈 아이콘, H |
-| 4-5 | 격자 on/off · 스냅(자석) | ⬜ **다음** | UI-2, 우측 바 |
+| 4-5 | 격자 on/off · 스냅(자석) | ✅ | UI-2, 우측 바 |
 
 ---
 
@@ -219,7 +219,7 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 | 12-2 | 터치(모바일) 이벤트 | ⬜ |
 | 12-3 | 키보드 단축키 완성 | ⬜ |
 | 12-4 | 파일 저장·불러오기 (JSON) | ⬜ |
-| 12-5 | 도구 SVG 아이콘 (`images/` → 스프라이트) | ⬜ |
+| 12-5 | 도구 SVG 아이콘 — **핵심 UI** ✅ / 52종 전체 ⬜ | 🔄 | [`icon_guidelines.md`](icon_guidelines.md) |
 
 ---
 
@@ -227,15 +227,15 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 
 ```
 [1~3단계] ████████████████████ 100%  (핵심 작도 17종)
-[4단계]   ████████████████░░░░  80%   ← 현재 (4-4 ✅)
-[5단계]   ░░░░░░░░░░░░░░░░░░░░   0%
+[4단계]   ████████████████████ 100%  (4-5 격자·스냅 ✅)
+[5단계]   ░░░░░░░░░░░░░░░░░░░░   0%   ← **다음**
 [6단계]   ░░░░░░░░░░░░░░░░░░░░   0%   (기하 +22종)
 [7~8단계] ░░░░░░░░░░░░░░░░░░░░   0%
 [9~11단계]░░░░░░░░░░░░░░░░░░░░   0%
-[12단계]  ████░░░░░░░░░░░░░░░░  20%   (테마만 ✅)
+[12단계]  ██████░░░░░░░░░░░░░░  30%   (테마·SVG 핵심 ✅)
 ```
 
-**다음 작업**: **4-5 격자·스냅** → **5-1 레일 전체 맵**
+**다음 작업**: **5-1 레일 전체 맵** → stub·단축키
 
 **전체 목표**: 플라이아웃 **52종** + 레일 블록코딩·설정 — [`tool_catalog.md`](tool_catalog.md)
 
@@ -288,6 +288,7 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 - DOM 조작·이벤트는 jQuery 사용
 - 소스 코드 주석은 **한국어**로 작성
 - `common/` 폴더 직접 수정 금지
+- **UI 아이콘은 앞으로 모두 SVG만** — [`icon_guidelines.md`](icon_guidelines.md), `.cursor/rules/svg-icons.mdc`, `algeo-icons.js`, `iconId` (유니코드·이모지 `icon` 필드 금지)
 
 ---
 
@@ -303,3 +304,4 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 | [`tool_catalog.md`](tool_catalog.md) | **전체 도구 52종** 목록·상태·로드맵 매핑 |
 | [`images/README.md`](images/README.md) | 원본 UI 참고 스크린샷 인덱스 |
 | [`ux_guidelines.md`](ux_guidelines.md) | 작도 UX·가이드 패널 명세 |
+| [`icon_guidelines.md`](icon_guidelines.md) | **SVG 아이콘 전용** 규칙·추가 절차·체크리스트 |
