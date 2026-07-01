@@ -108,19 +108,37 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 
 ---
 
-## 도구 카테고리 (`ALGEO_TOOL_CATEGORIES`)
+## 도구 카테고리
+
+> **목표 구조 (52종)**: [`tool_catalog.md`](tool_catalog.md) · 스크린샷: [`images/README.md`](images/README.md)
+
+### 현재 (`ALGEO_TOOL_CATEGORIES` — 5카테고리)
 
 | 카테고리 ID | 레일 아이콘 | 플라이아웃 도구 |
 |-------------|------------|----------------|
 | `pointer` | ✋ | 이동 (MOVE) |
 | `point` | ● | 점 (POINT), 중점 (MIDPOINT) |
-| `line` | ／ | 선분(―), 직선(↔), 수직이등분선, 평행선, 수직선, 각도, **다각형(⬡)** |
+| `line` | ／ | 선분, 직선, 수직이등분선, 평행선, 수직선, 각도, 다각형 |
 | `circle` | ◯ | 원 (CIRCLE), 호 (ARC) |
 | `edit` | ⌫ | 삭제 (DELETE) |
 
-- 데이터: `script.js` 상단 `ALGEO_TOOL_CATEGORIES` 배열 (각 도구 `hint` 포함)
-- HTML 생성: `buildToolRailHtml()`, 플라이아웃은 `renderToolFlyout()` 동적 렌더
-- 플라이아웃 hint 스타일: `style.css` `.flyout-tool-hint`
+### 목표 (원본 AlgeoMath — 9+1)
+
+| 카테고리 ID | 플라이아웃 수 | 로드맵 |
+|-------------|--------------|--------|
+| `blockcoding` | (별도) | 11단계 |
+| `pointer` | 3 | 7단계 |
+| `point` | 8 | 6-1, 10-1 |
+| `circle` | 7 | 6-3 |
+| `line` | 10 | 6-2 |
+| `polygon` | 4 | 6-4 |
+| `transform` | 9 | 8-1, 9단계 |
+| `misc` | 9 | 4-3, 4-4, 7단계 |
+| `draw` | 5 | 8단계 |
+| `settings` | (패널) | 4-5, 11-3 |
+
+- 데이터: `script.js` `ALGEO_TOOL_CATEGORIES` — **5단계**에서 전체 재구성
+- 미구현: `status: 'stub'` · 구현 시 `tool_catalog.md` 상태 갱신
 
 ---
 
@@ -153,17 +171,19 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 
 ---
 
-## 2단계 예정 (미구현)
+## UI 로드맵 (갱신)
 
-- [x] 대수창 표시/숨김 토글 (헤더 ◀ / 캔버스 열기 탭) — `ux_guidelines.md` UX-2
-- [x] 대수창 `생성순` / `종류순` 탭
-- [ ] 입력창 `+` 버튼 스타일
-- [ ] 우측 바: 격자 on/off, 스냅(자석) 토글
-- [x] 우측 바: 다크/라이트 테마 토글 (`#btnToggleTheme`, 5-3)
-- [x] 대수창 헤더 Undo/Redo UI (4-2)
-- [ ] 상단 파란 헤더 (저장·로그인 — 껍데기 또는 5-4 연동)
-- [ ] 도구 단축키 실제 동작 (5-2)
-- [ ] SVG 아이콘 세트
+| 항목 | 로드맵 | 상태 |
+|------|--------|------|
+| 대수창 토글 · 탭 · Undo | 4-1, 4-2 | ✅ |
+| 격자 on/off, 스냅 | **4-5** | ⬜ |
+| 레일 9+1 · 플라이아웃 52종 | **5단계** | ⬜ |
+| 테마 토글 | **12-1** | ✅ |
+| 단축키 | **12-3** | ⬜ |
+| SVG 아이콘 | **12-5** | ⬜ |
+| 저장·헤더 | **12-4**, 11-3 | ⬜ |
+
+전체 도구: [`tool_catalog.md`](tool_catalog.md)
 
 ---
 

@@ -950,6 +950,7 @@
 .obj-color-indicator.angle { background-color: #9333ea; }
 .obj-color-indicator.polygon { background-color: #b45309; }
 .obj-color-indicator.function { background-color: #6d28d9; }
+.obj-color-indicator.slider { background-color: #2563eb; }
 
 .obj-info {
     display: flex;

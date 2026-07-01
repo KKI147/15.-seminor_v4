@@ -73,6 +73,12 @@ const ALGEBRA_COMMANDS = [
         syntax: 'Polygon(A, B, C, ...)',
         example: 'Polygon(A,B,C,D)',
         desc: '꼭짓점을 순서대로 잇는 다각형입니다.'
+    },
+    {
+        label: '슬라이더',
+        syntax: 'a = Slider(min, max)',
+        example: 'a=Slider(0,5,1)',
+        desc: '변수 슬라이더를 만듭니다. y=ax+b 등에 연동할 수 있습니다.'
     }
 ];
 
@@ -89,8 +95,17 @@ const ALGEBRA_TYPE_ORDER = {
     ARC: 8,
     ANGLE: 9,
     POLYGON: 10,
-    FUNCTION: 11
+    SLIDER: 11,
+    FUNCTION: 12
 };
+
+// 슬라이더 트랙 길이(화면 픽셀) — 줌과 무관하게 동일한 조작감
+const ALGEO_SLIDER_TRACK_PX = 120;
+const ALGEO_SLIDER_THUMB_R = 7;
+const ALGEO_SLIDER_DEFAULT_MIN = 0;
+const ALGEO_SLIDER_DEFAULT_MAX = 10;
+const ALGEO_SLIDER_DEFAULT_VALUE = 1;
+const ALGEO_SLIDER_DEFAULT_STEP = 0.1;
 
 // Undo 스택 최대 깊이
 const ALGEO_UNDO_MAX = 50;
@@ -112,7 +127,7 @@ const ALGEO_TOOL_CATEGORIES = [
         icon: '✋',
         title: '이동·선택',
         tools: [
-            { tool: 'MOVE', label: '이동', icon: '✋', hint: '드래그로 이동' }
+            { tool: 'MOVE', label: '이동', icon: '✋', hint: '객체·점 드래그 / 빈 곳 Pan' }
         ]
     },
     {
@@ -152,6 +167,7 @@ const ALGEO_TOOL_CATEGORIES = [
         icon: '⌫',
         title: '편집',
         tools: [
+            { tool: 'SLIDER', label: '슬라이더', icon: '▬', hint: '빈 곳 클릭' },
             { tool: 'DELETE', label: '삭제', icon: '⌫', hint: '객체 클릭' }
         ]
     }
@@ -160,12 +176,13 @@ const ALGEO_TOOL_CATEGORIES = [
 // 도구별 사용 가이드 (캔버스 하단 패널 + 작도 중 단계 하이라이트)
 const ALGEO_TOOL_GUIDES = {
     MOVE: {
-        summary: '화면을 이동하거나 점의 위치를 바꿉니다.',
+        summary: '화면을 이동하거나 객체·점의 위치를 바꿉니다.',
         steps: [
             '빈 곳을 드래그하면 캔버스가 이동(Pan)합니다.',
-            '자유 점을 드래그하면 점이 함께 움직입니다.'
+            '점·선분·원·다각형 등 객체를 드래그하면 함께 이동합니다.',
+            '슬라이더 손잡이는 값 조절, 막대·라벨은 위치 이동입니다.'
         ],
-        tips: ['중점·종속 점은 드래그할 수 없습니다.']
+        tips: ['함수 그래프는 이동할 수 없습니다.', '종속 중점을 끌면 부모 점이 함께 움직입니다.']
     },
     POINT: {
         summary: '모눈종이 위에 새 점을 만듭니다.',
@@ -268,6 +285,15 @@ const ALGEO_TOOL_GUIDES = {
         summary: '점·선·원 등 객체를 삭제합니다.',
         steps: ['삭제할 객체를 클릭합니다.'],
         tips: ['점 삭제 시 연결된 도형도 함께 제거될 수 있습니다.']
+    },
+    SLIDER: {
+        summary: '숫자 변수 슬라이더를 캔버스에 배치합니다.',
+        steps: [
+            '캔버스 빈 곳을 클릭해 슬라이더를 놓습니다.',
+            '슬라이더 막대·손잡이를 드래그해 값을 바꿉니다.',
+            '대수창에서 a=Slider(0,10) 또는 y=ax+b 로 연동합니다.'
+        ],
+        tips: ['이동 도구로도 슬라이더를 조절할 수 있습니다.', '선분·원 속성에서 슬라이더 이름으로 길이·반지름을 연동할 수 있습니다.']
     }
 };
 
@@ -290,6 +316,9 @@ const ALGEO_VIS_LIGHT = {
     polygon: '#b45309',
     polygonFill: 'rgba(180, 83, 9, 0.16)',
     function: '#6d28d9',
+    slider: '#2563eb',
+    sliderTrack: '#cbd5e1',
+    sliderThumb: '#1d4ed8',
     pointRadius: 7,
     midpointRadius: 6,
     pointStroke: '#1e293b',
@@ -335,6 +364,9 @@ const ALGEO_VIS_DARK = {
     polygon: '#fbbf24',
     polygonFill: 'rgba(251, 191, 36, 0.18)',
     function: '#a78bfa',
+    slider: '#60a5fa',
+    sliderTrack: '#475569',
+    sliderThumb: '#93c5fd',
     pointRadius: 7,
     midpointRadius: 6,
     pointStroke: '#f1f5f9',
@@ -742,6 +774,7 @@ AlgeoEngine.prototype.addSegment = function (name, pointId1, pointId2) {
         name: name,
         p1Id: pointId1,
         p2Id: pointId2,
+        lengthVar: null,
         parents: [pointId1, pointId2],
         children: []
     };
@@ -1178,6 +1211,7 @@ AlgeoEngine.prototype.addCircle = function (name, centerId, pointId) {
         name: name,
         centerId: centerId,
         pointId: pointId,
+        radiusVar: null,
         parents: [centerId, pointId],
         children: []
     };
@@ -1282,12 +1316,228 @@ AlgeoEngine.prototype.addFunction = function (name, expression, exprKey, slope, 
         exprKey: exprKey,
         slope: slope,
         intercept: intercept,
+        rhsRaw: null,
         parents: [],
         children: []
     };
     this.objects.push(funcObj);
     this.objectMap[id] = funcObj;
     return funcObj;
+};
+
+// 슬라이더 이름으로 검색 (소문자 변수명)
+AlgeoEngine.prototype.findSliderByName = function (name) {
+    const list = this.objects;
+    let i;
+    const key = (name || '').toLowerCase();
+
+    for (i = 0; i < list.length; i++) {
+        if (list[i].type === 'SLIDER' && list[i].name === key) {
+            return list[i];
+        }
+    }
+    return null;
+};
+
+// 슬라이더 변수 값 조회 — 없으면 null
+AlgeoEngine.prototype.getSliderValue = function (name) {
+    const slider = this.findSliderByName(name);
+    if (!slider) {
+        return null;
+    }
+    return slider.value;
+};
+
+// 슬라이더 객체 추가
+AlgeoEngine.prototype.addSlider = function (name, min, max, value, step, anchorX, anchorY) {
+    const id = this.generateId();
+    const slider = {
+        id: id,
+        type: 'SLIDER',
+        name: (name || 'a').toLowerCase(),
+        min: min,
+        max: max,
+        value: value,
+        step: step > 0 ? step : 0.1,
+        anchorX: anchorX,
+        anchorY: anchorY,
+        parents: [],
+        children: []
+    };
+    this.objects.push(slider);
+    this.objectMap[id] = slider;
+    return slider;
+};
+
+// 슬라이더 값 변경 — 범위·간격 스냅 후 연동 객체 갱신
+AlgeoEngine.prototype.setSliderValue = function (sliderId, newValue) {
+    const slider = this.objectMap[sliderId];
+    let v;
+    let step;
+
+    if (!slider || slider.type !== 'SLIDER') {
+        return false;
+    }
+
+    v = newValue;
+    if (v < slider.min) {
+        v = slider.min;
+    }
+    if (v > slider.max) {
+        v = slider.max;
+    }
+
+    step = slider.step;
+    if (step > 0) {
+        v = Math.round(v / step) * step;
+        v = parseFloat(v.toFixed(10));
+    }
+
+    slider.value = v;
+    this.applySliderDependents(slider.name);
+    return true;
+};
+
+// 일차식 계수 토큰 해석 — 숫자 또는 슬라이더 변수
+AlgeoEngine.prototype.resolveCoeffToken = function (token) {
+    const expr = (token || '').replace(/\s+/g, '').toLowerCase();
+    let num;
+    let varMatch;
+    let nvMatch;
+    let sign;
+    let coef;
+    let varName;
+    let sliderVal;
+
+    if (expr === '' || expr === '+') {
+        return 0;
+    }
+
+    if (expr.charAt(0) === '+') {
+        return this.resolveCoeffToken(expr.substring(1));
+    }
+
+    num = parseFloat(expr);
+    if (!isNaN(num) && String(num) === expr) {
+        return num;
+    }
+
+    varMatch = expr.match(/^(-?)([a-z])$/);
+    if (varMatch) {
+        sign = varMatch[1] === '-' ? -1 : 1;
+        sliderVal = this.getSliderValue(varMatch[2]);
+        if (sliderVal === null) {
+            return null;
+        }
+        return sign * sliderVal;
+    }
+
+    nvMatch = expr.match(/^(-?\d*\.?\d+)([a-z])$/);
+    if (nvMatch) {
+        coef = parseFloat(nvMatch[1]);
+        varName = nvMatch[2];
+        sliderVal = this.getSliderValue(varName);
+        if (sliderVal === null || isNaN(coef)) {
+            return null;
+        }
+        return coef * sliderVal;
+    }
+
+    return null;
+};
+
+// 일차함수 우변(ax+b) 계수 해석 — 슬라이더 변수 포함
+AlgeoEngine.prototype.resolveLinearRhs = function (rhs) {
+    const expr = (rhs || '').replace(/\s+/g, '').replace(/\*/g, '').toLowerCase();
+    let xIdx;
+    let slopePart;
+    let interceptPart;
+    let slope;
+    let intercept;
+
+    if (!expr) {
+        return null;
+    }
+
+    xIdx = expr.indexOf('x');
+    if (xIdx === -1) {
+        intercept = this.resolveCoeffToken(expr);
+        if (intercept === null) {
+            return null;
+        }
+        return { slope: 0, intercept: intercept };
+    }
+
+    if (expr.split('x').length - 1 > 1) {
+        return null;
+    }
+
+    slopePart = expr.substring(0, xIdx);
+    interceptPart = expr.substring(xIdx + 1);
+
+    if (slopePart === '' || slopePart === '+') {
+        slope = 1;
+    } else if (slopePart === '-') {
+        slope = -1;
+    } else {
+        slope = this.resolveCoeffToken(slopePart);
+        if (slope === null) {
+            return null;
+        }
+    }
+
+    intercept = this.resolveCoeffToken(interceptPart);
+    if (intercept === null) {
+        return null;
+    }
+
+    return { slope: slope, intercept: intercept };
+};
+
+// 함수 객체의 현재 기울기·절편 (슬라이더 연동 시 매 프레임 재계산)
+AlgeoEngine.prototype.getFunctionCoeffs = function (funcObj) {
+    let resolved;
+
+    if (funcObj.rhsRaw) {
+        resolved = this.resolveLinearRhs(funcObj.rhsRaw);
+        if (resolved) {
+            return resolved;
+        }
+    }
+
+    return { slope: funcObj.slope, intercept: funcObj.intercept };
+};
+
+// 슬라이더 값 변경 시 연동된 함수·선분·원 갱신
+AlgeoEngine.prototype.applySliderDependents = function (sliderName) {
+    const list = this.objects;
+    let i;
+    let obj;
+    let coeffs;
+    let val;
+    const key = (sliderName || '').toLowerCase();
+
+    for (i = 0; i < list.length; i++) {
+        obj = list[i];
+
+        if (obj.type === 'FUNCTION' && obj.rhsRaw) {
+            coeffs = this.resolveLinearRhs(obj.rhsRaw);
+            if (coeffs) {
+                obj.slope = coeffs.slope;
+                obj.intercept = coeffs.intercept;
+            }
+        } else if (obj.type === 'SEGMENT' && obj.lengthVar === key) {
+            val = this.getSliderValue(key);
+            if (val !== null && val > 0) {
+                this.setSegmentLength(obj.id, val);
+            }
+        } else if (obj.type === 'CIRCLE' && obj.radiusVar === key) {
+            val = this.getSliderValue(key);
+            if (val !== null && val > 0) {
+                this.setCircleRadius(obj.id, val);
+            }
+        }
+    }
 };
 
 // 특정 객체 이동 (그를 참조하는 모든 자식 객체 재계산 전파)
@@ -1300,6 +1550,97 @@ AlgeoEngine.prototype.movePoint = function (pointId, newX, newY) {
 
     // 점 자체는 독립 객체이므로 자식들의 업데이트만 유도하면 됨
     this.updateDependents(pointId);
+};
+
+// 점·중점 참조에서 드래그 가능한 자유 점 ID 수집 (중복 제거)
+AlgeoEngine.prototype.collectFreePointIdsForPointRef = function (pointRefId) {
+    const result = [];
+    const seen = {};
+    this.collectFreePointIdsInto(pointRefId, seen, result);
+    return result;
+};
+
+// collectFreePointIdsForPointRef 내부 재귀
+AlgeoEngine.prototype.collectFreePointIdsInto = function (pointRefId, seen, result) {
+    const pt = this.objectMap[pointRefId];
+    let childIds;
+    let i;
+
+    if (!pt || seen[pointRefId]) {
+        return;
+    }
+    seen[pointRefId] = true;
+
+    if (pt.type === 'POINT') {
+        result.push(pointRefId);
+        return;
+    }
+
+    if (pt.type === 'MIDPOINT') {
+        this.collectFreePointIdsInto(pt.p1Id, seen, result);
+        this.collectFreePointIdsInto(pt.p2Id, seen, result);
+    }
+};
+
+// 객체 드래그 시 함께 옮길 자유 점 ID 목록
+AlgeoEngine.prototype.collectFreePointIdsForObject = function (obj) {
+    const result = [];
+    const seen = {};
+    let i;
+
+    if (!obj) {
+        return result;
+    }
+
+    if (obj.type === 'POINT' || obj.type === 'MIDPOINT') {
+        return this.collectFreePointIdsForPointRef(obj.id);
+    }
+
+    if (obj.type === 'SEGMENT' || obj.type === 'LINE' ||
+        obj.type === 'PERP_BISECTOR') {
+        this.collectFreePointIdsInto(obj.p1Id, seen, result);
+        this.collectFreePointIdsInto(obj.p2Id, seen, result);
+    } else if (obj.type === 'PARALLEL_LINE' || obj.type === 'PERP_LINE') {
+        this.collectFreePointIdsInto(obj.refP1Id, seen, result);
+        this.collectFreePointIdsInto(obj.refP2Id, seen, result);
+        this.collectFreePointIdsInto(obj.throughId, seen, result);
+    } else if (obj.type === 'CIRCLE') {
+        this.collectFreePointIdsInto(obj.centerId, seen, result);
+        this.collectFreePointIdsInto(obj.pointId, seen, result);
+    } else if (obj.type === 'ARC') {
+        this.collectFreePointIdsInto(obj.p1Id, seen, result);
+        this.collectFreePointIdsInto(obj.p2Id, seen, result);
+        this.collectFreePointIdsInto(obj.guideId, seen, result);
+    } else if (obj.type === 'ANGLE') {
+        this.collectFreePointIdsInto(obj.ray1Id, seen, result);
+        this.collectFreePointIdsInto(obj.vertexId, seen, result);
+        this.collectFreePointIdsInto(obj.ray2Id, seen, result);
+    } else if (obj.type === 'POLYGON') {
+        for (i = 0; i < obj.vertexIds.length; i++) {
+            this.collectFreePointIdsInto(obj.vertexIds[i], seen, result);
+        }
+    }
+
+    return result;
+};
+
+// 여러 자유 점을 동일한 Δ만큼 평행 이동
+AlgeoEngine.prototype.translateFreePoints = function (pointIds, dx, dy) {
+    let i;
+    let id;
+    let pt;
+    let newX;
+    let newY;
+
+    for (i = 0; i < pointIds.length; i++) {
+        id = pointIds[i];
+        pt = this.objectMap[id];
+        if (pt && pt.type === 'POINT') {
+            newX = pt.x + dx;
+            newY = pt.y + dy;
+            this.movePoint(id, newX, newY);
+        }
+    }
 };
 
 // 선분 길이 변경 — 시작점 고정, 끝점 방향 유지
@@ -1727,6 +2068,14 @@ AlgeoRenderer.prototype.drawObjects = function () {
         const obj = list[i];
         if (obj.type === 'POINT' || obj.type === 'MIDPOINT') {
             this.drawPointShape(obj);
+        }
+    }
+
+    // 슬라이더 — 점 위에 표시
+    for (let i = 0; i < list.length; i++) {
+        const obj = list[i];
+        if (obj.type === 'SLIDER') {
+            this.drawSlider(obj);
         }
     }
 };
@@ -2271,12 +2620,18 @@ AlgeoRenderer.prototype.drawFunction = function (obj) {
     const right = Math.max(mathXLeft, mathXRight);
     const step = (right - left) / width;
     let started = false;
+    let coeffs;
+    let mathY;
+    let sx;
+    let sy;
+
+    coeffs = this.engine.getFunctionCoeffs(obj);
 
     ctx.beginPath();
     for (let mathX = left; mathX <= right; mathX += step) {
-        const mathY = obj.slope * mathX + obj.intercept;
-        const sx = this.toScreenX(mathX);
-        const sy = this.toScreenY(mathY);
+        mathY = coeffs.slope * mathX + coeffs.intercept;
+        sx = this.toScreenX(mathX);
+        sy = this.toScreenY(mathY);
 
         if (!started) {
             ctx.moveTo(sx, sy);
@@ -2290,6 +2645,65 @@ AlgeoRenderer.prototype.drawFunction = function (obj) {
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
     ctx.stroke();
+};
+
+// 슬라이더 화면 영역 (트랙·손잡이 좌표)
+AlgeoRenderer.prototype.getSliderScreenBounds = function (slider) {
+    const left = this.toScreenX(slider.anchorX);
+    const top = this.toScreenY(slider.anchorY);
+    const right = left + ALGEO_SLIDER_TRACK_PX;
+    const range = slider.max - slider.min;
+    let t = 0;
+
+    if (range > 1e-10) {
+        t = (slider.value - slider.min) / range;
+    }
+    if (t < 0) {
+        t = 0;
+    }
+    if (t > 1) {
+        t = 1;
+    }
+
+    return {
+        left: left,
+        top: top,
+        right: right,
+        bottom: top + 20,
+        thumbX: left + t * ALGEO_SLIDER_TRACK_PX,
+        thumbY: top + 10
+    };
+};
+
+// 슬라이더 UI 그리기
+AlgeoRenderer.prototype.drawSlider = function (slider) {
+    const ctx = this.ctx;
+    const bounds = this.getSliderScreenBounds(slider);
+    const label = slider.name + ' = ' + slider.value.toFixed(2);
+
+    ctx.save();
+    ctx.strokeStyle = ALGEO_VIS.sliderTrack;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(bounds.left, bounds.thumbY);
+    ctx.lineTo(bounds.right, bounds.thumbY);
+    ctx.stroke();
+
+    ctx.fillStyle = ALGEO_VIS.sliderThumb;
+    ctx.beginPath();
+    ctx.arc(bounds.thumbX, bounds.thumbY, ALGEO_SLIDER_THUMB_R, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.strokeStyle = ALGEO_VIS.slider;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = ALGEO_VIS.axis;
+    ctx.font = 'bold 12px Outfit, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(label, bounds.left, bounds.top - 2);
+    ctx.restore();
 };
 
 // 선택 강조 — 흰 외곽 + 시안 점선 (현재 path에 적용)
@@ -2383,6 +2797,8 @@ AlgeoRenderer.prototype.drawSelectedObjectHighlight = function (obj) {
     let right;
     let step;
     let width;
+    let coeffs;
+    let bounds;
 
     if (obj.type === 'POINT' || obj.type === 'MIDPOINT') {
         sx = this.toScreenX(obj.x);
@@ -2516,9 +2932,10 @@ AlgeoRenderer.prototype.drawSelectedObjectHighlight = function (obj) {
         right = Math.max(this.toMathX(0), this.toMathX(width));
         step = (right - left) / width;
         started = false;
+        coeffs = this.engine.getFunctionCoeffs(obj);
         ctx.beginPath();
         for (mathX = left; mathX <= right; mathX += step) {
-            mathY = obj.slope * mathX + obj.intercept;
+            mathY = coeffs.slope * mathX + coeffs.intercept;
             sx = this.toScreenX(mathX);
             sy = this.toScreenY(mathY);
             if (!started) {
@@ -2531,6 +2948,15 @@ AlgeoRenderer.prototype.drawSelectedObjectHighlight = function (obj) {
         if (started) {
             this.strokeSelectionPath();
         }
+        return;
+    }
+
+    if (obj.type === 'SLIDER') {
+        bounds = this.getSliderScreenBounds(obj);
+        ctx.beginPath();
+        ctx.arc(bounds.thumbX, bounds.thumbY, ALGEO_SLIDER_THUMB_R + 4, 0, 2 * Math.PI);
+        this.strokeSelectionPath();
+        return;
     }
 };
 
@@ -2549,7 +2975,8 @@ function AlgeoApp(engine, renderer) {
     this.dragStart = { x: 0, y: 0 };  // 캔버스 드래그 시작 픽셀 좌표
     this.origOffset = { x: 0, y: 0 }; // 드래그 시작 시점 뷰포트 오프셋
 
-    this.activePoint = null;          // 현재 마우스 드래그 중인 점 객체
+    this.activePoint = null;          // (레거시) 점 드래그 — dragTranslate 사용
+    this.dragTranslate = null;        // 객체·점 평행 이동 { pointIds, sliderId, lastMathX, lastMathY }
     this.selectedPoints = [];         // 선분/원 작도를 위해 선택된 점 배열
     this.selectedObjectId = null;     // 대수창에서 선택된 객체 ID
     this.algebraCmdDictOpen = false;  // 명령어 사전 패널 표시 여부
@@ -2566,6 +2993,9 @@ function AlgeoApp(engine, renderer) {
     this.isRestoringHistory = false;  // Undo/Redo 복원 중 (기록 중복 방지)
     this.dragSnapshot = null;         // 점 드래그 시작 시점 스냅샷
     this.dragMoved = false;           // 드래그 중 좌표 변경 여부
+    this.activeSlider = null;         // 슬라이더 손잡이 드래그 중
+    this.sliderDragSnapshot = null;
+    this.sliderDragMoved = false;
     this.theme = 'light';             // UI·캔버스 테마: light | dark
 }
 
@@ -3174,6 +3604,8 @@ AlgeoApp.prototype.updateCanvasCursor = function () {
         this.currentTool === 'ANGLE' || this.currentTool === 'ARC' || this.currentTool === 'CIRCLE' ||
         this.currentTool === 'POLYGON') {
         cursor = 'pointer';
+    } else if (this.currentTool === 'SLIDER') {
+        cursor = 'crosshair';
     } else if (this.currentTool === 'DELETE') {
         cursor = 'not-allowed';
     }
@@ -3607,23 +4039,67 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
     const hitPoint = this.findPointAt(mouseX, mouseY);
 
     if (this.currentTool === 'MOVE') {
-        if (hitPoint && hitPoint.type === 'POINT') {
-            // 자유 점만 드래그 가능 (중점은 종속 객체)
-            this.activePoint = hitPoint;
-            this.dragSnapshot = this.captureEngineState();
-            this.dragMoved = false;
-            this.setCanvasCursor('grabbing');
-        } else if (!hitPoint) {
-            // 빈 공간 클릭 -> 선택 해제 후 캔버스 패닝 시작
-            this.clearAlgebraSelection();
-            this.isDraggingCanvas = true;
-            this.dragStart.x = mouseX;
-            this.dragStart.y = mouseY;
-            this.origOffset.x = r.offsetX;
-            this.origOffset.y = r.offsetY;
-            this.setCanvasCursor('grabbing');
+        const mathX = r.toMathX(mouseX);
+        const mathY = r.toMathY(mouseY);
+        const hitSlider = this.findSliderAt(mouseX, mouseY);
+        let hitObj;
+        let pointIds;
+
+        if (hitSlider) {
+            if (this.isNearSliderThumb(mouseX, mouseY, hitSlider)) {
+                this.activeSlider = hitSlider;
+                this.sliderDragSnapshot = this.captureEngineState();
+                this.sliderDragMoved = false;
+                this.setCanvasCursor('grabbing');
+            } else {
+                this.selectAlgebraObject(hitSlider.id);
+                this.beginTranslateDrag([], hitSlider.id, mathX, mathY);
+            }
+            this.syncToolGuide();
+            return;
         }
-        // 중점(MIDPOINT) 클릭 시 별도 동작 없음
+
+        if (hitPoint) {
+            pointIds = this.engine.collectFreePointIdsForPointRef(hitPoint.id);
+            if (pointIds.length > 0) {
+                if (hitPoint.type === 'POINT') {
+                    this.selectAlgebraObject(hitPoint.id);
+                }
+                this.beginTranslateDrag(pointIds, null, mathX, mathY);
+                this.syncToolGuide();
+                return;
+            }
+        }
+
+        hitObj = this.findObjectAt(mouseX, mouseY);
+        if (hitObj) {
+            if (hitObj.type === 'FUNCTION') {
+                this.selectAlgebraObject(hitObj.id);
+                this.syncToolGuide();
+                return;
+            }
+            if (hitObj.type === 'SLIDER') {
+                this.selectAlgebraObject(hitObj.id);
+                this.beginTranslateDrag([], hitObj.id, mathX, mathY);
+                this.syncToolGuide();
+                return;
+            }
+            pointIds = this.engine.collectFreePointIdsForObject(hitObj);
+            if (pointIds.length > 0) {
+                this.selectAlgebraObject(hitObj.id);
+                this.beginTranslateDrag(pointIds, null, mathX, mathY);
+                this.syncToolGuide();
+                return;
+            }
+        }
+
+        this.clearAlgebraSelection();
+        this.isDraggingCanvas = true;
+        this.dragStart.x = mouseX;
+        this.dragStart.y = mouseY;
+        this.origOffset.x = r.offsetX;
+        this.origOffset.y = r.offsetY;
+        this.setCanvasCursor('grabbing');
     } else if (this.currentTool === 'POINT') {
         // 빈 공간에 점 생성
         if (!hitPoint) {
@@ -3647,6 +4123,21 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
         this.handleParallelPerpMouseDown(e, hitPoint);
     } else if (this.currentTool === 'POLYGON') {
         this.handlePolygonMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'SLIDER') {
+        const hitSlider = this.findSliderAt(mouseX, mouseY);
+        if (hitSlider) {
+            this.activeSlider = hitSlider;
+            this.sliderDragSnapshot = this.captureEngineState();
+            this.sliderDragMoved = false;
+            this.setCanvasCursor('grabbing');
+        } else if (!hitPoint) {
+            const mathX = r.toMathX(mouseX);
+            const mathY = r.toMathY(mouseY);
+            this.recordHistory('슬라이더 생성');
+            this.createSliderAtMath(mathX, mathY);
+            this.updateAlgebraView();
+            r.draw();
+        }
     } else if (this.currentTool === 'MIDPOINT' || this.currentTool === 'PERP_BISECTOR') {
         if (hitPoint) {
             this.selectedPoints.push(hitPoint.id);
@@ -3725,12 +4216,32 @@ AlgeoApp.prototype.handleMouseMove = function (e) {
         r.offsetX = this.origOffset.x + dx;
         r.offsetY = this.origOffset.y + dy;
         r.draw();
-    } else if (this.activePoint) {
-        // 점 드래그 이동 중
+    } else if (this.activeSlider) {
+        this.sliderDragMoved = true;
+        const newVal = this.sliderValueFromScreenX(this.activeSlider, mouseX);
+        this.engine.setSliderValue(this.activeSlider.id, newVal);
+        this.updateAlgebraView();
+        r.draw();
+    } else if (this.dragTranslate) {
         this.dragMoved = true;
         const mathX = r.toMathX(mouseX);
         const mathY = r.toMathY(mouseY);
-        this.engine.movePoint(this.activePoint.id, mathX, mathY);
+        const dx = mathX - this.dragTranslate.lastMathX;
+        const dy = mathY - this.dragTranslate.lastMathY;
+        let slider;
+
+        if (this.dragTranslate.pointIds.length > 0) {
+            this.engine.translateFreePoints(this.dragTranslate.pointIds, dx, dy);
+        }
+        if (this.dragTranslate.sliderId) {
+            slider = this.engine.objectMap[this.dragTranslate.sliderId];
+            if (slider && slider.type === 'SLIDER') {
+                slider.anchorX += dx;
+                slider.anchorY += dy;
+            }
+        }
+        this.dragTranslate.lastMathX = mathX;
+        this.dragTranslate.lastMathY = mathY;
         this.updateAlgebraView();
         r.draw();
     } else if (this.constructionDraft) {
@@ -3740,13 +4251,20 @@ AlgeoApp.prototype.handleMouseMove = function (e) {
 
 // 마우스 업 핸들러
 AlgeoApp.prototype.handleMouseUp = function (e) {
+    if (this.sliderDragSnapshot && this.sliderDragMoved) {
+        this.pushUndoEntry(this.sliderDragSnapshot, '슬라이더 조절');
+    }
+    this.sliderDragSnapshot = null;
+    this.sliderDragMoved = false;
+    this.activeSlider = null;
     if (this.dragSnapshot && this.dragMoved) {
-        this.pushUndoEntry(this.dragSnapshot, '점 이동');
+        this.pushUndoEntry(this.dragSnapshot, '객체 이동');
     }
     this.dragSnapshot = null;
     this.dragMoved = false;
-    this.isDraggingCanvas = false;
+    this.dragTranslate = null;
     this.activePoint = null;
+    this.isDraggingCanvas = false;
     this.updateCanvasCursor();
 };
 
@@ -3911,9 +4429,132 @@ AlgeoApp.prototype.findObjectAt = function (screenX, screenY) {
                     return obj;
                 }
             }
+        } else if (obj.type === 'SLIDER') {
+            if (this.isNearSlider(screenX, screenY, obj)) {
+                return obj;
+            }
         }
     }
     return null;
+};
+
+// 슬라이더 손잡이만 히트 판정
+AlgeoApp.prototype.isNearSliderThumb = function (screenX, screenY, slider) {
+    const bounds = this.renderer.getSliderScreenBounds(slider);
+    const thumbDist = Math.sqrt(
+        (bounds.thumbX - screenX) * (bounds.thumbX - screenX) +
+        (bounds.thumbY - screenY) * (bounds.thumbY - screenY)
+    );
+
+    return thumbDist <= ALGEO_SLIDER_THUMB_R + 6;
+};
+
+// 슬라이더 트랙·손잡이 히트 판정
+AlgeoApp.prototype.isNearSlider = function (screenX, screenY, slider) {
+    const bounds = this.renderer.getSliderScreenBounds(slider);
+
+    if (this.isNearSliderThumb(screenX, screenY, slider)) {
+        return true;
+    }
+
+    if (screenY >= bounds.thumbY - 12 && screenY <= bounds.thumbY + 12 &&
+        screenX >= bounds.left - 4 && screenX <= bounds.right + 4) {
+        return true;
+    }
+
+    if (screenX >= bounds.left - 4 && screenX <= bounds.right + 4 &&
+        screenY >= bounds.top - 18 && screenY <= bounds.top + 4) {
+        return true;
+    }
+
+    return false;
+};
+
+// 화면 x 좌표 → 슬라이더 값
+AlgeoApp.prototype.sliderValueFromScreenX = function (slider, screenX) {
+    const bounds = this.renderer.getSliderScreenBounds(slider);
+    const range = slider.max - slider.min;
+    let t;
+
+    if (bounds.right - bounds.left < 1) {
+        return slider.value;
+    }
+
+    t = (screenX - bounds.left) / (bounds.right - bounds.left);
+    if (t < 0) {
+        t = 0;
+    }
+    if (t > 1) {
+        t = 1;
+    }
+
+    return slider.min + t * range;
+};
+
+// 클릭 위치의 슬라이더 탐색 (위에 그린 슬라이더 우선)
+AlgeoApp.prototype.findSliderAt = function (screenX, screenY) {
+    const list = this.engine.objects;
+    let i;
+
+    for (i = list.length - 1; i >= 0; i--) {
+        if (list[i].type === 'SLIDER' && this.isNearSlider(screenX, screenY, list[i])) {
+            return list[i];
+        }
+    }
+
+    return null;
+};
+
+// 슬라이더 변수 이름 자동 생성 (a, b, c …)
+AlgeoApp.prototype.getNextSliderName = function () {
+    let count = 0;
+    let name = '';
+    const base = 'abcdefghijklmnopqrstuvwxyz';
+
+    do {
+        if (count < base.length) {
+            name = base.charAt(count);
+        } else {
+            name = 'a' + (count - base.length + 1);
+        }
+        count += 1;
+    } while (this.engine.findSliderByName(name) !== null);
+
+    return name;
+};
+
+// 수학 좌표에 슬라이더 배치
+AlgeoApp.prototype.createSliderAtMath = function (mathX, mathY, name) {
+    const sliderName = name || this.getNextSliderName();
+    const slider = this.engine.addSlider(
+        sliderName,
+        ALGEO_SLIDER_DEFAULT_MIN,
+        ALGEO_SLIDER_DEFAULT_MAX,
+        ALGEO_SLIDER_DEFAULT_VALUE,
+        ALGEO_SLIDER_DEFAULT_STEP,
+        mathX,
+        mathY
+    );
+    return slider;
+};
+
+// 이동 도구 — 객체·점 평행 이동 드래그 시작
+AlgeoApp.prototype.beginTranslateDrag = function (pointIds, sliderId, mathX, mathY) {
+    const hasPoints = pointIds && pointIds.length > 0;
+
+    if (!hasPoints && !sliderId) {
+        return;
+    }
+
+    this.dragTranslate = {
+        pointIds: hasPoints ? pointIds.slice() : [],
+        sliderId: sliderId || null,
+        lastMathX: mathX,
+        lastMathY: mathY
+    };
+    this.dragSnapshot = this.captureEngineState();
+    this.dragMoved = false;
+    this.setCanvasCursor('grabbing');
 };
 
 // 화면 좌표 기준 다각형 내부 포함 여부 (삭제 툴용)
@@ -3951,7 +4592,8 @@ AlgeoApp.prototype.isNearFunction = function (screenX, screenY, funcObj) {
     let hasPrev = false;
 
     for (let mathX = left; mathX <= right; mathX += step) {
-        const mathY = funcObj.slope * mathX + funcObj.intercept;
+        const coeffs = this.engine.getFunctionCoeffs(funcObj);
+        const mathY = coeffs.slope * mathX + coeffs.intercept;
         const sx = r.toScreenX(mathX);
         const sy = r.toScreenY(mathY);
 
@@ -4721,6 +5363,7 @@ AlgeoApp.prototype.buildAlgebraPropsHtml = function (obj) {
             html += '<div class="algebra-props-form">';
             html += '<p class="props-readonly">끝점: ' + p1.name + ', ' + p2.name + '</p>';
             html += '<label class="prop-field">길이 <input type="text" class="prop-input" data-prop="length" value="' + len.toFixed(2) + '" /></label>';
+            html += '<label class="prop-field">슬라이더 <input type="text" class="prop-input" data-prop="lengthVar" value="' + (obj.lengthVar || '') + '" placeholder="a" /></label>';
             html += '<button type="button" class="prop-apply-btn">적용</button>';
             html += '</div>';
         }
@@ -4737,9 +5380,21 @@ AlgeoApp.prototype.buildAlgebraPropsHtml = function (obj) {
             html += '<div class="algebra-props-form">';
             html += '<p class="props-readonly">중심: ' + center.name + '</p>';
             html += '<label class="prop-field">반지름 <input type="text" class="prop-input" data-prop="radius" value="' + radius.toFixed(2) + '" /></label>';
+            html += '<label class="prop-field">슬라이더 <input type="text" class="prop-input" data-prop="radiusVar" value="' + (obj.radiusVar || '') + '" placeholder="a" /></label>';
             html += '<button type="button" class="prop-apply-btn">적용</button>';
             html += '</div>';
         }
+        return html;
+    }
+
+    if (obj.type === 'SLIDER') {
+        html += '<div class="algebra-props-form">';
+        html += '<label class="prop-field">최소 <input type="text" class="prop-input" data-prop="min" value="' + obj.min + '" /></label>';
+        html += '<label class="prop-field">최대 <input type="text" class="prop-input" data-prop="max" value="' + obj.max + '" /></label>';
+        html += '<label class="prop-field">값 <input type="text" class="prop-input" data-prop="value" value="' + obj.value + '" /></label>';
+        html += '<label class="prop-field">간격 <input type="text" class="prop-input" data-prop="step" value="' + obj.step + '" /></label>';
+        html += '<button type="button" class="prop-apply-btn">적용</button>';
+        html += '</div>';
         return html;
     }
 
@@ -4796,6 +5451,10 @@ AlgeoApp.prototype.applyAlgebraProps = function () {
     let numVal;
     let slopeVal;
     let interceptVal;
+    let minVal;
+    let maxVal;
+    let stepVal;
+    let varName;
 
     if (!obj) {
         return;
@@ -4814,25 +5473,72 @@ AlgeoApp.prototype.applyAlgebraProps = function () {
         }
         this.engine.movePoint(obj.id, xVal, yVal);
     } else if (obj.type === 'SEGMENT') {
-        numVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="length"]').val());
-        if (isNaN(numVal) || numVal <= 0) {
-            $('#algebraError').text('길이는 0보다 큰 숫자여야 합니다.');
-            return;
-        }
-        if (!this.engine.setSegmentLength(obj.id, numVal)) {
-            $('#algebraError').text('선분 길이를 변경할 수 없습니다.');
-            return;
+        varName = ($('#algebraPropsPanel .prop-input[data-prop="lengthVar"]').val() || '').replace(/^\s+|\s+$/g, '').toLowerCase();
+        if (varName) {
+            if (!this.engine.findSliderByName(varName)) {
+                $('#algebraError').text('슬라이더 "' + varName + '" 를 찾을 수 없습니다.');
+                return;
+            }
+            obj.lengthVar = varName;
+            numVal = this.engine.getSliderValue(varName);
+            if (!this.engine.setSegmentLength(obj.id, numVal)) {
+                $('#algebraError').text('선분 길이를 변경할 수 없습니다.');
+                return;
+            }
+        } else {
+            obj.lengthVar = null;
+            numVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="length"]').val());
+            if (isNaN(numVal) || numVal <= 0) {
+                $('#algebraError').text('길이는 0보다 큰 숫자여야 합니다.');
+                return;
+            }
+            if (!this.engine.setSegmentLength(obj.id, numVal)) {
+                $('#algebraError').text('선분 길이를 변경할 수 없습니다.');
+                return;
+            }
         }
     } else if (obj.type === 'CIRCLE') {
-        numVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="radius"]').val());
-        if (isNaN(numVal) || numVal <= 0) {
-            $('#algebraError').text('반지름은 0보다 큰 숫자여야 합니다.');
+        varName = ($('#algebraPropsPanel .prop-input[data-prop="radiusVar"]').val() || '').replace(/^\s+|\s+$/g, '').toLowerCase();
+        if (varName) {
+            if (!this.engine.findSliderByName(varName)) {
+                $('#algebraError').text('슬라이더 "' + varName + '" 를 찾을 수 없습니다.');
+                return;
+            }
+            obj.radiusVar = varName;
+            numVal = this.engine.getSliderValue(varName);
+            if (!this.engine.setCircleRadius(obj.id, numVal)) {
+                $('#algebraError').text('반지름을 변경할 수 없습니다.');
+                return;
+            }
+        } else {
+            obj.radiusVar = null;
+            numVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="radius"]').val());
+            if (isNaN(numVal) || numVal <= 0) {
+                $('#algebraError').text('반지름은 0보다 큰 숫자여야 합니다.');
+                return;
+            }
+            if (!this.engine.setCircleRadius(obj.id, numVal)) {
+                $('#algebraError').text('반지름을 변경할 수 없습니다.');
+                return;
+            }
+        }
+    } else if (obj.type === 'SLIDER') {
+        minVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="min"]').val());
+        maxVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="max"]').val());
+        numVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="value"]').val());
+        stepVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="step"]').val());
+        if (isNaN(minVal) || isNaN(maxVal) || isNaN(numVal) || isNaN(stepVal) || stepVal <= 0) {
+            $('#algebraError').text('슬라이더 범위·값·간격을 확인하세요.');
             return;
         }
-        if (!this.engine.setCircleRadius(obj.id, numVal)) {
-            $('#algebraError').text('반지름을 변경할 수 없습니다.');
+        if (maxVal <= minVal) {
+            $('#algebraError').text('최대값은 최소값보다 커야 합니다.');
             return;
         }
+        obj.min = minVal;
+        obj.max = maxVal;
+        obj.step = stepVal;
+        this.engine.setSliderValue(obj.id, numVal);
     } else if (obj.type === 'FUNCTION') {
         slopeVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="slope"]').val());
         interceptVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="intercept"]').val());
@@ -4842,6 +5548,7 @@ AlgeoApp.prototype.applyAlgebraProps = function () {
         }
         obj.slope = slopeVal;
         obj.intercept = interceptVal;
+        obj.rhsRaw = null;
         obj.expression = this.formatFunctionExpression(slopeVal, interceptVal);
         obj.exprKey = this.normalizeExprKey(String(slopeVal) + 'x' + String(interceptVal));
     } else {
@@ -4944,7 +5651,9 @@ AlgeoApp.prototype.updateAlgebraView = function () {
             }
             desc = names.join('-') + ' (' + obj.vertexIds.length + '\uAC01\uD615)';
         } else if (obj.type === 'FUNCTION') {
-            desc = obj.expression;
+            desc = obj.rhsRaw ? ('y = ' + obj.rhsRaw) : obj.expression;
+        } else if (obj.type === 'SLIDER') {
+            desc = '슬라이더 [' + obj.min + ', ' + obj.max + '] = ' + obj.value.toFixed(2);
         }
 
         const itemHtml = 
@@ -5120,25 +5829,76 @@ AlgeoApp.prototype.parseAlgebraInput = function (input) {
         return { success: true, message: '' };
     }
 
-    // 일차함수: y = 2x + 1
-    const funcMatch = trimmed.match(/^y\s*=\s*(.+)$/i);
-    if (funcMatch) {
-        const linear = this.parseLinearRhs(funcMatch[1]);
-        if (!linear.success) {
-            return { success: false, message: linear.message };
+    // 슬라이더: a = Slider(0, 10) 또는 a = Slider(0, 10, 3, 0.5)
+    const sliderMatch = trimmed.match(/^([a-z])\s*=\s*slider\s*\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)(?:\s*,\s*(-?\d+(?:\.\d+)?))?(?:\s*,\s*(-?\d+(?:\.\d+)?))?\s*\)$/i);
+    if (sliderMatch) {
+        const sliderName = sliderMatch[1].toLowerCase();
+        const sMin = parseFloat(sliderMatch[2]);
+        const sMax = parseFloat(sliderMatch[3]);
+        let sValue = sliderMatch[4] !== undefined ? parseFloat(sliderMatch[4]) : ALGEO_SLIDER_DEFAULT_VALUE;
+        let sStep = sliderMatch[5] !== undefined ? parseFloat(sliderMatch[5]) : ALGEO_SLIDER_DEFAULT_STEP;
+        const r = this.renderer;
+        let anchorX;
+        let anchorY;
+        let existingSlider;
+
+        if (isNaN(sMin) || isNaN(sMax) || isNaN(sValue) || isNaN(sStep) || sMax <= sMin || sStep <= 0) {
+            return { success: false, message: '슬라이더 범위·값·간격을 확인하세요.' };
         }
 
-        const exprKey = this.normalizeExprKey(funcMatch[1]);
-        const expression = this.formatFunctionExpression(linear.slope, linear.intercept);
+        existingSlider = this.engine.findSliderByName(sliderName);
+        if (existingSlider) {
+            existingSlider.min = sMin;
+            existingSlider.max = sMax;
+            existingSlider.step = sStep;
+            this.engine.setSliderValue(existingSlider.id, sValue);
+        } else {
+            anchorX = (r.toMathX(0) + r.toMathX(r.canvas.width)) / 2;
+            anchorY = (r.toMathY(r.canvas.height) + r.toMathY(0)) / 2;
+            this.engine.addSlider(sliderName, sMin, sMax, sValue, sStep, anchorX, anchorY);
+        }
+        return { success: true, message: '' };
+    }
+
+    // 일차함수: y = 2x + 1 또는 y = ax + b (슬라이더 변수)
+    const funcMatch = trimmed.match(/^y\s*=\s*(.+)$/i);
+    if (funcMatch) {
+        const rhsRaw = funcMatch[1].replace(/^\s+|\s+$/g, '');
+        const rhsKey = this.normalizeExprKey(rhsRaw);
+        let linear = this.engine.resolveLinearRhs(rhsRaw);
+        let slope;
+        let intercept;
+        let expression;
+        let hasVar;
+
+        if (!linear) {
+            const numeric = this.parseLinearRhs(rhsRaw);
+            if (!numeric.success) {
+                return { success: false, message: numeric.message };
+            }
+            slope = numeric.slope;
+            intercept = numeric.intercept;
+        } else {
+            slope = linear.slope;
+            intercept = linear.intercept;
+        }
+
+        hasVar = /[a-z]/.test(rhsKey);
+        expression = hasVar ? ('y = ' + rhsRaw.replace(/\s+/g, '')) : this.formatFunctionExpression(slope, intercept);
+        const exprKey = hasVar ? ('var:' + rhsKey) : this.normalizeExprKey(rhsRaw);
         const existingFunc = this.engine.findFunctionByExprKey(exprKey);
 
         if (existingFunc) {
-            existingFunc.slope = linear.slope;
-            existingFunc.intercept = linear.intercept;
+            existingFunc.slope = slope;
+            existingFunc.intercept = intercept;
             existingFunc.expression = expression;
+            existingFunc.rhsRaw = hasVar ? rhsRaw.replace(/\s+/g, '').replace(/\*/g, '') : null;
         } else {
             const funcName = this.getNextFunctionName();
-            this.engine.addFunction(funcName, expression, exprKey, linear.slope, linear.intercept);
+            const funcObj = this.engine.addFunction(funcName, expression, exprKey, slope, intercept);
+            if (funcObj && hasVar) {
+                funcObj.rhsRaw = rhsRaw.replace(/\s+/g, '').replace(/\*/g, '');
+            }
         }
         return { success: true, message: '' };
     }
