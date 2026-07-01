@@ -182,7 +182,7 @@ const ALGEO_TOOL_CATEGORIES = [
         title: '원',
         tools: [
             { tool: 'CIRCLE', label: '원', iconId: 'circle', hint: '중심 → 드래그 → 확정' },
-            { tool: 'ARC', label: '호', iconId: 'arc', hint: '끝점2 → 호위점' }
+            { tool: 'ARC', label: '호', iconId: 'arc', hint: '끝점2 → 호 위 점' }
         ]
     },
     {
@@ -336,6 +336,47 @@ const ALGEO_TOOL_GUIDES = {
     }
 };
 
+// 뷰·캔버스 옵션 가이드 (우측 바 격자·스냅 등)
+const ALGEO_VIEW_GUIDES = {
+    grid: {
+        label: '격자 표시',
+        iconId: 'grid',
+        steps: [
+            '우측 상단 격자 버튼 또는 G 키로 켜고 끌 수 있습니다.',
+            '켜면 모눈종이 선과 눈금 숫자가 보입니다.',
+            '끄면 X·Y 좌표축만 표시됩니다.'
+        ],
+        tips: ['줌 배율에 따라 격자 간격이 자동으로 바뀝니다.', '격자 표시와 스냅은 서로 독립입니다.']
+    },
+    snap: {
+        label: '격자 스냅',
+        iconId: 'snap',
+        steps: [
+            '우측 상단 자석 버튼 또는 N 키로 켜고 끌 수 있습니다.',
+            '켜면 점 배치·이동 시 가장 가까운 격자 교차점에 맞춰집니다.',
+            '끄면 클릭한 위치 그대로 좌표가 정해집니다.'
+        ],
+        tips: ['스냅 간격은 현재 줌의 격자 간격과 같습니다.', '격자를 끈 상태에서도 스냅은 동작합니다.']
+    }
+};
+
+// 뷰 가이드 — 현재 on/off 상태 반영 요약 문구
+function buildViewGuideSummary(viewId, app) {
+    if (viewId === 'grid') {
+        if (app.renderer.showGrid) {
+            return '현재: 격자·눈금이 표시됩니다.';
+        }
+        return '현재: 격자를 끈 상태입니다. (좌표축만 표시)';
+    }
+    if (viewId === 'snap') {
+        if (app.renderer.snapEnabled) {
+            return '현재: 격자 스냅을 켠 상태입니다. 점이 격자에 맞춰집니다.';
+        }
+        return '현재: 격자 스냅을 끈 상태입니다. 자유로운 위치에 놓을 수 있습니다.';
+    }
+    return '';
+}
+
 // 단축키 안내 패널 — 신규 단축키는 ALGEO_SHORTCUTS에만 추가
 const ALGEO_SHORTCUT_CATEGORIES = [
     { id: 'edit', label: '편집' },
@@ -431,7 +472,7 @@ const ALGEO_SHORTCUTS = [
         label: '격자 스냅',
         category: 'view',
         active: true,
-        desc: '점 배치·이동 시 격자 교차점에 맞춥니다.'
+        desc: '점 배치·이동 시 격자 교차점 맞춤을 켜거나 끕니다.'
     }
 ];
 
@@ -3224,6 +3265,7 @@ function AlgeoApp(engine, renderer) {
     this.sliderDragMoved = false;
     this.theme = 'light';             // UI·캔버스 테마: light | dark
     this.shortcutPanelOpen = false;   // 단축키 안내 패널 표시 여부
+    this.guideOverride = null;        // 뷰 옵션 가이드 (grid | snap) — 도구 가이드 대신 표시
 }
 
 AlgeoApp.prototype.init = function () {
@@ -3352,6 +3394,7 @@ AlgeoApp.prototype.init = function () {
                 return;
             }
             self.setGridVisible(!self.renderer.showGrid);
+            self.showViewGuide('grid');
             e.preventDefault();
             return;
         }
@@ -3360,6 +3403,7 @@ AlgeoApp.prototype.init = function () {
                 return;
             }
             self.setSnapEnabled(!self.renderer.snapEnabled);
+            self.showViewGuide('snap');
             e.preventDefault();
             return;
         }
@@ -3504,6 +3548,7 @@ AlgeoApp.prototype.renderToolFlyout = function (categoryId) {
 // 작도 도구 선택 및 UI 동기화
 AlgeoApp.prototype.selectTool = function (toolId) {
     this.currentTool = toolId;
+    this.guideOverride = null;
     this.guideCollapsed = false;
     $('#toolGuide').removeClass('collapsed');
     $('#btnCollapseGuide').text('\u2212').attr('title', '안내 접기');
@@ -3912,14 +3957,30 @@ AlgeoApp.prototype.getGuideActiveStepIndex = function () {
 
 // 캔버스 하단 도구 가이드 패널 갱신
 AlgeoApp.prototype.syncToolGuide = function () {
-    const meta = findToolMeta(this.currentTool);
-    const guide = meta.guide;
-    const activeIndex = this.getGuideActiveStepIndex();
+    let meta;
+    let guide;
+    let activeIndex;
     let stepsHtml = '';
     let tipsHtml = '';
     let i;
     let stepClass;
     let tips;
+    let summaryText;
+
+    if (this.guideOverride && ALGEO_VIEW_GUIDES[this.guideOverride]) {
+        const viewGuide = ALGEO_VIEW_GUIDES[this.guideOverride];
+        meta = {
+            label: viewGuide.label,
+            iconId: viewGuide.iconId
+        };
+        guide = viewGuide;
+        activeIndex = -1;
+        summaryText = buildViewGuideSummary(this.guideOverride, this);
+    } else {
+        meta = findToolMeta(this.currentTool);
+        guide = meta.guide;
+        activeIndex = this.getGuideActiveStepIndex();
+    }
 
     $('#toolGuideIcon').html(renderAlgeoIcon(meta.iconId, 'guide-icon-tile'));
     $('#toolGuideTitle').text(meta.label);
@@ -3931,14 +3992,20 @@ AlgeoApp.prototype.syncToolGuide = function () {
         return;
     }
 
-    $('#toolGuideSummary').text(guide.summary || '');
+    if (summaryText) {
+        $('#toolGuideSummary').text(summaryText);
+    } else {
+        $('#toolGuideSummary').text(guide.summary || '');
+    }
 
     for (i = 0; i < guide.steps.length; i++) {
         stepClass = 'tool-guide-step';
-        if (i < activeIndex) {
-            stepClass += ' done';
-        } else if (i === activeIndex) {
-            stepClass += ' active';
+        if (activeIndex >= 0) {
+            if (i < activeIndex) {
+                stepClass += ' done';
+            } else if (i === activeIndex) {
+                stepClass += ' active';
+            }
         }
         stepsHtml += '<li class="' + stepClass + '">' +
             '<span class="step-num">' + (i + 1) + '</span>' +
@@ -3957,6 +4024,19 @@ AlgeoApp.prototype.syncToolGuide = function () {
         }
     }
     $('#toolGuideTips').text(tipsHtml);
+};
+
+// 뷰 옵션(격자·스냅) 가이드 표시
+AlgeoApp.prototype.showViewGuide = function (viewId) {
+    if (!ALGEO_VIEW_GUIDES[viewId]) {
+        return;
+    }
+    this.guideOverride = viewId;
+    this.guideCollapsed = false;
+    $('#toolGuide').removeClass('collapsed');
+    $('#btnCollapseGuide').text('\u2212').attr('title', '안내 접기');
+    this.setGuideVisible(true);
+    this.syncToolGuide();
 };
 
 // 대수창 항목 선택 및 캔버스 하이라이트 연동
@@ -5580,11 +5660,13 @@ AlgeoApp.prototype.initViewToggles = function () {
     $('#btnToggleGrid').on('click', function (e) {
         e.stopPropagation();
         self.setGridVisible(!self.renderer.showGrid);
+        self.showViewGuide('grid');
     });
 
     $('#btnToggleSnap').on('click', function (e) {
         e.stopPropagation();
         self.setSnapEnabled(!self.renderer.snapEnabled);
+        self.showViewGuide('snap');
     });
 };
 
@@ -5600,6 +5682,9 @@ AlgeoApp.prototype.setGridVisible = function (visible) {
 
     this.syncViewToggleUI();
     this.renderer.draw();
+    if (this.guideOverride === 'grid') {
+        this.syncToolGuide();
+    }
 };
 
 // 격자 스냅 설정
@@ -5613,6 +5698,9 @@ AlgeoApp.prototype.setSnapEnabled = function (enabled) {
     }
 
     this.syncViewToggleUI();
+    if (this.guideOverride === 'snap') {
+        this.syncToolGuide();
+    }
 };
 
 // 격자·스냅 토글 버튼 상태 갱신
@@ -6051,7 +6139,7 @@ AlgeoApp.prototype.applyAlgebraProps = function () {
         varName = ($('#algebraPropsPanel .prop-input[data-prop="lengthVar"]').val() || '').replace(/^\s+|\s+$/g, '').toLowerCase();
         if (varName) {
             if (!this.engine.findSliderByName(varName)) {
-                $('#algebraError').text('슬라이더 "' + varName + '" 를 찾을 수 없습니다.');
+                $('#algebraError').text('슬라이더 ' + varName + '을(를) 찾을 수 없습니다.');
                 return;
             }
             obj.lengthVar = varName;
@@ -6076,7 +6164,7 @@ AlgeoApp.prototype.applyAlgebraProps = function () {
         varName = ($('#algebraPropsPanel .prop-input[data-prop="radiusVar"]').val() || '').replace(/^\s+|\s+$/g, '').toLowerCase();
         if (varName) {
             if (!this.engine.findSliderByName(varName)) {
-                $('#algebraError').text('슬라이더 "' + varName + '" 를 찾을 수 없습니다.');
+                $('#algebraError').text('슬라이더 ' + varName + '을(를) 찾을 수 없습니다.');
                 return;
             }
             obj.radiusVar = varName;
