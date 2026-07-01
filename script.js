@@ -92,6 +92,9 @@ const ALGEBRA_TYPE_ORDER = {
     FUNCTION: 11
 };
 
+// Undo 스택 최대 깊이
+const ALGEO_UNDO_MAX = 50;
+
 // 좌측 도구 레일 카테고리 (플라이아웃 서브메뉴 구성)
 const ALGEO_TOOL_CATEGORIES = [
     {
@@ -477,7 +480,13 @@ function createAlgeoUI($container) {
         '    <div class="algeo-workspace">' +
         '        <div class="algeo-sidebar" id="algebraSidebar">' +
         '            <div class="sidebar-header">' +
-        '                <h3>대수창</h3>' +
+        '                <div class="sidebar-header-left">' +
+        '                    <h3>대수창</h3>' +
+        '                    <div class="sidebar-undo-group">' +
+        '                        <button type="button" id="btnUndo" class="sidebar-undo-btn" title="실행 취소 (Ctrl+Z)" aria-label="실행 취소" disabled>↶</button>' +
+        '                        <button type="button" id="btnRedo" class="sidebar-undo-btn" title="다시 실행 (Ctrl+Y)" aria-label="다시 실행" disabled>↷</button>' +
+        '                    </div>' +
+        '                </div>' +
         '                <button type="button" id="btnToggleAlgebra" class="sidebar-toggle-btn" title="대수창 숨기기" aria-label="대수창 숨기기">◀</button>' +
         '            </div>' +
         '            <div class="algebra-list-tabs">' +
@@ -491,6 +500,14 @@ function createAlgeoUI($container) {
         '                <div class="empty-msg">오브젝트가 없습니다.</div>' +
         '            </div>' +
         '            <div class="sidebar-input-area">' +
+        '                <div class="algebra-history-panel" id="algebraHistoryPanel">' +
+        '                    <div class="history-toolbar">' +
+        '                        <span class="history-title">작업 기록</span>' +
+        '                    </div>' +
+        '                    <ul id="algebraHistoryList" class="algebra-history-list">' +
+        '                        <li class="history-empty">아직 기록이 없습니다.</li>' +
+        '                    </ul>' +
+        '                </div>' +
         '                <div class="algebra-input-top">' +
         '                    <button type="button" id="btnCmdDict" class="cmd-dict-btn">명령어 사전</button>' +
         '                </div>' +
@@ -1290,6 +1307,29 @@ AlgeoEngine.prototype.deleteObject = function (id) {
         this.objects.splice(idx, 1);
     }
     delete this.objectMap[id];
+};
+
+// 엔진 상태 직렬화 (Undo/Redo용)
+AlgeoEngine.prototype.exportState = function () {
+    return {
+        objects: JSON.parse(JSON.stringify(this.objects)),
+        nextId: this.nextId
+    };
+};
+
+// 엔진 상태 복원
+AlgeoEngine.prototype.importState = function (state) {
+    let i;
+    let obj;
+
+    this.objects = JSON.parse(JSON.stringify(state.objects));
+    this.nextId = state.nextId;
+    this.objectMap = {};
+
+    for (i = 0; i < this.objects.length; i++) {
+        obj = this.objects[i];
+        this.objectMap[obj.id] = obj;
+    }
 };
 
 
@@ -2435,6 +2475,12 @@ function AlgeoApp(engine, renderer) {
     this.guideCollapsed = false;      // 가이드 패널 내용 접힘
     this.guideHidden = false;         // 가이드 패널 전체 숨김
     this.guideDragging = false;       // 가이드 드래그 중
+    this.undoStack = [];              // 실행 취소 스택
+    this.redoStack = [];              // 다시 실행 스택
+    this.formulaHistory = [];         // 대수창 수식 입력 기록
+    this.isRestoringHistory = false;  // Undo/Redo 복원 중 (기록 중복 방지)
+    this.dragSnapshot = null;         // 점 드래그 시작 시점 스냅샷
+    this.dragMoved = false;           // 드래그 중 좌표 변경 여부
 }
 
 AlgeoApp.prototype.init = function () {
@@ -2493,6 +2539,7 @@ AlgeoApp.prototype.init = function () {
     // 4. 대수창 수식 입력·자동완성·명령어 사전
     self.initAlgebraInputAssist();
     self.initAlgebraSidebar();
+    self.initHistory();
 
     // 5. 대수창 항목 클릭 → 캔버스 객체 하이라이트
     $('#algebraList').on('click', '.algebra-item', function () {
@@ -2503,8 +2550,26 @@ AlgeoApp.prototype.init = function () {
     self.selectTool('MOVE');
     self.updateCanvasCursor();
 
-    // Esc — 작도 중 취소 / Enter — 다각형 닫기
+    // Esc — 작도 중 취소 / Enter — 다각형 닫기 / Ctrl+Z·Y — Undo·Redo
     $(document).on('keydown', function (e) {
+        if (e.ctrlKey && !e.altKey) {
+            if (e.keyCode === 90 && !e.shiftKey) {
+                if ($(e.target).closest('input, textarea').length) {
+                    return;
+                }
+                self.undo();
+                e.preventDefault();
+                return;
+            }
+            if (e.keyCode === 89 || (e.keyCode === 90 && e.shiftKey)) {
+                if ($(e.target).closest('input, textarea').length) {
+                    return;
+                }
+                self.redo();
+                e.preventDefault();
+                return;
+            }
+        }
         if (e.keyCode === 13) {
             if ($(e.target).closest('#algebraInput').length) {
                 return;
@@ -3064,6 +3129,7 @@ AlgeoApp.prototype.handleSegmentLineMouseDown = function (e, hitPoint) {
 
     if (this.constructionDraft && this.constructionDraft.type === toolType) {
         const draft = this.constructionDraft;
+        this.recordHistory(toolType === 'SEGMENT' ? '선분 생성' : '직선 생성');
         const p2Id = this.resolvePointAtClick(mouseX, mouseY, hitPoint);
         if (p2Id === draft.p1Id) {
             r.draw();
@@ -3101,6 +3167,7 @@ AlgeoApp.prototype.handleAngleMouseDown = function (e, hitPoint) {
 
     if (this.constructionDraft && this.constructionDraft.type === 'ANGLE') {
         const draft = this.constructionDraft;
+        this.recordHistory('각도 생성');
         let ray2Id = null;
         if (hitPoint && hitPoint.id !== draft.vertexId && hitPoint.id !== draft.ray1Id) {
             ray2Id = hitPoint.id;
@@ -3169,6 +3236,7 @@ AlgeoApp.prototype.handleParallelPerpMouseDown = function (e, hitPoint) {
     if (this.constructionDraft &&
         (this.constructionDraft.type === 'PARALLEL_LINE' || this.constructionDraft.type === 'PERP_LINE')) {
         const draft = this.constructionDraft;
+        this.recordHistory(draft.type === 'PARALLEL_LINE' ? '평행선 생성' : '수직선 생성');
         const throughId = this.resolvePointAtClick(mouseX, mouseY, hitPoint);
         const ref1 = this.engine.objectMap[draft.refP1Id];
         const ref2 = this.engine.objectMap[draft.refP2Id];
@@ -3260,6 +3328,7 @@ AlgeoApp.prototype.confirmArcDraft = function (mouseX, mouseY, hitPoint) {
     const draft = this.constructionDraft;
     if (!draft || draft.type !== 'ARC') { return; }
 
+    this.recordHistory('호 생성');
     const p1 = this.engine.objectMap[draft.p1Id];
     const p2 = this.engine.objectMap[draft.p2Id];
     if (!p1 || !p2) {
@@ -3322,6 +3391,7 @@ AlgeoApp.prototype.confirmCircleDraft = function (mouseX, mouseY, hitPoint) {
     const draft = this.constructionDraft;
     if (!draft || draft.type !== 'CIRCLE') { return; }
 
+    this.recordHistory('원 생성');
     const center = this.engine.objectMap[draft.centerId];
     if (!center) {
         this.clearToolDraft();
@@ -3407,6 +3477,7 @@ AlgeoApp.prototype.confirmPolygonDraft = function () {
         return;
     }
 
+    this.recordHistory('다각형 생성');
     const vertexIds = draft.vertexIds.slice();
     if (!this.engine.findPolygonByVertices(vertexIds)) {
         const name = this.buildPolygonName(vertexIds);
@@ -3446,6 +3517,8 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
         if (hitPoint && hitPoint.type === 'POINT') {
             // 자유 점만 드래그 가능 (중점은 종속 객체)
             this.activePoint = hitPoint;
+            this.dragSnapshot = this.captureEngineState();
+            this.dragMoved = false;
             this.setCanvasCursor('grabbing');
         } else if (!hitPoint) {
             // 빈 공간 클릭 -> 선택 해제 후 캔버스 패닝 시작
@@ -3464,6 +3537,7 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
             const mathX = r.toMathX(mouseX);
             const mathY = r.toMathY(mouseY);
             const name = this.getNextPointName();
+            this.recordHistory('점 생성');
             this.engine.addPoint(name, mathX, mathY);
             this.updateAlgebraView();
             r.draw();
@@ -3493,6 +3567,7 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
                     const p2 = this.engine.objectMap[p2Id];
                     if (!this.engine.findMidpointByPoints(p1Id, p2Id)) {
                         const name = 'M' + p1.name + p2.name;
+                        this.recordHistory('중점 생성');
                         this.engine.addMidpoint(name, p1Id, p2Id);
                         this.updateAlgebraView();
                     }
@@ -3508,6 +3583,7 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
                     const p2 = this.engine.objectMap[p2Id];
                     if (!this.engine.findPerpBisectorByPoints(p1Id, p2Id)) {
                         const name = 'pb' + p1.name + p2.name;
+                        this.recordHistory('수직이등분선 생성');
                         this.engine.addPerpBisector(name, p1Id, p2Id);
                         this.updateAlgebraView();
                     }
@@ -3522,6 +3598,7 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
     } else if (this.currentTool === 'DELETE') {
         // 객체 삭제
         if (hitPoint) {
+            this.recordHistory('객체 삭제');
             this.engine.deleteObject(hitPoint.id);
             this.validateAlgebraSelection();
             this.updateAlgebraView();
@@ -3530,6 +3607,7 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
             // 다른 도형(선분, 원, 함수) 삭제 체크
             const hitObj = this.findObjectAt(mouseX, mouseY);
             if (hitObj) {
+                this.recordHistory('객체 삭제');
                 this.engine.deleteObject(hitObj.id);
                 this.validateAlgebraSelection();
                 this.updateAlgebraView();
@@ -3556,6 +3634,7 @@ AlgeoApp.prototype.handleMouseMove = function (e) {
         r.draw();
     } else if (this.activePoint) {
         // 점 드래그 이동 중
+        this.dragMoved = true;
         const mathX = r.toMathX(mouseX);
         const mathY = r.toMathY(mouseY);
         this.engine.movePoint(this.activePoint.id, mathX, mathY);
@@ -3568,6 +3647,11 @@ AlgeoApp.prototype.handleMouseMove = function (e) {
 
 // 마우스 업 핸들러
 AlgeoApp.prototype.handleMouseUp = function (e) {
+    if (this.dragSnapshot && this.dragMoved) {
+        this.pushUndoEntry(this.dragSnapshot, '점 이동');
+    }
+    this.dragSnapshot = null;
+    this.dragMoved = false;
     this.isDraggingCanvas = false;
     this.activePoint = null;
     this.updateCanvasCursor();
@@ -4234,6 +4318,173 @@ AlgeoApp.prototype.handleCircleInput = function (centerName, pointName) {
     return { success: true, message: '' };
 };
 
+// HTML 특수문자 이스케이프 (히스토리 표시용)
+function escapeHtmlText(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+// Undo/Redo — 엔진 상태 캡처
+AlgeoApp.prototype.captureEngineState = function () {
+    return this.engine.exportState();
+};
+
+// Undo/Redo — 엔진 상태 복원 후 UI 동기화
+AlgeoApp.prototype.restoreEngineState = function (state) {
+    this.engine.importState(state);
+};
+
+// Undo 스택에 항목 추가 (선행 스냅샷 + 라벨)
+AlgeoApp.prototype.pushUndoEntry = function (stateSnapshot, label) {
+    if (this.isRestoringHistory) {
+        return;
+    }
+    this.undoStack.push({
+        label: label || '작업',
+        state: stateSnapshot
+    });
+    if (this.undoStack.length > ALGEO_UNDO_MAX) {
+        this.undoStack.shift();
+    }
+    this.redoStack = [];
+    this.syncHistoryUI();
+};
+
+// 변경 직전 현재 상태를 Undo 스택에 기록
+AlgeoApp.prototype.recordHistory = function (label) {
+    this.pushUndoEntry(this.captureEngineState(), label);
+};
+
+// 실행 취소
+AlgeoApp.prototype.undo = function () {
+    if (this.undoStack.length === 0) {
+        return;
+    }
+    this.isRestoringHistory = true;
+    this.redoStack.push({
+        label: '되돌리기 전',
+        state: this.captureEngineState()
+    });
+    const entry = this.undoStack.pop();
+    this.restoreEngineState(entry.state);
+    this.isRestoringHistory = false;
+    this.clearToolDraft();
+    this.validateAlgebraSelection();
+    this.updateAlgebraView();
+    this.syncAlgebraPropsPanel();
+    this.renderer.draw();
+    this.syncHistoryUI();
+};
+
+// 다시 실행
+AlgeoApp.prototype.redo = function () {
+    if (this.redoStack.length === 0) {
+        return;
+    }
+    this.isRestoringHistory = true;
+    this.undoStack.push({
+        label: '다시 실행 전',
+        state: this.captureEngineState()
+    });
+    const entry = this.redoStack.pop();
+    this.restoreEngineState(entry.state);
+    this.isRestoringHistory = false;
+    this.clearToolDraft();
+    this.validateAlgebraSelection();
+    this.updateAlgebraView();
+    this.syncAlgebraPropsPanel();
+    this.renderer.draw();
+    this.syncHistoryUI();
+};
+
+// 대수창 수식 입력 기록 추가
+AlgeoApp.prototype.addFormulaHistory = function (text) {
+    let i;
+
+    if (!text) {
+        return;
+    }
+    for (i = 0; i < this.formulaHistory.length; i++) {
+        if (this.formulaHistory[i].text === text) {
+            this.formulaHistory.splice(i, 1);
+            break;
+        }
+    }
+    this.formulaHistory.unshift({ text: text });
+    if (this.formulaHistory.length > ALGEO_UNDO_MAX) {
+        this.formulaHistory.pop();
+    }
+    this.syncHistoryUI();
+};
+
+// Undo/Redo 버튼·작업 기록 UI 갱신
+AlgeoApp.prototype.syncHistoryUI = function () {
+    const canUndo = this.undoStack.length > 0;
+    const canRedo = this.redoStack.length > 0;
+    let html = '';
+    let i;
+    let entry;
+    let formulaItem;
+
+    $('#btnUndo').prop('disabled', !canUndo);
+    $('#btnRedo').prop('disabled', !canRedo);
+
+    if (this.undoStack.length === 0 && this.formulaHistory.length === 0) {
+        $('#algebraHistoryList').html('<li class="history-empty">아직 기록이 없습니다.</li>');
+        return;
+    }
+
+    for (i = this.undoStack.length - 1; i >= 0; i--) {
+        entry = this.undoStack[i];
+        html += '<li class="history-action-item" data-idx="' + i + '">' +
+            '<span class="history-action-label">' + escapeHtmlText(entry.label) + '</span>' +
+            '</li>';
+    }
+    for (i = 0; i < this.formulaHistory.length; i++) {
+        formulaItem = this.formulaHistory[i];
+        html += '<li class="history-formula-item" data-formula-idx="' + i + '">' +
+            '<span class="history-formula-tag">수식</span>' +
+            '<span class="history-formula-text">' + escapeHtmlText(formulaItem.text) + '</span>' +
+            '</li>';
+    }
+    $('#algebraHistoryList').html(html);
+};
+
+// Undo/Redo·수식 기록 패널 이벤트 초기화
+AlgeoApp.prototype.initHistory = function () {
+    const self = this;
+
+    $('#btnUndo').on('click', function (e) {
+        e.stopPropagation();
+        self.undo();
+    });
+
+    $('#btnRedo').on('click', function (e) {
+        e.stopPropagation();
+        self.redo();
+    });
+
+    $('#algebraHistoryList').on('click', '.history-formula-item', function (e) {
+        e.stopPropagation();
+        const idx = parseInt($(this).attr('data-formula-idx'), 10);
+        const item = self.formulaHistory[idx];
+        if (item) {
+            $('#algebraInput').val(item.text);
+            $('#algebraInput').focus();
+            $('#algebraError').text('');
+        }
+    });
+
+    $('#algebraHistoryList').on('mousedown', function (e) {
+        e.stopPropagation();
+    });
+
+    this.syncHistoryUI();
+};
+
 // 대수창 탭·속성 패널 초기화
 AlgeoApp.prototype.initAlgebraSidebar = function () {
     const self = this;
@@ -4403,6 +4654,8 @@ AlgeoApp.prototype.applyAlgebraProps = function () {
 
     $('#algebraError').text('');
 
+    const snapshot = this.captureEngineState();
+
     if (obj.type === 'POINT') {
         xVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="x"]').val());
         yVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="y"]').val());
@@ -4446,6 +4699,7 @@ AlgeoApp.prototype.applyAlgebraProps = function () {
         return;
     }
 
+    this.pushUndoEntry(snapshot, '속성 편집: ' + obj.name);
     this.updateAlgebraView();
     this.renderer.draw();
 };
@@ -4673,9 +4927,13 @@ AlgeoApp.prototype.applyAlgebraCommand = function (cmd) {
 // 대수창 수식 입력 처리 (예: A = (1, 2))
 AlgeoApp.prototype.handleAlgebraInput = function () {
     const input = $('#algebraInput').val();
+    const trimmed = (input || '').replace(/^\s+|\s+$/g, '');
+    const snapshot = this.captureEngineState();
     const result = this.parseAlgebraInput(input);
 
     if (result.success) {
+        this.pushUndoEntry(snapshot, '수식: ' + trimmed);
+        this.addFormulaHistory(trimmed);
         $('#algebraError').text('');
         $('#algebraInput').val('');
         this.closeCmdDict();

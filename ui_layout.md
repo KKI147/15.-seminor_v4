@@ -82,6 +82,13 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 - 종속 객체(MIDPOINT, ANGLE 등)는 읽기 전용 안내
 - `Enter` 또는 **적용** 버튼으로 반영 → `#algebraError` 검증 메시지
 
+## Undo·수식 히스토리 (4-2)
+
+- 대수창 헤더 **「대수창」** 옆 `↶` / `↷` 버튼 (`.sidebar-undo-group`)
+- 단축키 **Ctrl+Z** / **Ctrl+Y** (입력창 포커스 시 제외)
+- 대수창 하단 **작업 기록** — Undo 스택 라벨 + 수식 히스토리 (클릭 시 입력창에 채움)
+- 작도·삭제·속성 편집·수식 입력마다 엔진 스냅샷 저장 (최대 50단계)
+
 ---
 
 ## 도구 카테고리 (`ALGEO_TOOL_CATEGORIES`)
@@ -135,7 +142,7 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 - [x] 대수창 `생성순` / `종류순` 탭
 - [ ] 입력창 `+` 버튼 스타일
 - [ ] 우측 바: 격자 on/off, 스냅(자석) 토글
-- [ ] 캔버스 좌상단 Undo/Redo UI (4-2 기능 연동 후)
+- [x] 대수창 헤더 Undo/Redo UI (4-2)
 - [ ] 상단 파란 헤더 (저장·로그인 — 껍데기 또는 5-4 연동)
 - [ ] 도구 단축키 실제 동작 (5-2)
 - [ ] SVG 아이콘 세트
