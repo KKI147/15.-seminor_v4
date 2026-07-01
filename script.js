@@ -120,6 +120,21 @@ function getPopscaleFactor() {
     return 1;
 }
 
+// 캔버스 마우스 좌표 — #wrap popscale(transform) 시 offsetX/Y 보정
+function getCanvasMousePos(canvas, e) {
+    const ev = e.originalEvent ? e.originalEvent : e;
+    const rect = canvas.getBoundingClientRect();
+    let x = ev.clientX - rect.left;
+    let y = ev.clientY - rect.top;
+
+    if (rect.width > 0 && rect.height > 0) {
+        x = x * (canvas.width / rect.width);
+        y = y * (canvas.height / rect.height);
+    }
+
+    return { x: x, y: y };
+}
+
 // 좌측 도구 레일 카테고리 (플라이아웃 서브메뉴 구성)
 const ALGEO_TOOL_CATEGORIES = [
     {
@@ -163,11 +178,19 @@ const ALGEO_TOOL_CATEGORIES = [
         ]
     },
     {
+        id: 'slider',
+        icon: '⇔',
+        title: '슬라이더',
+        tools: [
+            { tool: 'SLIDER', label: '슬라이더', icon: '⇔', hint: '캔버스 클릭 생성' }
+        ]
+    },
+    {
         id: 'edit',
         icon: '⌫',
         title: '편집',
         tools: [
-            { tool: 'SLIDER', label: '슬라이더', icon: '▬', hint: '빈 곳 클릭' },
+            { tool: 'HIDE_OBJECT', label: '대상 숨기기', icon: '◌', shortcut: 'H', hint: '객체 클릭' },
             { tool: 'DELETE', label: '삭제', icon: '⌫', hint: '객체 클릭' }
         ]
     }
@@ -287,15 +310,98 @@ const ALGEO_TOOL_GUIDES = {
         tips: ['점 삭제 시 연결된 도형도 함께 제거될 수 있습니다.']
     },
     SLIDER: {
-        summary: '숫자 변수 슬라이더를 캔버스에 배치합니다.',
+        summary: '⇔ 슬라이더 도구로 캔버스에 숫자 변수를 만듭니다.',
         steps: [
-            '캔버스 빈 곳을 클릭해 슬라이더를 놓습니다.',
-            '슬라이더 막대·손잡이를 드래그해 값을 바꿉니다.',
-            '대수창에서 a=Slider(0,10) 또는 y=ax+b 로 연동합니다.'
+            '좌측 ⇔ 슬라이더 도구를 선택합니다.',
+            '캔버스를 클릭해 슬라이더를 배치합니다.',
+            '손잡이를 드래그하거나 막대를 클릭해 값을 바꿉니다.'
         ],
-        tips: ['이동 도구로도 슬라이더를 조절할 수 있습니다.', '선분·원 속성에서 슬라이더 이름으로 길이·반지름을 연동할 수 있습니다.']
+        tips: ['이동 도구로 위치를 옮길 수 있습니다.', '대수창 수식으로 다른 도형과 연동할 수 있습니다.']
+    },
+    HIDE_OBJECT: {
+        summary: '캔버스에서 객체를 숨깁니다.',
+        steps: [
+            '숨길 객체를 클릭합니다.',
+            '대수창 왼쪽 눈 아이콘으로 다시 표시할 수 있습니다.'
+        ],
+        tips: ['단축키 H — 선택 객체 표시/숨김 토글', '숨긴 객체는 캔버스에서 선택·이동되지 않습니다.']
     }
 };
+
+// 단축키 안내 패널 — 신규 단축키는 ALGEO_SHORTCUTS에만 추가
+const ALGEO_SHORTCUT_CATEGORIES = [
+    { id: 'edit', label: '편집' },
+    { id: 'tool', label: '도구' },
+    { id: 'draw', label: '작도' },
+    { id: 'view', label: '보기' }
+];
+
+const ALGEO_SHORTCUTS = [
+    {
+        id: 'undo',
+        keys: 'Ctrl+Z',
+        label: '실행 취소',
+        category: 'edit',
+        active: true,
+        desc: '마지막 작업을 되돌립니다.'
+    },
+    {
+        id: 'redo',
+        keys: 'Ctrl+Y',
+        label: '다시 실행',
+        category: 'edit',
+        active: true,
+        desc: '취소한 작업을 다시 적용합니다.'
+    },
+    {
+        id: 'hide_toggle',
+        keys: 'H',
+        label: '숨기기 / 표시',
+        category: 'edit',
+        active: true,
+        desc: '선택 객체 표시·숨김 토글. 선택 없으면 숨기기 도구로 전환합니다.'
+    },
+    {
+        id: 'tool_point',
+        keys: 'D',
+        label: '점 도구',
+        category: 'tool',
+        active: false,
+        desc: '점 생성 도구를 선택합니다.'
+    },
+    {
+        id: 'tool_midpoint',
+        keys: 'M',
+        label: '중점 도구',
+        category: 'tool',
+        active: false,
+        desc: '중점 도구를 선택합니다.'
+    },
+    {
+        id: 'draw_cancel',
+        keys: 'Esc',
+        label: '작도 취소',
+        category: 'draw',
+        active: true,
+        desc: '진행 중인 작도·선택 점을 초기화합니다.'
+    },
+    {
+        id: 'polygon_close',
+        keys: 'Enter',
+        label: '다각형 닫기',
+        category: 'draw',
+        active: true,
+        desc: '다각형 작도 중 꼭짓점 3개 이상일 때 닫습니다.'
+    },
+    {
+        id: 'shortcut_help',
+        keys: '?',
+        label: '단축키 안내',
+        category: 'view',
+        active: true,
+        desc: '단축키 목록 패널을 열거나 닫습니다.'
+    }
+];
 
 // 캔버스·UI 테마 localStorage 키
 const ALGEO_THEME_STORAGE_KEY = 'algeo_theme';
@@ -650,12 +756,22 @@ function createAlgeoUI($container) {
         '                <ol id="toolGuideSteps" class="tool-guide-steps"></ol>' +
         '                <p id="toolGuideTips" class="tool-guide-tips"></p>' +
         '            </div>' +
-        '            <div class="algeo-right-bar">' +
-        '                <button type="button" class="right-bar-btn" id="btnToggleTheme" title="다크 모드" aria-label="다크 모드">🌙</button>' +
-        '                <button type="button" class="right-bar-btn" id="btnZoomIn" title="확대">+</button>' +
-        '                <button type="button" class="right-bar-btn" id="btnZoomOut" title="축소">−</button>' +
-        '                <button type="button" class="right-bar-btn" id="btnResetView" title="원점 이동">⌂</button>' +
-        '            </div>' +
+            '            <div class="algeo-right-bar-wrap">' +
+            '                <div class="algeo-right-bar">' +
+            '                    <button type="button" class="right-bar-btn" id="btnShortcutHelp" title="단축키 안내 (?)" aria-label="단축키 안내">⌨</button>' +
+            '                    <button type="button" class="right-bar-btn" id="btnToggleTheme" title="다크 모드" aria-label="다크 모드">🌙</button>' +
+            '                    <button type="button" class="right-bar-btn" id="btnZoomIn" title="확대">+</button>' +
+            '                    <button type="button" class="right-bar-btn" id="btnZoomOut" title="축소">−</button>' +
+            '                    <button type="button" class="right-bar-btn" id="btnResetView" title="원점 이동">⌂</button>' +
+            '                </div>' +
+            '                <div class="algeo-shortcut-panel" id="shortcutPanel" aria-hidden="true">' +
+            '                    <div class="shortcut-panel-head">' +
+            '                        <strong>단축키</strong>' +
+            '                        <button type="button" id="btnCloseShortcutPanel" class="shortcut-panel-close" title="닫기" aria-label="단축키 안내 닫기">✕</button>' +
+            '                    </div>' +
+            '                    <div class="shortcut-panel-body" id="shortcutPanelBody"></div>' +
+            '                </div>' +
+            '            </div>' +
         '        </div>' +
         '    </div>' +
         '</div>';
@@ -1552,6 +1668,24 @@ AlgeoEngine.prototype.movePoint = function (pointId, newX, newY) {
     this.updateDependents(pointId);
 };
 
+// 객체 표시 여부 (visible 미설정 시 true)
+AlgeoEngine.prototype.isObjectVisible = function (obj) {
+    if (!obj) {
+        return false;
+    }
+    return obj.visible !== false;
+};
+
+// 객체 표시/숨김 설정
+AlgeoEngine.prototype.setObjectVisible = function (id, isVisible) {
+    const obj = this.objectMap[id];
+    if (!obj) {
+        return false;
+    }
+    obj.visible = isVisible !== false;
+    return true;
+};
+
 // 점·중점 참조에서 드래그 가능한 자유 점 ID 수집 (중복 제거)
 AlgeoEngine.prototype.collectFreePointIdsForPointRef = function (pointRefId) {
     const result = [];
@@ -1840,10 +1974,10 @@ AlgeoRenderer.prototype.draw = function () {
         this.drawToolPreview(this.toolPreview);
     }
 
-    // 4. 선택된 객체 — 객체색과 무관한 시안 점선+흰 외곽 강조
+    // 4. 선택된 객체 — 표시 중일 때만 강조
     if (this.selectedObjectId) {
         const selectedObj = this.engine.objectMap[this.selectedObjectId];
-        if (selectedObj) {
+        if (selectedObj && this.engine.isObjectVisible(selectedObj)) {
             this.drawSelectedObjectHighlight(selectedObj);
         }
     }
@@ -1976,11 +2110,12 @@ AlgeoRenderer.prototype.drawAxes = function (ctx, width, height) {
 AlgeoRenderer.prototype.drawObjects = function () {
     const ctx = this.ctx;
     const list = this.engine.objects;
+    const engine = this.engine;
 
     // 1단계: 함수 → 직선 → 선분 → 원 순으로 그리기 (점보다 뒤에 오도록)
     for (let i = 0; i < list.length; i++) {
         const obj = list[i];
-        if (obj.type === 'FUNCTION') {
+        if (obj.type === 'FUNCTION' && engine.isObjectVisible(obj)) {
             this.drawFunction(obj);
         }
     }
@@ -1988,13 +2123,17 @@ AlgeoRenderer.prototype.drawObjects = function () {
     // 다각형 채움 — 선·원보다 아래 레이어
     for (let i = 0; i < list.length; i++) {
         const obj = list[i];
-        if (obj.type === 'POLYGON') {
+        if (obj.type === 'POLYGON' && engine.isObjectVisible(obj)) {
             this.drawPolygonShape(obj);
         }
     }
 
     for (let i = 0; i < list.length; i++) {
         const obj = list[i];
+
+        if (!engine.isObjectVisible(obj)) {
+            continue;
+        }
 
         if (obj.type === 'LINE') {
             const p1 = this.engine.objectMap[obj.p1Id];
@@ -2066,7 +2205,7 @@ AlgeoRenderer.prototype.drawObjects = function () {
     // 2단계: 점(Point)·중점(Midpoint) 그리기 (모든 선/원 위에 보이도록)
     for (let i = 0; i < list.length; i++) {
         const obj = list[i];
-        if (obj.type === 'POINT' || obj.type === 'MIDPOINT') {
+        if ((obj.type === 'POINT' || obj.type === 'MIDPOINT') && engine.isObjectVisible(obj)) {
             this.drawPointShape(obj);
         }
     }
@@ -2074,7 +2213,7 @@ AlgeoRenderer.prototype.drawObjects = function () {
     // 슬라이더 — 점 위에 표시
     for (let i = 0; i < list.length; i++) {
         const obj = list[i];
-        if (obj.type === 'SLIDER') {
+        if (obj.type === 'SLIDER' && engine.isObjectVisible(obj)) {
             this.drawSlider(obj);
         }
     }
@@ -2997,6 +3136,7 @@ function AlgeoApp(engine, renderer) {
     this.sliderDragSnapshot = null;
     this.sliderDragMoved = false;
     this.theme = 'light';             // UI·캔버스 테마: light | dark
+    this.shortcutPanelOpen = false;   // 단축키 안내 패널 표시 여부
 }
 
 AlgeoApp.prototype.init = function () {
@@ -3012,6 +3152,7 @@ AlgeoApp.prototype.init = function () {
     self.initToolRail();
     self.initAlgebraPanelToggle();
     self.initToolGuide();
+    self.initShortcutHelp();
 
     // 2. 뷰포트 조작 버튼 이벤트 바인딩
     $('#btnZoomIn').on('click', function () {
@@ -3046,12 +3187,11 @@ AlgeoApp.prototype.init = function () {
         e.preventDefault();
         const origEvent = e.originalEvent;
         const delta = origEvent.deltaY;
-        const mouseX = origEvent.offsetX;
-        const mouseY = origEvent.offsetY;
+        const pos = getCanvasMousePos(self.renderer.canvas, origEvent);
 
         // 마우스 휠 줌 처리 (마우스 위치 기준 줌 구현)
         const zoomFactor = delta < 0 ? 1.1 : 0.9;
-        self.zoomAt(zoomFactor, mouseX, mouseY);
+        self.zoomAt(zoomFactor, pos.x, pos.y);
     });
 
     // 4. 대수창 수식 입력·자동완성·명령어 사전
@@ -3097,6 +3237,26 @@ AlgeoApp.prototype.init = function () {
                 self.confirmPolygonDraft();
                 e.preventDefault();
             }
+            return;
+        }
+        if (e.keyCode === 72 && !e.ctrlKey && !e.altKey) {
+            if ($(e.target).closest('input, textarea').length) {
+                return;
+            }
+            if (self.selectedObjectId) {
+                self.toggleObjectVisibility(self.selectedObjectId);
+            } else {
+                self.selectTool('HIDE_OBJECT');
+            }
+            e.preventDefault();
+            return;
+        }
+        if ((e.key === '?' || (e.keyCode === 191 && e.shiftKey)) && !e.ctrlKey && !e.altKey) {
+            if ($(e.target).closest('input, textarea').length) {
+                return;
+            }
+            self.toggleShortcutPanel();
+            e.preventDefault();
             return;
         }
         if (e.keyCode !== 27) {
@@ -3443,6 +3603,145 @@ AlgeoApp.prototype.initToolGuide = function () {
     });
 };
 
+// 단축키 키 조합 문자열 → <kbd> HTML
+function buildShortcutKeysHtml(keys) {
+    const parts = keys.split('+');
+    let html = '';
+    let i;
+    let part;
+
+    for (i = 0; i < parts.length; i++) {
+        part = parts[i];
+        if (i > 0) {
+            html += '<span class="shortcut-key-plus">+</span>';
+        }
+        html += '<kbd class="shortcut-kbd">' + part + '</kbd>';
+    }
+
+    return html;
+}
+
+// 단축키 안내 패널 초기화
+AlgeoApp.prototype.initShortcutHelp = function () {
+    const self = this;
+
+    self.renderShortcutPanel();
+
+    $('#btnShortcutHelp').on('mousedown', function (e) {
+        e.stopPropagation();
+    });
+
+    $('#btnShortcutHelp').on('click', function (e) {
+        e.stopPropagation();
+        self.toggleShortcutPanel();
+    });
+
+    $('#btnCloseShortcutPanel').on('mousedown', function (e) {
+        e.stopPropagation();
+    });
+
+    $('#btnCloseShortcutPanel').on('click', function (e) {
+        e.stopPropagation();
+        self.closeShortcutPanel();
+    });
+
+    $('#shortcutPanel').on('mousedown', function (e) {
+        e.stopPropagation();
+    });
+
+    $('#shortcutPanel').on('click', function (e) {
+        e.stopPropagation();
+    });
+
+    $(document).on('click', function (e) {
+        if (!self.shortcutPanelOpen) {
+            return;
+        }
+        if ($(e.target).closest('#btnShortcutHelp, #shortcutPanel, .algeo-right-bar-wrap').length) {
+            return;
+        }
+        self.closeShortcutPanel();
+    });
+};
+
+// 단축키 안내 패널 HTML 생성 (ALGEO_SHORTCUTS 기준)
+AlgeoApp.prototype.renderShortcutPanel = function () {
+    const $body = $('#shortcutPanelBody');
+    let html = '';
+    let ci;
+    let si;
+    let cat;
+    let sc;
+    let items;
+    let itemClass;
+    let badgeHtml;
+
+    for (ci = 0; ci < ALGEO_SHORTCUT_CATEGORIES.length; ci++) {
+        cat = ALGEO_SHORTCUT_CATEGORIES[ci];
+        items = [];
+
+        for (si = 0; si < ALGEO_SHORTCUTS.length; si++) {
+            sc = ALGEO_SHORTCUTS[si];
+            if (sc.category === cat.id) {
+                items.push(sc);
+            }
+        }
+
+        if (items.length === 0) {
+            continue;
+        }
+
+        html += '<section class="shortcut-section">';
+        html += '<h4 class="shortcut-section-title">' + cat.label + '</h4>';
+        html += '<ul class="shortcut-list">';
+
+        for (si = 0; si < items.length; si++) {
+            sc = items[si];
+            itemClass = 'shortcut-item' + (sc.active ? '' : ' shortcut-item-planned');
+            badgeHtml = sc.active ? '' : '<span class="shortcut-badge">예정</span>';
+
+            html += '<li class="' + itemClass + '">';
+            html += '<span class="shortcut-keys">' + buildShortcutKeysHtml(sc.keys) + '</span>';
+            html += '<div class="shortcut-text">';
+            html += '<span class="shortcut-label">' + sc.label + '</span>';
+            if (sc.desc) {
+                html += '<span class="shortcut-desc">' + sc.desc + '</span>';
+            }
+            html += '</div>';
+            html += badgeHtml;
+            html += '</li>';
+        }
+
+        html += '</ul></section>';
+    }
+
+    $body.html(html);
+};
+
+// 단축키 안내 패널 닫기
+AlgeoApp.prototype.closeShortcutPanel = function () {
+    this.shortcutPanelOpen = false;
+    $('#shortcutPanel').removeClass('open').attr('aria-hidden', 'true');
+    $('#btnShortcutHelp').removeClass('active');
+};
+
+// 단축키 안내 패널 열기
+AlgeoApp.prototype.openShortcutPanel = function () {
+    this.shortcutPanelOpen = true;
+    $('#shortcutPanel').addClass('open').attr('aria-hidden', 'false');
+    $('#btnShortcutHelp').addClass('active');
+    this.closeCmdDict();
+};
+
+// 단축키 안내 패널 토글
+AlgeoApp.prototype.toggleShortcutPanel = function () {
+    if (this.shortcutPanelOpen) {
+        this.closeShortcutPanel();
+    } else {
+        this.openShortcutPanel();
+    }
+};
+
 // 작도 중 현재 활성화할 가이드 단계 인덱스 (0-based)
 AlgeoApp.prototype.getGuideActiveStepIndex = function () {
     const tool = this.currentTool;
@@ -3590,6 +3889,11 @@ AlgeoApp.prototype.setCanvasCursor = function (cursor) {
     $(this.renderer.canvas).css('cursor', cursor);
 };
 
+// 마우스·휠 이벤트 → 캔버스 픽셀 좌표
+AlgeoApp.prototype.getEventCanvasPos = function (e) {
+    return getCanvasMousePos(this.renderer.canvas, e);
+};
+
 // 현재 도구에 맞는 캔버스 커서 설정
 AlgeoApp.prototype.updateCanvasCursor = function () {
     let cursor = 'default';
@@ -3606,6 +3910,8 @@ AlgeoApp.prototype.updateCanvasCursor = function () {
         cursor = 'pointer';
     } else if (this.currentTool === 'SLIDER') {
         cursor = 'crosshair';
+    } else if (this.currentTool === 'HIDE_OBJECT') {
+        cursor = 'pointer';
     } else if (this.currentTool === 'DELETE') {
         cursor = 'not-allowed';
     }
@@ -3648,8 +3954,9 @@ AlgeoApp.prototype.zoomAt = function (factor, screenX, screenY) {
 // 선분·직선: 점1 → 드래그 미리보기 → 점2 확정
 AlgeoApp.prototype.handleSegmentLineMouseDown = function (e, hitPoint) {
     const r = this.renderer;
-    const mouseX = e.offsetX;
-    const mouseY = e.offsetY;
+    const pos = this.getEventCanvasPos(e);
+    const mouseX = pos.x;
+    const mouseY = pos.y;
     const toolType = this.currentTool;
 
     if (this.constructionDraft && this.constructionDraft.type === toolType) {
@@ -3687,8 +3994,9 @@ AlgeoApp.prototype.handleSegmentLineMouseDown = function (e, hitPoint) {
 // 각도: 변1 → 꼭짓점 → 마우스 조절 → 확정
 AlgeoApp.prototype.handleAngleMouseDown = function (e, hitPoint) {
     const r = this.renderer;
-    const mouseX = e.offsetX;
-    const mouseY = e.offsetY;
+    const pos = this.getEventCanvasPos(e);
+    const mouseX = pos.x;
+    const mouseY = pos.y;
 
     if (this.constructionDraft && this.constructionDraft.type === 'ANGLE') {
         const draft = this.constructionDraft;
@@ -3754,8 +4062,9 @@ AlgeoApp.prototype.handleAngleMouseDown = function (e, hitPoint) {
 // 평행선·수직선: 기준2점 → 마우스 미리보기 → 통과점 확정
 AlgeoApp.prototype.handleParallelPerpMouseDown = function (e, hitPoint) {
     const r = this.renderer;
-    const mouseX = e.offsetX;
-    const mouseY = e.offsetY;
+    const pos = this.getEventCanvasPos(e);
+    const mouseX = pos.x;
+    const mouseY = pos.y;
     const toolType = this.currentTool;
 
     if (this.constructionDraft &&
@@ -3818,8 +4127,9 @@ AlgeoApp.prototype.handleParallelPerpMouseDown = function (e, hitPoint) {
 // 호: 끝점2 → 호 위 점으로 모양 조절
 AlgeoApp.prototype.handleArcMouseDown = function (e, hitPoint) {
     const r = this.renderer;
-    const mouseX = e.offsetX;
-    const mouseY = e.offsetY;
+    const pos = this.getEventCanvasPos(e);
+    const mouseX = pos.x;
+    const mouseY = pos.y;
 
     if (this.constructionDraft && this.constructionDraft.type === 'ARC') {
         this.confirmArcDraft(mouseX, mouseY, hitPoint);
@@ -3896,8 +4206,9 @@ AlgeoApp.prototype.confirmArcDraft = function (mouseX, mouseY, hitPoint) {
 // 원: 중심 → 드래그 미리보기 → 확정
 AlgeoApp.prototype.handleCircleMouseDown = function (e, hitPoint) {
     const r = this.renderer;
-    const mouseX = e.offsetX;
-    const mouseY = e.offsetY;
+    const pos = this.getEventCanvasPos(e);
+    const mouseX = pos.x;
+    const mouseY = pos.y;
 
     if (this.constructionDraft && this.constructionDraft.type === 'CIRCLE') {
         this.confirmCircleDraft(mouseX, mouseY, hitPoint);
@@ -3955,8 +4266,9 @@ AlgeoApp.prototype.confirmCircleDraft = function (mouseX, mouseY, hitPoint) {
 // 다각형: 꼭짓점 순 클릭 → 첫 점 재클릭 또는 Enter로 닫기
 AlgeoApp.prototype.handlePolygonMouseDown = function (e, hitPoint) {
     const r = this.renderer;
-    const mouseX = e.offsetX;
-    const mouseY = e.offsetY;
+    const pos = this.getEventCanvasPos(e);
+    const mouseX = pos.x;
+    const mouseY = pos.y;
     const draft = this.constructionDraft;
 
     if (draft && draft.type === 'POLYGON') {
@@ -4032,8 +4344,9 @@ AlgeoApp.prototype.buildPolygonName = function (vertexIds) {
 // 마우스 다운 핸들러
 AlgeoApp.prototype.handleMouseDown = function (e) {
     const r = this.renderer;
-    const mouseX = e.offsetX;
-    const mouseY = e.offsetY;
+    const pos = this.getEventCanvasPos(e);
+    const mouseX = pos.x;
+    const mouseY = pos.y;
 
     // 1. 마우스 위치 아래에 있는 점 탐색
     const hitPoint = this.findPointAt(mouseX, mouseY);
@@ -4126,11 +4439,18 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
     } else if (this.currentTool === 'SLIDER') {
         const hitSlider = this.findSliderAt(mouseX, mouseY);
         if (hitSlider) {
-            this.activeSlider = hitSlider;
-            this.sliderDragSnapshot = this.captureEngineState();
-            this.sliderDragMoved = false;
-            this.setCanvasCursor('grabbing');
-        } else if (!hitPoint) {
+            if (this.isNearSliderThumb(mouseX, mouseY, hitSlider)) {
+                this.activeSlider = hitSlider;
+                this.sliderDragSnapshot = this.captureEngineState();
+                this.sliderDragMoved = false;
+                this.setCanvasCursor('grabbing');
+            } else {
+                this.recordHistory('슬라이더 조절');
+                this.engine.setSliderValue(hitSlider.id, this.sliderValueFromScreenX(hitSlider, mouseX));
+                this.updateAlgebraView();
+                r.draw();
+            }
+        } else {
             const mathX = r.toMathX(mouseX);
             const mathY = r.toMathY(mouseY);
             this.recordHistory('슬라이더 생성');
@@ -4198,6 +4518,8 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
                 r.draw();
             }
         }
+    } else if (this.currentTool === 'HIDE_OBJECT') {
+        this.hideObjectAtClick(mouseX, mouseY, hitPoint);
     }
 
     this.syncToolGuide();
@@ -4206,8 +4528,9 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
 // 마우스 무브 핸들러
 AlgeoApp.prototype.handleMouseMove = function (e) {
     const r = this.renderer;
-    const mouseX = e.offsetX;
-    const mouseY = e.offsetY;
+    const pos = this.getEventCanvasPos(e);
+    const mouseX = pos.x;
+    const mouseY = pos.y;
 
     if (this.isDraggingCanvas) {
         // 캔버스 드래그 중
@@ -4274,6 +4597,9 @@ AlgeoApp.prototype.findPointAt = function (screenX, screenY) {
     for (let i = 0; i < list.length; i++) {
         const obj = list[i];
         if (obj.type === 'POINT' || obj.type === 'MIDPOINT') {
+            if (!this.engine.isObjectVisible(obj)) {
+                continue;
+            }
             const sx = this.renderer.toScreenX(obj.x);
             const sy = this.renderer.toScreenY(obj.y);
             const dist = Math.sqrt((sx - screenX) * (sx - screenX) + (sy - screenY) * (sy - screenY));
@@ -4285,13 +4611,16 @@ AlgeoApp.prototype.findPointAt = function (screenX, screenY) {
     return null;
 };
 
-// 픽셀 좌표 기준 선분 또는 원 충돌 판단 (삭제 툴 대응)
+// 픽셀 좌표 기준 선분 또는 원 충돌 판단 (삭제·숨기기 툴 대응)
 AlgeoApp.prototype.findObjectAt = function (screenX, screenY) {
     const list = this.engine.objects;
     const r = this.renderer;
 
     for (let i = 0; i < list.length; i++) {
         const obj = list[i];
+        if (!this.engine.isObjectVisible(obj)) {
+            continue;
+        }
         if (obj.type === 'SEGMENT') {
             const p1 = this.engine.objectMap[obj.p1Id];
             const p2 = this.engine.objectMap[obj.p2Id];
@@ -4497,7 +4826,8 @@ AlgeoApp.prototype.findSliderAt = function (screenX, screenY) {
     let i;
 
     for (i = list.length - 1; i >= 0; i--) {
-        if (list[i].type === 'SLIDER' && this.isNearSlider(screenX, screenY, list[i])) {
+        if (list[i].type === 'SLIDER' && this.engine.isObjectVisible(list[i]) &&
+            this.isNearSlider(screenX, screenY, list[i])) {
             return list[i];
         }
     }
@@ -5276,6 +5606,55 @@ AlgeoApp.prototype.initHistory = function () {
     this.syncHistoryUI();
 };
 
+// 객체 표시/숨김 토글 (대수창 눈 아이콘·단축키 H)
+AlgeoApp.prototype.toggleObjectVisibility = function (objId) {
+    const obj = this.engine.objectMap[objId];
+    const snapshot = this.captureEngineState();
+    let label;
+
+    if (!obj) {
+        return;
+    }
+
+    if (this.engine.isObjectVisible(obj)) {
+        this.engine.setObjectVisible(objId, false);
+        label = '객체 숨기기';
+        if (this.selectedObjectId === objId) {
+            this.clearAlgebraSelection();
+        }
+    } else {
+        this.engine.setObjectVisible(objId, true);
+        label = '객체 표시';
+    }
+
+    this.pushUndoEntry(snapshot, label + ': ' + obj.name);
+    this.updateAlgebraView();
+    this.renderer.draw();
+};
+
+// 숨기기 도구 — 클릭한 보이는 객체 숨김
+AlgeoApp.prototype.hideObjectAtClick = function (mouseX, mouseY, hitPoint) {
+    let target = null;
+
+    if (hitPoint && this.engine.isObjectVisible(hitPoint)) {
+        target = hitPoint;
+    } else {
+        target = this.findObjectAt(mouseX, mouseY);
+    }
+
+    if (!target || !this.engine.isObjectVisible(target)) {
+        return;
+    }
+
+    this.recordHistory('객체 숨기기');
+    this.engine.setObjectVisible(target.id, false);
+    if (this.selectedObjectId === target.id) {
+        this.clearAlgebraSelection();
+    }
+    this.updateAlgebraView();
+    this.renderer.draw();
+};
+
 // 대수창 탭·속성 패널 초기화
 AlgeoApp.prototype.initAlgebraSidebar = function () {
     const self = this;
@@ -5305,6 +5684,13 @@ AlgeoApp.prototype.initAlgebraSidebar = function () {
 
     $('#algebraPropsPanel').on('mousedown click', function (e) {
         e.stopPropagation();
+    });
+
+    $('#algebraList').on('click', '.obj-visibility-btn', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const objId = $(this).closest('.algebra-item').attr('data-id');
+        self.toggleObjectVisibility(objId);
     });
 };
 
@@ -5656,8 +6042,14 @@ AlgeoApp.prototype.updateAlgebraView = function () {
             desc = '슬라이더 [' + obj.min + ', ' + obj.max + '] = ' + obj.value.toFixed(2);
         }
 
-        const itemHtml = 
-            '<div class="algebra-item" data-id="' + obj.id + '">' +
+        const isVisible = this.engine.isObjectVisible(obj);
+        const itemClass = 'algebra-item' + (isVisible ? '' : ' algebra-item-hidden');
+        const visLabel = isVisible ? '숨기기' : '표시';
+        const visIcon = isVisible ? '\u25C9' : '\u25CB';
+
+        const itemHtml =
+            '<div class="' + itemClass + '" data-id="' + obj.id + '">' +
+            '    <button type="button" class="obj-visibility-btn" title="' + visLabel + '" aria-label="' + visLabel + '">' + visIcon + '</button>' +
             '    <span class="obj-color-indicator ' + obj.type.toLowerCase() + '"></span>' +
             '    <div class="obj-info">' +
             '        <span class="obj-name">' + obj.name + '</span>' +
@@ -5767,6 +6159,7 @@ AlgeoApp.prototype.toggleCmdDict = function () {
     this.algebraCmdDictOpen = !this.algebraCmdDictOpen;
     if (this.algebraCmdDictOpen) {
         $('#algebraCmdDict').addClass('open');
+        this.closeShortcutPanel();
     } else {
         this.closeCmdDict();
     }
