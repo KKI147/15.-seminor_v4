@@ -21,3 +21,8 @@
 - [ ] Drag point and verify line updates
 - [ ] Type `Line(A,B)` in algebra input
 - [ ] Delete line with DELETE tool
+- [ ] POLYGON tool: click A, B, C, D, click A again to close
+- [ ] POLYGON: drag vertex, verify shape updates
+- [ ] Type `Polygon(A,B,C,D)` in algebra input
+- [ ] Delete polygon with DELETE tool (edge or interior click)
+- [ ] Enter key closes polygon draft (3+ vertices)

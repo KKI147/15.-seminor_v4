@@ -13,7 +13,7 @@
 3. **호(Arc)는 중심→시작→끝 3클릭 방식이 아니다.**  
    → **끝점 2개 + 호 위 조절점**으로 호 모양을 결정한다 (외접원 3점 호).
 4. **플라이아웃**: 참고 사이트처럼 아이콘 + **짧은 hint**(조작 안내)로 도구 의미를 바로 알 수 있게 한다.
-5. **Esc**: 작도 중(`constructionDraft` 또는 `selectedPoints` 존재 시) 취소.
+5. **Esc**: 작도 중(`constructionDraft` / `selectedPoints`) 취소. **✕** 버튼은 **가이드 패널 닫기**.
 6. **빈 곳 클릭으로 점 자동 생성**은 선분·직선·원·호(끝점)에 허용. 중점·수직이등분선·각도(1·2단계)·평행/수직(기준 2점)은 **기존 점 클릭** 위주.
 
 ---
@@ -27,7 +27,9 @@
 | 통합 작도 상태 `constructionDraft` | ✅ | 호·원·선분·직선·각·평행·수직 |
 | `drawToolPreview()` 실시간 미리보기 | ✅ | 위 도구 전부 |
 | 호 3점 모델 (`p1Id`, `p2Id`, `guideId`) | ✅ | 엔진·렌더·히트테스트·`Arc(A,B,C)` 파서 |
+| 다각형 `constructionDraft.vertexIds` | ✅ | 미리보기·Enter/첫 점 닫기·`Polygon(A,B,C,…)` |
 | 대수창 토글 (접기/펼치기) | ✅ | `#btnToggleAlgebra`, `#btnOpenAlgebra` |
+| **도구 사용 가이드 패널** | ✅ | `#toolGuide`, `ALGEO_TOOL_GUIDES`, `syncToolGuide()` |
 | 선분/직선 아이콘 | ✅ | 사용자 선호: `―`, `↔` (▬, ∞ 사용 안 함) |
 | 캔버스 가시성 `ALGEO_VIS` | ✅ | 굵은 선, 라벨 흰 외곽선, 각도 연보라 채움 |
 
@@ -48,6 +50,7 @@
 | 각도 | 변1 → 꼭짓점 → 조절 | A → B(꼭짓점) → 마우스 → 확정 | 호+채움 | `Angle(A,B,C)` |
 | 원 | 중심 → 드래그 → 확정 | 중심 → 마우스 반지름 → 확정 | 원+반지름선 | `Circle(A,C)` |
 | 호 | 끝점2 → 호위점 | A → B → 마우스(외접원) → C 확정 | 원+호 강조 | `Arc(A,B,C)` |
+| 다각형 | 꼭짓점 → 닫기 | 꼭짓점 순 클릭 → 첫 점/Enter | 채움+닫기선 | `Polygon(A,B,C,D)` |
 | 삭제 | 객체 클릭 | 점·도형 클릭 | — | — |
 
 ### 호(Arc) 상세 — 반드시 유지
@@ -63,6 +66,19 @@
 - **엔진 객체**: `{ type:'ARC', p1Id, p2Id, guideId }` — `computeCircumcenter` + `getArcSweepThroughGuide`
 - **금지**: 중심 O → 시작 A → 끝 B 방식으로 되돌리지 않을 것
 
+### 다각형(Polygon) 상세
+
+```
+1클릭: 꼭짓점 A (없으면 빈 곳에 점 생성)
+2클릭+: 꼭짓점 B, C, … 순서대로 추가
+       → constructionDraft { type:'POLYGON', vertexIds:[…] }
+       → 마지막 꼭짓점→커서, 커서→첫 꼭짓점 점선 미리보기
+닫기: 첫 꼭짓점 A 재클릭 (3점 이상) 또는 Enter
+```
+
+- **엔진 객체**: `{ type:'POLYGON', vertexIds:[…] }` — 꼭짓점은 기존 `Point` 참조
+- **이름**: `poly` + 꼭짓점 이름 연결 (예: `polyABCD`)
+
 ---
 
 ## 4. 플라이아웃 아이콘 (현재)
@@ -72,7 +88,7 @@
 | pointer | ✋ | 이동 | ✋ |
 | point | ● | 점 / 중점 | ● / ◎ |
 | line | ／ | 선분 / 직선 | **―** / **↔** |
-| line | | 수직이등분 / 평행 / 수직 / 각 | ⊥ / ∥ / ┴ / ∠ |
+| line | | 수직이등분 / 평행 / 수직 / 각 / **다각형** | ⊥ / ∥ / ┴ / ∠ / **⬡** |
 | circle | ◯ | 원 / 호 | ◯ / ◠ |
 | edit | ⌫ | 삭제 | ⌫ |
 
@@ -99,6 +115,7 @@
 - `CIRCLE` — `centerId`
 - `ANGLE` — `ray1Id`, `vertexId`
 - `PARALLEL_LINE`, `PERP_LINE` — `refP1Id`, `refP2Id`
+- `POLYGON` — `vertexIds[]` (꼭짓점 점 ID 배열)
 
 ### 핵심 메서드
 
@@ -106,10 +123,13 @@
 |--------|------|
 | `resolvePointAtClick()` | hit 없으면 새 점 생성 후 id 반환 |
 | `updateToolPreviewFromMouse()` | 마우스 → `toolPreview` 갱신 |
-| `clearToolDraft()` | Esc·도구 전환 시 초기화 |
+| `clearToolDraft()` | Esc·도구 전환 시 작도 초기화 |
+| `setGuideVisible()` | `#btnCloseGuide` / `#btnOpenGuide` — 패널 숨김·표시 |
 | `setAlgebraPanelOpen()` | 대수창 토글 + `renderer.resize()` |
 | `getArcSweepThroughGuide()` | 3점 호 렌더/히트테스트 |
 | `getGuidePointOnCircumcircle()` | 호 미리보기·확정 시 원 위 투영 |
+| `handlePolygonMouseDown()` | 다각형 꼭짓점 클릭·닫기 |
+| `confirmPolygonDraft()` | Enter·첫 점 재클릭으로 다각형 확정 |
 
 ### CSS 클래스
 
@@ -136,13 +156,24 @@
 
 ### 기능 로드맵 연동
 
-1. **3-5 다각형** — AlgeoMath처럼 꼭짓점 순 클릭 + 닫기 + `constructionDraft`·미리보기 패턴 재사용.
-2. **UI-2** — 대수창 탭, 격자/스냅 토글(우측 바), Undo UI, 헤더 껍데기.
+1. **UI-2** — 대수창 탭, 격자/스냅 토글(우측 바), Undo UI, 헤더 껍데기.
+2. **4-1** — 대수창 객체 속성 인라인 편집.
 3. **5-2 단축키** — `D`, `M` 등 `ALGEO_TOOL_CATEGORIES[].shortcut` 실제 연동.
+
+### UX-4 도구 가이드 (완료)
+
+> 설계·구조: [`tool_guide_plan.md`](tool_guide_plan.md)
+
+| 항목 | 설명 |
+|------|------|
+| **정적 패널** | 도구 선택 시 `#toolGuide` — 요약 + 번호 단계 + 팁 |
+| **동적 하ighlight** | `getGuideActiveStepIndex()` — `constructionDraft` / `selectedPoints` 반영 |
+| **접기** | `#btnCollapseGuide` — 도구 전환 시 자동 펼침 |
+| **2차 예정** | Canvas 고스트 데모, SVG 아이콘 |
 
 ### UX 개선 후보 (미구현)
 
-- [ ] 작도 중 **단계 안내** (캔버스 하단 또는 커서 근처: “끝점 B를 선택하세요”)
+- [ ] ~~작도 중 **단계 안내**~~ → UX-4 패널로 대체 (캔버스 하단)
 - [ ] 수직이등분선·중점도 **선택 점 하이라이트** 강화 (이미 부분 적용)
 - [ ] 터치 디바이스용 작도 (5단계)
 - [ ] SVG/비트맵 **도구 아이콘** (원본 AlgeoMath 자산 참고)
@@ -156,9 +187,12 @@
 3. 원: 중심 → 반지름 미리보기 → 확정
 4. 각도: A → B(꼭짓점) → 마우스 각 → 확정
 5. 평행/수직: 기준 2점 → 미리보기 → 통과점
-6. Esc로 작도 취소
-7. 대수창 토글 후 캔버스 크기·격자 정상
-8. 플라이아웃 hint 가독성
+6. 다각형: A → B → C → … → 첫 점 A 재클릭(또는 Enter) → `Polygon(A,B,C,…)` 대수창 일치
+7. Esc로 작도 취소
+8. ✕ 로 가이드 패널 닫기 → ▶ 안내 탭으로 복원
+9. 가이드 헤더 드래그로 위치 이동
+8. 대수창 토글 후 캔버스 크기·격자 정상
+9. 플라이아웃 hint 가독성
 
 ---
 
@@ -169,11 +203,14 @@
 | UI-1 | 좌측 레일·플라이아웃·우측 줌 바 (`ui_layout.md`) |
 | UX-1 | `constructionDraft` 통합, 호 3점 모델, 도구별 미리보기, 플라이아웃 hint |
 | UX-2 | 대수창 토글, 선분/직선 아이콘 `―`/`↔` 복원 |
+| UX-3 | 다각형 작도 — `constructionDraft` + 미리보기 + Enter/첫 점 닫기 |
+| UX-4 | 도구 가이드 — `ALGEO_TOOL_GUIDES` + `#toolGuide` + 동적 단계 |
 
 ---
 
 ## 9. 관련 문서
 
 - [`ui_layout.md`](ui_layout.md) — DOM 구조·레일·2단계 UI 계획
+- [`tool_guide_plan.md`](tool_guide_plan.md) — 도구 가이드 패널 설계
 - [`task.md`](task.md) — 단계별 체크리스트
 - [`README.md`](README.md) — 로드맵·실행 방법

@@ -40,6 +40,7 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
     └── .algeo-canvas-container
         ├── #algeoCanvas
         └── .algeo-right-bar  ← 줌·원점 (우측 상단)
+        └── #toolGuide        ← 도구 사용 가이드 (좌하단, UX-4)
 ```
 
 - 상단 가로 툴바 **제거**
@@ -59,6 +60,10 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 | **호** | 끝점 A → 끝점 B → 마우스(외접원+호) → 호 위 점 C 확정 |
 | **각도** | 변1 → 꼭짓점 → 마우스 조절 → 확정 |
 | **평행·수직** | 기준 2점 → 마우스 미리보기 → 통과점 |
+| **다각형** | 꼭짓점 순 클릭 → 첫 점/Enter로 닫기 |
+| **접기 `−`** | 가이드 내용만 접기 |
+| **닫기 `✕`** | 가이드 패널 전체 숨김 → `▶ 안내` 탭으로 다시 열기 |
+| **드래그** | `.tool-guide-head` 드래그로 패널 위치 이동 |
 | **Esc** | `constructionDraft` / 선택 점 작도 중 취소 |
 
 - 상태: `AlgeoApp.constructionDraft` + `renderer.drawToolPreview()`
@@ -67,7 +72,7 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 ## 대수창 토글 (UX-2 일부 완료)
 
 - 헤더 `◀` (`#btnToggleAlgebra`) → 사이드바 접기 (`.algeo-sidebar.collapsed`)
-- 캔버스 좌측 `▶ 대수창` (`#btnOpenAlgebra`) → 다시 펼치기
+- 캔버스 **좌상단** `▶ 대수창` (`#btnOpenAlgebra`) → 다시 펼치기 (세로 중앙 ❌ → 상단 12px)
 - 토글 후 `renderer.resize()` 로 캔버스 재계산
 
 ---
@@ -78,7 +83,7 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 |-------------|------------|----------------|
 | `pointer` | ✋ | 이동 (MOVE) |
 | `point` | ● | 점 (POINT), 중점 (MIDPOINT) |
-| `line` | ／ | 선분(―), 직선(↔), 수직이등분선, 평행선, 수직선, 각도 |
+| `line` | ／ | 선분(―), 직선(↔), 수직이등분선, 평행선, 수직선, 각도, **다각형(⬡)** |
 | `circle` | ◯ | 원 (CIRCLE), 호 (ARC) |
 | `edit` | ⌫ | 삭제 (DELETE) |
 
@@ -137,3 +142,4 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 3. 캔버스에서 기존과 동일하게 작도
 4. **우측 `+` `−` `⌂`** 으로 줌·원점 이동
 5. 대수창·명령어 사전은 기존과 동일
+6. **캔버스 좌하단 `#toolGuide`** 에서 단계별 사용법 확인 (작도 중 현재 단계 강조)

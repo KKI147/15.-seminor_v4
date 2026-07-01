@@ -343,8 +343,7 @@
     display: none;
     position: absolute;
     left: 0;
-    top: 50%;
-    transform: translateY(-50%);
+    top: 12px;
     z-index: 12;
     align-items: center;
     gap: 4px;
@@ -544,11 +543,11 @@
     box-shadow: var(--shadow-sm);
 }
 
-/* 대수창에서 선택된 항목 */
+/* 대수창에서 선택된 항목 — 시안 강조 (캔버스 선택 스타일과 통일) */
 .algebra-item.active {
-    background-color: #eff6ff;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.12);
+    background-color: #ecfeff;
+    border-color: #0891b2;
+    box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.35), inset 0 0 0 1px rgba(8, 145, 178, 0.15);
 }
 
 /* 오브젝트 컬러 인디케이터 (캔버스 ALGEO_VIS 팔레트와 동기화) */
@@ -570,6 +569,7 @@
 .obj-color-indicator.circle { background-color: #047857; }
 .obj-color-indicator.arc { background-color: #0f766e; }
 .obj-color-indicator.angle { background-color: #9333ea; }
+.obj-color-indicator.polygon { background-color: #b45309; }
 .obj-color-indicator.function { background-color: #6d28d9; }
 
 .obj-info {
@@ -644,4 +644,236 @@
 
 .right-bar-btn:active {
     transform: scale(0.96);
+}
+
+/* 캔버스 좌하단 — 도구 사용 가이드 (UX-4) */
+.algeo-tool-guide {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    z-index: 11;
+    max-width: min(360px, calc(100% - 80px));
+    padding: 12px 14px;
+    border: 1px solid #0891b2;
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 4px 16px rgba(8, 145, 178, 0.18), 0 1px 4px rgba(15, 23, 42, 0.08);
+    pointer-events: auto;
+}
+
+.algeo-tool-guide.collapsed {
+    padding-bottom: 10px;
+}
+
+.algeo-tool-guide.collapsed .tool-guide-steps,
+.algeo-tool-guide.collapsed .tool-guide-tips {
+    display: none;
+}
+
+.algeo-tool-guide.hidden {
+    display: none;
+}
+
+.algeo-tool-guide.is-positioned {
+    bottom: auto;
+}
+
+.algeo-tool-guide.dragging {
+    opacity: 0.92;
+    box-shadow: 0 8px 24px rgba(8, 145, 178, 0.28);
+}
+
+.tool-guide-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: grab;
+    user-select: none;
+}
+
+.tool-guide-head.dragging,
+.algeo-tool-guide.dragging .tool-guide-head {
+    cursor: grabbing;
+}
+
+.tool-guide-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background-color: #ecfeff;
+    color: #0891b2;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.tool-guide-head-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.tool-guide-head-text strong {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.tool-guide-summary {
+    font-size: 12px;
+    color: #475569;
+    line-height: 1.4;
+}
+
+.tool-guide-collapse {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background-color: #ffffff;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.tool-guide-collapse:hover {
+    color: #0891b2;
+    border-color: #0891b2;
+    background-color: #ecfeff;
+}
+
+.tool-guide-close {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background-color: #ffffff;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.tool-guide-close:hover {
+    color: #dc2626;
+    border-color: #fca5a5;
+    background-color: #fef2f2;
+}
+
+/* 가이드 닫힘 시 좌하단 다시 열기 탭 */
+.tool-guide-reopen-btn {
+    display: none;
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    z-index: 11;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 10px;
+    border: 1px solid #0891b2;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.96);
+    color: #0891b2;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(8, 145, 178, 0.15);
+    transition: var(--transition-fast);
+}
+
+.tool-guide-reopen-btn.visible {
+    display: flex;
+}
+
+.tool-guide-reopen-btn:hover {
+    background-color: #ecfeff;
+    border-color: #0e7490;
+}
+
+.tool-guide-reopen-btn span {
+    font-size: 11px;
+}
+
+.tool-guide-steps {
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.tool-guide-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #64748b;
+    border-top: 1px solid #f1f5f9;
+}
+
+.tool-guide-step:first-child {
+    border-top: none;
+}
+
+.tool-guide-step .step-num {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #f1f5f9;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.tool-guide-step.active {
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.tool-guide-step.active .step-num {
+    background-color: #0891b2;
+    color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.25);
+}
+
+.tool-guide-step.done {
+    color: #94a3b8;
+}
+
+.tool-guide-step.done .step-num {
+    background-color: #cffafe;
+    color: #0891b2;
+}
+
+.tool-guide-step.done .step-text {
+    text-decoration: line-through;
+    text-decoration-color: #cbd5e1;
+}
+
+.tool-guide-tips {
+    margin: 8px 0 0;
+    padding-top: 8px;
+    border-top: 1px dashed #e2e8f0;
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.4;
 }
