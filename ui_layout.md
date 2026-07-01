@@ -75,6 +75,13 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 - 캔버스 **좌상단** `▶ 대수창` (`#btnOpenAlgebra`) → 다시 펼치기 (세로 중앙 ❌ → 상단 12px)
 - 토글 후 `renderer.resize()` 로 캔버스 재계산
 
+## 대수창 탭·속성 패널 (4-1 · UI-2)
+
+- 헤더 아래 **생성순 / 종류순** 탭 (`.algebra-list-tabs`, `#algebraPropsPanel` 위)
+- 목록 위 **속성 패널** — 객체 선택 시 좌표·길이·반지름·함수 계수 편집
+- 종속 객체(MIDPOINT, ANGLE 등)는 읽기 전용 안내
+- `Enter` 또는 **적용** 버튼으로 반영 → `#algebraError` 검증 메시지
+
 ---
 
 ## 도구 카테고리 (`ALGEO_TOOL_CATEGORIES`)
@@ -125,7 +132,7 @@ AlgeoMath 원본([https://kki147.github.io/algeomath/](https://kki147.github.io/
 ## 2단계 예정 (미구현)
 
 - [x] 대수창 표시/숨김 토글 (헤더 ◀ / 캔버스 열기 탭) — `ux_guidelines.md` UX-2
-- [ ] 대수창 `생성순` / `종류순` 탭
+- [x] 대수창 `생성순` / `종류순` 탭
 - [ ] 입력창 `+` 버튼 스타일
 - [ ] 우측 바: 격자 on/off, 스냅(자석) 토글
 - [ ] 캔버스 좌상단 Undo/Redo UI (4-2 기능 연동 후)

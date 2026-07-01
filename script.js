@@ -76,6 +76,22 @@ const ALGEBRA_COMMANDS = [
     }
 ];
 
+// 대수창 종류순 정렬 우선순위
+const ALGEBRA_TYPE_ORDER = {
+    POINT: 0,
+    MIDPOINT: 1,
+    SEGMENT: 2,
+    LINE: 3,
+    PERP_BISECTOR: 4,
+    PARALLEL_LINE: 5,
+    PERP_LINE: 6,
+    CIRCLE: 7,
+    ARC: 8,
+    ANGLE: 9,
+    POLYGON: 10,
+    FUNCTION: 11
+};
+
 // 좌측 도구 레일 카테고리 (플라이아웃 서브메뉴 구성)
 const ALGEO_TOOL_CATEGORIES = [
     {
@@ -463,6 +479,13 @@ function createAlgeoUI($container) {
         '            <div class="sidebar-header">' +
         '                <h3>대수창</h3>' +
         '                <button type="button" id="btnToggleAlgebra" class="sidebar-toggle-btn" title="대수창 숨기기" aria-label="대수창 숨기기">◀</button>' +
+        '            </div>' +
+        '            <div class="algebra-list-tabs">' +
+        '                <button type="button" class="algebra-tab-btn active" data-sort="created">생성순</button>' +
+        '                <button type="button" class="algebra-tab-btn" data-sort="type">종류순</button>' +
+        '            </div>' +
+        '            <div class="algebra-props-panel" id="algebraPropsPanel">' +
+        '                <p class="algebra-props-placeholder">객체를 선택하면 속성을 편집할 수 있습니다.</p>' +
         '            </div>' +
         '            <div class="sidebar-content" id="algebraList">' +
         '                <div class="empty-msg">오브젝트가 없습니다.</div>' +
@@ -1177,6 +1200,48 @@ AlgeoEngine.prototype.movePoint = function (pointId, newX, newY) {
 
     // 점 자체는 독립 객체이므로 자식들의 업데이트만 유도하면 됨
     this.updateDependents(pointId);
+};
+
+// 선분 길이 변경 — 시작점 고정, 끝점 방향 유지
+AlgeoEngine.prototype.setSegmentLength = function (segmentId, newLength) {
+    const seg = this.objectMap[segmentId];
+    if (!seg || seg.type !== 'SEGMENT' || newLength <= 0) {
+        return false;
+    }
+    const p1 = this.objectMap[seg.p1Id];
+    const p2 = this.objectMap[seg.p2Id];
+    if (!p1 || !p2) {
+        return false;
+    }
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 1e-10) {
+        return false;
+    }
+    this.movePoint(seg.p2Id, p1.x + (dx / len) * newLength, p1.y + (dy / len) * newLength);
+    return true;
+};
+
+// 원 반지름 변경 — 중심·방향 유지, 둘레 점 이동
+AlgeoEngine.prototype.setCircleRadius = function (circleId, newRadius) {
+    const circle = this.objectMap[circleId];
+    if (!circle || circle.type !== 'CIRCLE' || newRadius <= 0) {
+        return false;
+    }
+    const center = this.objectMap[circle.centerId];
+    const point = this.objectMap[circle.pointId];
+    if (!center || !point) {
+        return false;
+    }
+    const dx = point.x - center.x;
+    const dy = point.y - center.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 1e-10) {
+        return false;
+    }
+    this.movePoint(circle.pointId, center.x + (dx / len) * newRadius, center.y + (dy / len) * newRadius);
+    return true;
 };
 
 // 종속된 자식 객체들 순차 업데이트
@@ -2364,6 +2429,7 @@ function AlgeoApp(engine, renderer) {
     this.selectedObjectId = null;     // 대수창에서 선택된 객체 ID
     this.algebraCmdDictOpen = false;  // 명령어 사전 패널 표시 여부
     this.algebraPanelOpen = true;     // 대수창 표시 여부
+    this.algebraSortMode = 'created'; // 대수창 정렬: created | type
     this.openToolCategoryId = null;   // 열린 도구 플라이아웃 카테고리 ID
     this.constructionDraft = null;    // 인터랙티브 작도: type별 임시 상태 + 마우스 미리보기
     this.guideCollapsed = false;      // 가이드 패널 내용 접힘
@@ -2426,6 +2492,7 @@ AlgeoApp.prototype.init = function () {
 
     // 4. 대수창 수식 입력·자동완성·명령어 사전
     self.initAlgebraInputAssist();
+    self.initAlgebraSidebar();
 
     // 5. 대수창 항목 클릭 → 캔버스 객체 하이라이트
     $('#algebraList').on('click', '.algebra-item', function () {
@@ -2906,6 +2973,7 @@ AlgeoApp.prototype.selectAlgebraObject = function (objId) {
     }
     this.renderer.selectedObjectId = this.selectedObjectId;
     this.syncAlgebraItemActiveState();
+    this.syncAlgebraPropsPanel();
     this.renderer.draw();
 };
 
@@ -2925,6 +2993,7 @@ AlgeoApp.prototype.clearAlgebraSelection = function () {
     this.selectedObjectId = null;
     this.renderer.selectedObjectId = null;
     this.syncAlgebraItemActiveState();
+    this.syncAlgebraPropsPanel();
     this.renderer.draw();
 };
 
@@ -4165,12 +4234,228 @@ AlgeoApp.prototype.handleCircleInput = function (centerName, pointName) {
     return { success: true, message: '' };
 };
 
+// 대수창 탭·속성 패널 초기화
+AlgeoApp.prototype.initAlgebraSidebar = function () {
+    const self = this;
+
+    $('.algebra-tab-btn').on('click', function () {
+        const sortMode = $(this).attr('data-sort');
+        if (self.algebraSortMode === sortMode) {
+            return;
+        }
+        self.algebraSortMode = sortMode;
+        $('.algebra-tab-btn').removeClass('active');
+        $(this).addClass('active');
+        self.updateAlgebraView();
+    });
+
+    $('#algebraPropsPanel').on('click', '.prop-apply-btn', function (e) {
+        e.stopPropagation();
+        self.applyAlgebraProps();
+    });
+
+    $('#algebraPropsPanel').on('keydown', '.prop-input', function (e) {
+        if (e.keyCode === 13) {
+            e.preventDefault();
+            self.applyAlgebraProps();
+        }
+    });
+
+    $('#algebraPropsPanel').on('mousedown click', function (e) {
+        e.stopPropagation();
+    });
+};
+
+// 대수창 정렬된 객체 목록 반환
+AlgeoApp.prototype.getSortedAlgebraObjects = function () {
+    const list = this.engine.objects.slice();
+    let i;
+
+    if (this.algebraSortMode === 'type') {
+        list.sort(function (a, b) {
+            const orderA = ALGEBRA_TYPE_ORDER[a.type];
+            const orderB = ALGEBRA_TYPE_ORDER[b.type];
+            const oa = orderA !== undefined ? orderA : 99;
+            const ob = orderB !== undefined ? orderB : 99;
+            if (oa !== ob) {
+                return oa - ob;
+            }
+            return a.name.localeCompare(b.name);
+        });
+    }
+
+    return list;
+};
+
+// 선택 객체 속성 패널 HTML 생성
+AlgeoApp.prototype.buildAlgebraPropsHtml = function (obj) {
+    let html = '';
+    let p1;
+    let p2;
+    let center;
+    let point;
+    let dx;
+    let dy;
+    let len;
+    let radius;
+    let deg;
+
+    html += '<div class="algebra-props-title">' + obj.name + ' <span class="props-type">' + obj.type + '</span></div>';
+
+    if (obj.type === 'POINT') {
+        html += '<div class="algebra-props-form">';
+        html += '<label class="prop-field">x <input type="text" class="prop-input" data-prop="x" value="' + obj.x.toFixed(2) + '" /></label>';
+        html += '<label class="prop-field">y <input type="text" class="prop-input" data-prop="y" value="' + obj.y.toFixed(2) + '" /></label>';
+        html += '<button type="button" class="prop-apply-btn">적용</button>';
+        html += '</div>';
+        return html;
+    }
+
+    if (obj.type === 'SEGMENT') {
+        p1 = this.engine.objectMap[obj.p1Id];
+        p2 = this.engine.objectMap[obj.p2Id];
+        if (p1 && p2) {
+            dx = p2.x - p1.x;
+            dy = p2.y - p1.y;
+            len = Math.sqrt(dx * dx + dy * dy);
+            html += '<div class="algebra-props-form">';
+            html += '<p class="props-readonly">끝점: ' + p1.name + ', ' + p2.name + '</p>';
+            html += '<label class="prop-field">길이 <input type="text" class="prop-input" data-prop="length" value="' + len.toFixed(2) + '" /></label>';
+            html += '<button type="button" class="prop-apply-btn">적용</button>';
+            html += '</div>';
+        }
+        return html;
+    }
+
+    if (obj.type === 'CIRCLE') {
+        center = this.engine.objectMap[obj.centerId];
+        point = this.engine.objectMap[obj.pointId];
+        if (center && point) {
+            dx = point.x - center.x;
+            dy = point.y - center.y;
+            radius = Math.sqrt(dx * dx + dy * dy);
+            html += '<div class="algebra-props-form">';
+            html += '<p class="props-readonly">중심: ' + center.name + '</p>';
+            html += '<label class="prop-field">반지름 <input type="text" class="prop-input" data-prop="radius" value="' + radius.toFixed(2) + '" /></label>';
+            html += '<button type="button" class="prop-apply-btn">적용</button>';
+            html += '</div>';
+        }
+        return html;
+    }
+
+    if (obj.type === 'FUNCTION') {
+        html += '<div class="algebra-props-form">';
+        html += '<label class="prop-field">기울기 a <input type="text" class="prop-input" data-prop="slope" value="' + obj.slope + '" /></label>';
+        html += '<label class="prop-field">절편 b <input type="text" class="prop-input" data-prop="intercept" value="' + obj.intercept + '" /></label>';
+        html += '<button type="button" class="prop-apply-btn">적용</button>';
+        html += '</div>';
+        return html;
+    }
+
+    html += '<div class="algebra-props-readonly">';
+    if (obj.type === 'MIDPOINT') {
+        html += '<p>좌표 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')</p>';
+        html += '<p class="props-note">종속 객체 — 부모 점을 이동하면 함께 바뀝니다.</p>';
+    } else if (obj.type === 'ANGLE') {
+        deg = this.engine.getAngleDegrees(obj);
+        html += '<p>각도 ' + (deg !== null ? deg.toFixed(1) : '?') + '\u00B0</p>';
+        html += '<p class="props-note">종속 객체 — 꼭짓점·변의 점을 이동하세요.</p>';
+    } else {
+        html += '<p class="props-note">이 객체는 직접 편집할 수 없습니다.<br>캔버스에서 부모 점을 이동하거나 삭제하세요.</p>';
+    }
+    html += '</div>';
+    return html;
+};
+
+// 선택 객체 속성 패널 갱신
+AlgeoApp.prototype.syncAlgebraPropsPanel = function () {
+    const $panel = $('#algebraPropsPanel');
+    const objId = this.selectedObjectId;
+    let obj;
+
+    if (!objId) {
+        $panel.html('<p class="algebra-props-placeholder">객체를 선택하면 속성을 편집할 수 있습니다.</p>');
+        return;
+    }
+
+    obj = this.engine.objectMap[objId];
+    if (!obj) {
+        $panel.html('<p class="algebra-props-placeholder">객체를 선택하면 속성을 편집할 수 있습니다.</p>');
+        return;
+    }
+
+    $panel.html(this.buildAlgebraPropsHtml(obj));
+};
+
+// 속성 패널 입력값 적용
+AlgeoApp.prototype.applyAlgebraProps = function () {
+    const objId = this.selectedObjectId;
+    const obj = this.engine.objectMap[objId];
+    let xVal;
+    let yVal;
+    let numVal;
+    let slopeVal;
+    let interceptVal;
+
+    if (!obj) {
+        return;
+    }
+
+    $('#algebraError').text('');
+
+    if (obj.type === 'POINT') {
+        xVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="x"]').val());
+        yVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="y"]').val());
+        if (isNaN(xVal) || isNaN(yVal)) {
+            $('#algebraError').text('좌표는 숫자여야 합니다.');
+            return;
+        }
+        this.engine.movePoint(obj.id, xVal, yVal);
+    } else if (obj.type === 'SEGMENT') {
+        numVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="length"]').val());
+        if (isNaN(numVal) || numVal <= 0) {
+            $('#algebraError').text('길이는 0보다 큰 숫자여야 합니다.');
+            return;
+        }
+        if (!this.engine.setSegmentLength(obj.id, numVal)) {
+            $('#algebraError').text('선분 길이를 변경할 수 없습니다.');
+            return;
+        }
+    } else if (obj.type === 'CIRCLE') {
+        numVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="radius"]').val());
+        if (isNaN(numVal) || numVal <= 0) {
+            $('#algebraError').text('반지름은 0보다 큰 숫자여야 합니다.');
+            return;
+        }
+        if (!this.engine.setCircleRadius(obj.id, numVal)) {
+            $('#algebraError').text('반지름을 변경할 수 없습니다.');
+            return;
+        }
+    } else if (obj.type === 'FUNCTION') {
+        slopeVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="slope"]').val());
+        interceptVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="intercept"]').val());
+        if (isNaN(slopeVal) || isNaN(interceptVal)) {
+            $('#algebraError').text('기울기·절편은 숫자여야 합니다.');
+            return;
+        }
+        obj.slope = slopeVal;
+        obj.intercept = interceptVal;
+        obj.expression = this.formatFunctionExpression(slopeVal, interceptVal);
+        obj.exprKey = this.normalizeExprKey(String(slopeVal) + 'x' + String(interceptVal));
+    } else {
+        return;
+    }
+
+    this.updateAlgebraView();
+    this.renderer.draw();
+};
+
 // 대수창 렌더링 업데이트
 AlgeoApp.prototype.updateAlgebraView = function () {
     const $list = $('#algebraList');
     $list.empty();
 
-    const objects = this.engine.objects;
+    const objects = this.getSortedAlgebraObjects();
     if (objects.length === 0) {
         $list.append('<div class="empty-msg">오브젝트가 없습니다.</div>');
         return;
@@ -4273,6 +4558,7 @@ AlgeoApp.prototype.updateAlgebraView = function () {
 
     this.validateAlgebraSelection();
     this.syncAlgebraItemActiveState();
+    this.syncAlgebraPropsPanel();
 };
 
 // 삭제 등으로 선택 객체가 없어졌는지 확인
