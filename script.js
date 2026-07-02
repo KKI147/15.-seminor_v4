@@ -3338,7 +3338,7 @@ AlgeoApp.prototype.init = function () {
     self.selectTool('MOVE');
     self.updateCanvasCursor();
 
-    // Esc — 작도 중 취소 / Enter — 다각형 닫기 / Ctrl+Z·Y — Undo·Redo
+    // Esc — 작도 취소·이동 복귀 / Enter — 다각형 닫기·이동 복귀 / Ctrl+Z·Y — Undo·Redo
     $(document).on('keydown', function (e) {
         if (e.ctrlKey && !e.altKey) {
             if (e.keyCode === 90 && !e.shiftKey) {
@@ -3365,6 +3365,12 @@ AlgeoApp.prototype.init = function () {
             if (self.constructionDraft && self.constructionDraft.type === 'POLYGON' &&
                 self.constructionDraft.vertexIds.length >= 3) {
                 self.confirmPolygonDraft();
+                self.selectTool('MOVE');
+                e.preventDefault();
+                return;
+            }
+            if (self.currentTool !== 'MOVE') {
+                self.selectTool('MOVE');
                 e.preventDefault();
             }
             return;
@@ -3410,9 +3416,12 @@ AlgeoApp.prototype.init = function () {
         if (e.keyCode !== 27) {
             return;
         }
-        if (self.constructionDraft || self.selectedPoints.length > 0) {
-            self.clearToolDraft();
-            self.renderer.draw();
+        if ($(e.target).closest('#algebraInput').length) {
+            return;
+        }
+        if (self.constructionDraft || self.selectedPoints.length > 0 || self.currentTool !== 'MOVE') {
+            self.selectTool('MOVE');
+            e.preventDefault();
         }
     });
 };
