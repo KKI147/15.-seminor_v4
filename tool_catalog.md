@@ -13,8 +13,8 @@
 |------|------|
 | 플라이아웃 도구 (현재 코드) | **54** |
 | 레일 전용 (블록코딩·설정) | **2** |
-| **엔진 구현** (`done`) | **15** |
-| **UI만** (`stub`) | **39** |
+| **엔진 구현** (`done`) | **27** |
+| **UI만** (`stub`) | **27** |
 
 > 원본 스샷 기준 ~52종 + 작도 `ANGLE`(선) + SELECT/GROUP을 pointer에만 둔 구성.  
 > 5단계 완료 후 **UI 맵 100%**, 엔진은 6단계부터 stub → done 전환.
@@ -84,9 +84,9 @@
 | toolId | 라벨 | 단축키 | 상태 | 로드맵 | 엔진 |
 |--------|------|--------|------|--------|------|
 | `POINT` | 점 | D | done | 1단계 | POINT |
-| `INTERSECTION` | 교점 | I | stub | 6-1 | POINT (종속) |
-| `POINT_ON_OBJECT` | 대상 위의 점 | O | stub | 6-1 | POINT + path t |
-| `LINE_TRACER` | 라인 트레이서 | — | stub | 6-1 | POINT + 애니메이션 |
+| `INTERSECTION` | 교점 | I | done | **6-1** | INTERSECTION (종속) |
+| `POINT_ON_OBJECT` | 대상 위의 점 | O | done | **6-1** | POINT_ON |
+| `LINE_TRACER` | 라인 트레이서 | — | stub | 6-1 | 애니메이션 이후 |
 | `MIDPOINT` | 중점 | M | done | 3-2 | MIDPOINT |
 | `INSERT_IMAGE` | 그림 넣기 | — | stub | 10-1 | IMAGE |
 | `INSERT_VIDEO` | 동영상 넣기 | — | stub | 10-1 | VIDEO |
@@ -97,27 +97,27 @@
 | toolId | 라벨 | 단축키 | 상태 | 로드맵 | 비고 |
 |--------|------|--------|------|--------|------|
 | `CIRCLE` | 원 : 중심과 한 점 | C | done | 1단계 | |
-| `COMPASS` | 컴퍼스 | — | stub | 6-3 | |
-| `CIRCLE_3P` | 원 : 세 점 | — | stub | 6-3 | |
-| `CIRCLE_RADIUS` | 원 : 중심과 반지름 | — | stub | 6-3 | |
+| `COMPASS` | 컴퍼스 | — | done | **6-3** | 반지름 두 점 → 중심 |
+| `CIRCLE_3P` | 원 : 세 점 | — | done | **6-3** | |
+| `CIRCLE_RADIUS` | 원 : 중심과 반지름 | — | done | **6-3** | prompt 숫자·슬라이더 |
 | `ARC` | 호 | — | done | 3-4 | |
-| `SECTOR` | 부채꼴 | — | stub | 6-3 | |
-| `CIRCULAR_SEGMENT` | 활꼴 | — | stub | 6-3 | |
+| `SECTOR` | 부채꼴 | — | done | **6-3** | |
+| `CIRCULAR_SEGMENT` | 활꼴 | — | done | **6-3** | |
 
 ### line — 선 (`144351` + 작도 각도)
 
 | toolId | 라벨 | 단축키 | 상태 | 로드맵 | 비고 |
 |--------|------|--------|------|--------|------|
 | `SEGMENT` | 선분 | S | done | 1단계 | |
-| `SEGMENT_GIVEN_LENGTH` | 주어진 길이의 선분 | — | stub | 6-2 | |
+| `SEGMENT_GIVEN_LENGTH` | 주어진 길이의 선분 | — | done | **6-2** | prompt 길이 + 방향 |
 | `LINE` | 직선 | L | done | 3-1 | |
-| `RAY` | 반직선 | — | stub | 6-2 | |
+| `RAY` | 반직선 | — | done | **6-2** | |
 | `PARALLEL_LINE` | 평행선 | — | done | 3-3 | |
 | `PERP_LINE` | 수선 | — | done | 3-3 | |
 | `PERP_BISECTOR` | 수직이등분선 | V | done | 3-2 | |
-| `ANGLE_BISECTOR` | 각의 이등분선 | — | stub | 6-2 | |
-| `TANGENT` | 접선 | — | stub | 6-2 | |
-| `VECTOR` | 벡터 | — | stub | 6-2 | |
+| `ANGLE_BISECTOR` | 각의 이등분선 | — | done | **6-2** | |
+| `TANGENT` | 접선 | — | done | **6-2** | 원→점 |
+| `VECTOR` | 벡터 | — | done | **6-2** | 화살표 선분 |
 | `ANGLE` | 각도 (작도) | — | done | 3-4 | ≠ `MEASURE_ANGLE` |
 
 ### polygon — 다각형 (`144358`)
@@ -204,3 +204,6 @@
 |------|------|
 | 2026-07-01 | `images/` 7장 기준 전체 카탈로그·로드맵 4~12단계 정의 |
 | 2026-07-10 | 5단계 UI 맵 완료 · stub 39 · 개선 메모 · SELECT misc 중복 제거 · Shift+G |
+| 2026-07-10 | UI 서비스 품질 원칙 (`ux_guidelines.md`) · 6-1 교점·대상 위 점 done |
+| 2026-07-10 | 6-2 반직선·벡터·각이등분선·접선·주어진 길이 선분 |
+| 2026-07-10 | 6-3 컴퍼스·세 점 원·중심+반지름·부채꼴·활꼴 |

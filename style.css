@@ -1063,7 +1063,10 @@
 .obj-color-indicator.parallel_line { background-color: #c2410c; }
 .obj-color-indicator.perp_line { background-color: #be123c; }
 .obj-color-indicator.circle { background-color: #047857; }
+.obj-color-indicator.circle_3p { background-color: #047857; }
 .obj-color-indicator.arc { background-color: #0f766e; }
+.obj-color-indicator.sector { background-color: #047857; }
+.obj-color-indicator.circular_segment { background-color: #0f766e; }
 .obj-color-indicator.angle { background-color: #9333ea; }
 .obj-color-indicator.polygon { background-color: #b45309; }
 .obj-color-indicator.function { background-color: #6d28d9; }
