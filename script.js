@@ -657,7 +657,7 @@ const ALGEO_SHORTCUTS = [
         label: '다시 실행',
         category: 'edit',
         active: true,
-        desc: '취소한 작업을 다시 적용합니다. Ctrl+Y 또는 Ctrl+Shift+Z'
+        desc: '취소한 작업을 다시 적용합니다.'
     },
     {
         id: 'hide_toggle',
@@ -665,7 +665,7 @@ const ALGEO_SHORTCUTS = [
         label: '숨기기 / 표시',
         category: 'edit',
         active: true,
-        desc: '선택 객체 표시·숨김 토글. 선택 없으면 숨기기 도구로 전환합니다.'
+        desc: '선택 객체 표시·숨김. 선택 없으면 숨기기 도구로 전환.'
     },
     {
         id: 'tool_point',
@@ -681,7 +681,7 @@ const ALGEO_SHORTCUTS = [
         label: '교점 도구',
         category: 'tool',
         active: true,
-        desc: '교점 도구를 선택합니다. (준비 중)'
+        desc: '교점 도구 (준비 중)'
     },
     {
         id: 'tool_midpoint',
@@ -697,7 +697,7 @@ const ALGEO_SHORTCUTS = [
         label: '대상 위의 점',
         category: 'tool',
         active: true,
-        desc: '대상 위의 점 도구를 선택합니다. (준비 중)'
+        desc: '대상 위의 점 도구 (준비 중)'
     },
     {
         id: 'tool_segment',
@@ -745,7 +745,7 @@ const ALGEO_SHORTCUTS = [
         label: '점대칭',
         category: 'tool',
         active: true,
-        desc: '점대칭 도구를 선택합니다. (준비 중)'
+        desc: '점대칭 도구 (준비 중)'
     },
     {
         id: 'tool_text',
@@ -753,7 +753,7 @@ const ALGEO_SHORTCUTS = [
         label: '텍스트',
         category: 'tool',
         active: true,
-        desc: '텍스트 도구를 선택합니다. (준비 중)'
+        desc: '텍스트 도구 (준비 중)'
     },
     {
         id: 'tool_decorate',
@@ -761,7 +761,7 @@ const ALGEO_SHORTCUTS = [
         label: '설명선',
         category: 'tool',
         active: true,
-        desc: '꾸미기 설명선 도구를 선택합니다. (준비 중)'
+        desc: '꾸미기 설명선 (준비 중)'
     },
     {
         id: 'tool_pen',
@@ -769,7 +769,7 @@ const ALGEO_SHORTCUTS = [
         label: '펜 그리기',
         category: 'tool',
         active: true,
-        desc: '펜그림 도구를 선택합니다. (준비 중)'
+        desc: '펜그림 도구 (준비 중)'
     },
     {
         id: 'tool_group_select',
@@ -777,7 +777,7 @@ const ALGEO_SHORTCUTS = [
         label: '그룹선택',
         category: 'tool',
         active: true,
-        desc: '그룹선택 도구를 선택합니다. (준비 중) G 단독은 격자 토글입니다.'
+        desc: '그룹선택 도구 (준비 중). G 단독은 격자 토글.'
     },
     {
         id: 'draw_cancel',
@@ -785,7 +785,7 @@ const ALGEO_SHORTCUTS = [
         label: '작도 취소',
         category: 'draw',
         active: true,
-        desc: '진행 중인 작도·선택 점을 초기화하고 이동 도구로 돌아갑니다. (선택 도구 단축키가 아닙니다)'
+        desc: '작도·선택 점을 취소하고 이동 도구로 돌아갑니다.'
     },
     {
         id: 'polygon_close',
@@ -793,15 +793,15 @@ const ALGEO_SHORTCUTS = [
         label: '다각형 닫기',
         category: 'draw',
         active: true,
-        desc: '다각형 작도 중 꼭짓점 3개 이상일 때 닫습니다. 그 외에는 이동 도구로 돌아갑니다.'
+        desc: '꼭짓점 3개 이상일 때 다각형을 닫습니다.'
     },
     {
         id: 'shortcut_help',
-        keys: 'Shift+/',
+        keys: 'Shift+?',
         label: '단축키 안내',
         category: 'view',
         active: true,
-        desc: '단축키 목록 패널을 열거나 닫습니다. 키보드에서 Shift와 / 를 함께 누릅니다 (? 문자).'
+        desc: '이 패널을 열거나 닫습니다.'
     },
     {
         id: 'toggle_grid',
@@ -1225,7 +1225,7 @@ function createAlgeoUI($container) {
         '            </div>' +
             '            <div class="algeo-right-bar-wrap">' +
             '                <div class="algeo-right-bar">' +
-            '                    <button type="button" class="right-bar-btn" id="btnShortcutHelp" title="단축키 안내 (Shift+/)" aria-label="단축키 안내">' +
+            '                    <button type="button" class="right-bar-btn" id="btnShortcutHelp" title="단축키 안내 (Shift+?)" aria-label="단축키 안내">' +
             renderAlgeoIcon('shortcuts', 'bar-icon', true) +
             '                    </button>' +
             '                    <button type="button" class="right-bar-btn" id="btnToggleTheme" title="다크 모드" aria-label="다크 모드">' +
@@ -4207,9 +4207,9 @@ AlgeoApp.prototype.initToolGuide = function () {
 };
 
 // 단축키 키 조합 문자열 → <kbd> HTML
-// 예: 'Ctrl+Z' · 'Shift+G' · 'Ctrl+Y / Ctrl+Shift+Z' (대안은 " / "로 구분)
+// 예: 'Ctrl+Z' · 'Shift+?' · 'Ctrl+Y / Ctrl+Shift+Z' (대안은 ' / '로만 구분, 세로 스택)
 function buildShortcutKeysHtml(keys) {
-    const alternatives = keys.split(/\s*\/\s*/);
+    const alternatives = keys.split(' / ');
     let html = '';
     let a;
     let i;
@@ -4220,14 +4220,19 @@ function buildShortcutKeysHtml(keys) {
         if (a > 0) {
             html += '<span class="shortcut-key-or">또는</span>';
         }
+        html += '<span class="shortcut-key-combo">';
         parts = alternatives[a].split('+');
         for (i = 0; i < parts.length; i++) {
-            part = parts[i];
+            part = $.trim(parts[i]);
+            if (!part) {
+                continue;
+            }
             if (i > 0) {
                 html += '<span class="shortcut-key-plus">+</span>';
             }
             html += '<kbd class="shortcut-kbd">' + part + '</kbd>';
         }
+        html += '</span>';
     }
 
     return html;
@@ -4312,15 +4317,15 @@ AlgeoApp.prototype.renderShortcutPanel = function () {
             itemClass = 'shortcut-item' + (sc.active ? '' : ' shortcut-item-planned');
             badgeHtml = sc.active ? '' : '<span class="shortcut-badge">예정</span>';
 
+            // 키(좌) + 라벨·설명(우)
             html += '<li class="' + itemClass + '">';
             html += '<span class="shortcut-keys">' + buildShortcutKeysHtml(sc.keys) + '</span>';
             html += '<div class="shortcut-text">';
-            html += '<span class="shortcut-label">' + sc.label + '</span>';
+            html += '<span class="shortcut-label">' + sc.label + badgeHtml + '</span>';
             if (sc.desc) {
                 html += '<span class="shortcut-desc">' + sc.desc + '</span>';
             }
             html += '</div>';
-            html += badgeHtml;
             html += '</li>';
         }
 

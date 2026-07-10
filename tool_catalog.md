@@ -51,8 +51,8 @@
 | SELECT / GROUP_SELECT | **pointer에만** 배치, misc에서 제거 | 카탈로그 중복 해소 (`tool_catalog` 구버전 주의) |
 | 그룹선택 단축키 | **`Shift+G`** (원본 표기 G → 변경) | 단독 `G`는 격자 토글과 충돌 |
 | SELECT 단축키 | 플라이아웃에서 **Esc 표기 제거** | Esc는 작도 취소·이동 복귀만 (선택 도구와 무관) |
-| 단축키 안내 | **`Shift+/`** (문자 `?`) | `?`만 쓰면 Shift를 모르는 사용자 혼동 |
-| Redo | **`Ctrl+Y / Ctrl+Shift+Z`** 병기 | 코드가 둘 다 지원 |
+| 단축키 안내 | **`Shift+?`** (키캡 Shift+/) | `?`만 쓰면 Shift 누락 · `/` 단독 표기는 파서와 충돌 주의 |
+| Redo | **`Ctrl+Y / Ctrl+Shift+Z`** 병기 | 코드가 둘 다 지원 · 대안은 ` / `로만 구분 |
 | 블록코딩·설정 | `railOnly: true` | 플라이아웃 없이 가이드 안내 (11단계까지) |
 | stub 클릭 | 캔버스 입력 무시 + 가이드 「준비 중」 | 빈 작도·오동작 방지 |
 | 작도 `ANGLE` | `line` 카테고리 유지 | 측정 `MEASURE_ANGLE`과 toolId 분리 |
