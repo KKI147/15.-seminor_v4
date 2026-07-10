@@ -86,17 +86,29 @@ const ALGEBRA_COMMANDS = [
 const ALGEBRA_TYPE_ORDER = {
     POINT: 0,
     MIDPOINT: 1,
-    SEGMENT: 2,
-    LINE: 3,
-    PERP_BISECTOR: 4,
-    PARALLEL_LINE: 5,
-    PERP_LINE: 6,
-    CIRCLE: 7,
-    ARC: 8,
-    ANGLE: 9,
-    POLYGON: 10,
-    SLIDER: 11,
-    FUNCTION: 12
+    INTERSECTION: 2,
+    POINT_ON: 3,
+    SEGMENT: 4,
+    LINE: 5,
+    PERP_BISECTOR: 6,
+    PARALLEL_LINE: 7,
+    PERP_LINE: 8,
+    CIRCLE: 9,
+    ARC: 10,
+    ANGLE: 11,
+    POLYGON: 12,
+    SLIDER: 13,
+    FUNCTION: 14
+};
+
+// 교점·대상 위 점 작도에 쓸 수 있는 도형 타입
+const ALGEO_INTERSECTABLE_TYPES = {
+    SEGMENT: true,
+    LINE: true,
+    PERP_BISECTOR: true,
+    PARALLEL_LINE: true,
+    PERP_LINE: true,
+    CIRCLE: true
 };
 
 // 슬라이더 트랙 길이(화면 픽셀) — 줌과 무관하게 동일한 조작감
@@ -162,8 +174,8 @@ const ALGEO_TOOL_CATEGORIES = [
         title: '점',
         tools: [
             { tool: 'POINT', label: '점', iconId: 'point', status: 'done', shortcut: 'D', hint: '빈 곳 클릭' },
-            { tool: 'INTERSECTION', label: '교점', iconId: 'intersection', status: 'stub', shortcut: 'I', hint: '두 대상의 교점 (6-1)' },
-            { tool: 'POINT_ON_OBJECT', label: '대상 위의 점', iconId: 'point_on_object', status: 'stub', shortcut: 'O', hint: '선·원 위 점 (6-1)' },
+            { tool: 'INTERSECTION', label: '교점', iconId: 'intersection', status: 'done', shortcut: 'I', hint: '도형 2개 클릭' },
+            { tool: 'POINT_ON_OBJECT', label: '대상 위의 점', iconId: 'point_on_object', status: 'done', shortcut: 'O', hint: '선·원 위 클릭' },
             { tool: 'LINE_TRACER', label: '라인 트레이서', iconId: 'line_tracer', status: 'stub', hint: '경로 따라 이동 (6-1)' },
             { tool: 'MIDPOINT', label: '중점', iconId: 'midpoint', status: 'done', shortcut: 'M', hint: '점 2개 선택' },
             { tool: 'INSERT_IMAGE', label: '그림 넣기', iconId: 'insert_image', status: 'stub', hint: '이미지 삽입 (10-1)' },
@@ -407,14 +419,20 @@ const ALGEO_TOOL_GUIDES = {
         tips: ['단축키 Shift+G — 그룹선택 도구 (예정)']
     },
     INTERSECTION: {
-        summary: '두 도형의 교점을 만듭니다. (준비 중)',
-        steps: ['6-1단계에서 구현 예정입니다.'],
-        tips: ['단축키 I']
+        summary: '두 도형(선·원)이 만나는 교점을 만듭니다.',
+        steps: [
+            '첫 번째 도형(선분·직선·원 등)을 클릭합니다.',
+            '두 번째 도형을 클릭하면 교점이 생성됩니다.'
+        ],
+        tips: ['원과 원이 두 점에서 만나면 둘 다 만듭니다.', 'Esc — 작도 취소', '단축키 I']
     },
     POINT_ON_OBJECT: {
-        summary: '선·원 등 대상 위에 점을 둡니다. (준비 중)',
-        steps: ['6-1단계에서 구현 예정입니다.'],
-        tips: ['단축키 O']
+        summary: '선·원 등 대상 위에 종속 점을 둡니다.',
+        steps: [
+            '점을 둘 선분·직선·원을 클릭합니다.',
+            '그 위의 위치를 클릭해 점을 확정합니다.'
+        ],
+        tips: ['부모 도형을 움직이면 점도 따라갑니다.', 'Esc — 작도 취소', '단축키 O']
     },
     LINE_TRACER: {
         summary: '경로를 따라 움직이는 점을 만듭니다. (준비 중)',
@@ -681,7 +699,7 @@ const ALGEO_SHORTCUTS = [
         label: '교점 도구',
         category: 'tool',
         active: true,
-        desc: '교점 도구 (준비 중)'
+        desc: '교점 도구를 선택합니다.'
     },
     {
         id: 'tool_midpoint',
@@ -697,7 +715,7 @@ const ALGEO_SHORTCUTS = [
         label: '대상 위의 점',
         category: 'tool',
         active: true,
-        desc: '대상 위의 점 도구 (준비 중)'
+        desc: '대상 위의 점 도구를 선택합니다.'
     },
     {
         id: 'tool_segment',
@@ -1468,6 +1486,337 @@ AlgeoEngine.prototype.addMidpoint = function (name, pointId1, pointId2) {
     return midpoint;
 };
 
+// ── 교점·대상 위 점 (6-1) ──
+
+// 직선·선분·수직이등분선·평행/수선 → 무한직선 두 점 {a,b} 또는 null
+AlgeoEngine.prototype.getObjectLineAB = function (obj) {
+    let p1;
+    let p2;
+    let linePts;
+
+    if (!obj) {
+        return null;
+    }
+    if (obj.type === 'SEGMENT' || obj.type === 'LINE') {
+        p1 = this.objectMap[obj.p1Id];
+        p2 = this.objectMap[obj.p2Id];
+        if (!p1 || !p2) {
+            return null;
+        }
+        return { a: { x: p1.x, y: p1.y }, b: { x: p2.x, y: p2.y } };
+    }
+    if (obj.type === 'PERP_BISECTOR') {
+        linePts = this.getPerpBisectorLinePoints(obj);
+    } else if (obj.type === 'PARALLEL_LINE') {
+        linePts = this.getParallelLinePoints(obj);
+    } else if (obj.type === 'PERP_LINE') {
+        linePts = this.getPerpLinePoints(obj);
+    } else {
+        return null;
+    }
+    if (!linePts) {
+        return null;
+    }
+    return { a: linePts.p1, b: linePts.p2 };
+};
+
+// 원 → { center, radius } 또는 null
+AlgeoEngine.prototype.getCircleGeometry = function (obj) {
+    let center;
+    let point;
+    let dx;
+    let dy;
+    let r;
+
+    if (!obj || obj.type !== 'CIRCLE') {
+        return null;
+    }
+    center = this.objectMap[obj.centerId];
+    point = this.objectMap[obj.pointId];
+    if (!center || !point) {
+        return null;
+    }
+    dx = point.x - center.x;
+    dy = point.y - center.y;
+    r = Math.sqrt(dx * dx + dy * dy);
+    if (r < 1e-12) {
+        return null;
+    }
+    return { center: { x: center.x, y: center.y }, radius: r };
+};
+
+// 두 무한직선 교점 (평행이면 null)
+AlgeoEngine.prototype.intersectLineLine = function (a1, a2, b1, b2) {
+    const dax = a2.x - a1.x;
+    const day = a2.y - a1.y;
+    const dbx = b2.x - b1.x;
+    const dby = b2.y - b1.y;
+    const den = dax * dby - day * dbx;
+    let t;
+
+    if (Math.abs(den) < 1e-12) {
+        return null;
+    }
+    t = ((b1.x - a1.x) * dby - (b1.y - a1.y) * dbx) / den;
+    return { x: a1.x + t * dax, y: a1.y + t * day };
+};
+
+// 무한직선–원 교점 배열 (0~2개)
+AlgeoEngine.prototype.intersectLineCircle = function (a, b, center, radius) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    let t;
+    let fx;
+    let fy;
+    let disc;
+    let sqrtDisc;
+    let t1;
+    let t2;
+    const pts = [];
+
+    if (len2 < 1e-16) {
+        return pts;
+    }
+    t = ((center.x - a.x) * dx + (center.y - a.y) * dy) / len2;
+    fx = a.x + t * dx - center.x;
+    fy = a.y + t * dy - center.y;
+    disc = radius * radius - (fx * fx + fy * fy);
+    if (disc < -1e-12) {
+        return pts;
+    }
+    if (disc < 0) {
+        disc = 0;
+    }
+    sqrtDisc = Math.sqrt(disc);
+    t1 = t - sqrtDisc / Math.sqrt(len2);
+    t2 = t + sqrtDisc / Math.sqrt(len2);
+    pts.push({ x: a.x + t1 * dx, y: a.y + t1 * dy });
+    if (sqrtDisc > 1e-10) {
+        pts.push({ x: a.x + t2 * dx, y: a.y + t2 * dy });
+    }
+    return pts;
+};
+
+// 원–원 교점 배열 (0~2개)
+AlgeoEngine.prototype.intersectCircleCircle = function (c1, r1, c2, r2) {
+    const dx = c2.x - c1.x;
+    const dy = c2.y - c1.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    let a;
+    let h;
+    let h2;
+    let px;
+    let py;
+    let rx;
+    let ry;
+    const pts = [];
+
+    if (d < 1e-12 || d > r1 + r2 + 1e-10 || d < Math.abs(r1 - r2) - 1e-10) {
+        return pts;
+    }
+    a = (r1 * r1 - r2 * r2 + d * d) / (2 * d);
+    h2 = r1 * r1 - a * a;
+    if (h2 < -1e-12) {
+        return pts;
+    }
+    if (h2 < 0) {
+        h2 = 0;
+    }
+    h = Math.sqrt(h2);
+    px = c1.x + a * dx / d;
+    py = c1.y + a * dy / d;
+    rx = -dy * (h / d);
+    ry = dx * (h / d);
+    pts.push({ x: px + rx, y: py + ry });
+    if (h > 1e-10) {
+        pts.push({ x: px - rx, y: py - ry });
+    }
+    return pts;
+};
+
+// 두 도형의 교점 좌표 목록 (선·원 조합)
+AlgeoEngine.prototype.computeIntersectionPoints = function (obj1, obj2) {
+    const line1 = this.getObjectLineAB(obj1);
+    const line2 = this.getObjectLineAB(obj2);
+    const circ1 = this.getCircleGeometry(obj1);
+    const circ2 = this.getCircleGeometry(obj2);
+    let pts;
+    let p;
+
+    if (line1 && line2) {
+        p = this.intersectLineLine(line1.a, line1.b, line2.a, line2.b);
+        return p ? [p] : [];
+    }
+    if (line1 && circ2) {
+        return this.intersectLineCircle(line1.a, line1.b, circ2.center, circ2.radius);
+    }
+    if (circ1 && line2) {
+        return this.intersectLineCircle(line2.a, line2.b, circ1.center, circ1.radius);
+    }
+    if (circ1 && circ2) {
+        return this.intersectCircleCircle(circ1.center, circ1.radius, circ2.center, circ2.radius);
+    }
+    return [];
+};
+
+// 동일 부모·인덱스의 교점 검색
+AlgeoEngine.prototype.findIntersectionByParents = function (obj1Id, obj2Id, index) {
+    const list = this.objects;
+    let i;
+    let obj;
+
+    for (i = 0; i < list.length; i++) {
+        obj = list[i];
+        if (obj.type !== 'INTERSECTION' || obj.index !== index) {
+            continue;
+        }
+        if ((obj.obj1Id === obj1Id && obj.obj2Id === obj2Id) ||
+            (obj.obj1Id === obj2Id && obj.obj2Id === obj1Id)) {
+            return obj;
+        }
+    }
+    return null;
+};
+
+// 교점 객체 추가 (종속 점)
+AlgeoEngine.prototype.addIntersection = function (name, obj1Id, obj2Id, index, x, y) {
+    const o1 = this.objectMap[obj1Id];
+    const o2 = this.objectMap[obj2Id];
+    let id;
+    let inter;
+
+    if (!o1 || !o2) {
+        return null;
+    }
+    id = this.generateId();
+    inter = {
+        id: id,
+        type: 'INTERSECTION',
+        name: name,
+        obj1Id: obj1Id,
+        obj2Id: obj2Id,
+        index: index || 0,
+        x: x,
+        y: y,
+        parents: [obj1Id, obj2Id],
+        children: []
+    };
+    o1.children.push(id);
+    o2.children.push(id);
+    this.objects.push(inter);
+    this.objectMap[id] = inter;
+    return inter;
+};
+
+// 선분·직선·원 위 파라미터 t (0~1 또는 각도 정규화)로 좌표
+AlgeoEngine.prototype.getPointOnObjectCoords = function (hostObj, t) {
+    let line;
+    let circ;
+    let angle;
+
+    if (!hostObj) {
+        return null;
+    }
+    if (hostObj.type === 'CIRCLE') {
+        circ = this.getCircleGeometry(hostObj);
+        if (!circ) {
+            return null;
+        }
+        angle = t * 2 * Math.PI;
+        return {
+            x: circ.center.x + circ.radius * Math.cos(angle),
+            y: circ.center.y + circ.radius * Math.sin(angle)
+        };
+    }
+    line = this.getObjectLineAB(hostObj);
+    if (!line) {
+        return null;
+    }
+    if (hostObj.type === 'SEGMENT') {
+        if (t < 0) { t = 0; }
+        if (t > 1) { t = 1; }
+    }
+    return {
+        x: line.a.x + t * (line.b.x - line.a.x),
+        y: line.a.y + t * (line.b.y - line.a.y)
+    };
+};
+
+// 수학 좌표 → 대상 위 파라미터 t
+AlgeoEngine.prototype.projectMathToObjectT = function (hostObj, mathX, mathY) {
+    let line;
+    let circ;
+    let dx;
+    let dy;
+    let len2;
+    let t;
+    let ang;
+
+    if (!hostObj) {
+        return null;
+    }
+    if (hostObj.type === 'CIRCLE') {
+        circ = this.getCircleGeometry(hostObj);
+        if (!circ) {
+            return null;
+        }
+        ang = Math.atan2(mathY - circ.center.y, mathX - circ.center.x);
+        if (ang < 0) {
+            ang += 2 * Math.PI;
+        }
+        return ang / (2 * Math.PI);
+    }
+    line = this.getObjectLineAB(hostObj);
+    if (!line) {
+        return null;
+    }
+    dx = line.b.x - line.a.x;
+    dy = line.b.y - line.a.y;
+    len2 = dx * dx + dy * dy;
+    if (len2 < 1e-16) {
+        return 0;
+    }
+    t = ((mathX - line.a.x) * dx + (mathY - line.a.y) * dy) / len2;
+    if (hostObj.type === 'SEGMENT') {
+        if (t < 0) { t = 0; }
+        if (t > 1) { t = 1; }
+    }
+    return t;
+};
+
+// 대상 위의 점 추가
+AlgeoEngine.prototype.addPointOnObject = function (name, hostId, t) {
+    const host = this.objectMap[hostId];
+    let coords;
+    let id;
+    let pt;
+
+    if (!host) {
+        return null;
+    }
+    coords = this.getPointOnObjectCoords(host, t);
+    if (!coords) {
+        return null;
+    }
+    id = this.generateId();
+    pt = {
+        id: id,
+        type: 'POINT_ON',
+        name: name,
+        hostId: hostId,
+        t: t,
+        x: coords.x,
+        y: coords.y,
+        parents: [hostId],
+        children: []
+    };
+    host.children.push(id);
+    this.objects.push(pt);
+    this.objectMap[id] = pt;
+    return pt;
+};
+
 // 수직이등분선 객체 추가
 AlgeoEngine.prototype.addPerpBisector = function (name, pointId1, pointId2) {
     const p1 = this.objectMap[pointId1];
@@ -1766,12 +2115,35 @@ AlgeoEngine.prototype.getAngleDegrees = function (obj) {
 
 // 종속 객체 좌표 재계산
 AlgeoEngine.prototype.recalculateObject = function (obj) {
+    let p1;
+    let p2;
+    let pts;
+    let coords;
+    let host;
+
     if (obj.type === 'MIDPOINT') {
-        const p1 = this.objectMap[obj.p1Id];
-        const p2 = this.objectMap[obj.p2Id];
+        p1 = this.objectMap[obj.p1Id];
+        p2 = this.objectMap[obj.p2Id];
         if (p1 && p2) {
             obj.x = (p1.x + p2.x) / 2;
             obj.y = (p1.y + p2.y) / 2;
+        }
+    } else if (obj.type === 'INTERSECTION') {
+        p1 = this.objectMap[obj.obj1Id];
+        p2 = this.objectMap[obj.obj2Id];
+        if (p1 && p2) {
+            pts = this.computeIntersectionPoints(p1, p2);
+            if (pts[obj.index]) {
+                obj.x = pts[obj.index].x;
+                obj.y = pts[obj.index].y;
+            }
+        }
+    } else if (obj.type === 'POINT_ON') {
+        host = this.objectMap[obj.hostId];
+        coords = this.getPointOnObjectCoords(host, obj.t);
+        if (coords) {
+            obj.x = coords.x;
+            obj.y = coords.y;
         }
     }
 };
@@ -2196,6 +2568,27 @@ AlgeoEngine.prototype.collectFreePointIdsInto = function (pointRefId, seen, resu
     if (pt.type === 'MIDPOINT') {
         this.collectFreePointIdsInto(pt.p1Id, seen, result);
         this.collectFreePointIdsInto(pt.p2Id, seen, result);
+    } else if (pt.type === 'INTERSECTION') {
+        this.mergeFreePointIds(this.collectFreePointIdsForObject(this.objectMap[pt.obj1Id]), seen, result);
+        this.mergeFreePointIds(this.collectFreePointIdsForObject(this.objectMap[pt.obj2Id]), seen, result);
+    } else if (pt.type === 'POINT_ON') {
+        this.mergeFreePointIds(this.collectFreePointIdsForObject(this.objectMap[pt.hostId]), seen, result);
+    }
+};
+
+// 자유점 ID 목록을 seen·result에 합침
+AlgeoEngine.prototype.mergeFreePointIds = function (ids, seen, result) {
+    let i;
+    let id;
+    if (!ids) {
+        return;
+    }
+    for (i = 0; i < ids.length; i++) {
+        id = ids[i];
+        if (!seen[id]) {
+            seen[id] = true;
+            result.push(id);
+        }
     }
 };
 
@@ -2209,7 +2602,8 @@ AlgeoEngine.prototype.collectFreePointIdsForObject = function (obj) {
         return result;
     }
 
-    if (obj.type === 'POINT' || obj.type === 'MIDPOINT') {
+    if (obj.type === 'POINT' || obj.type === 'MIDPOINT' ||
+        obj.type === 'INTERSECTION' || obj.type === 'POINT_ON') {
         return this.collectFreePointIdsForPointRef(obj.id);
     }
 
@@ -2723,7 +3117,8 @@ AlgeoRenderer.prototype.drawObjects = function () {
     // 2단계: 점(Point)·중점(Midpoint) 그리기 (모든 선/원 위에 보이도록)
     for (let i = 0; i < list.length; i++) {
         const obj = list[i];
-        if ((obj.type === 'POINT' || obj.type === 'MIDPOINT') && engine.isObjectVisible(obj)) {
+        if ((obj.type === 'POINT' || obj.type === 'MIDPOINT' ||
+            obj.type === 'INTERSECTION' || obj.type === 'POINT_ON') && engine.isObjectVisible(obj)) {
             this.drawPointShape(obj);
         }
     }
@@ -2737,14 +3132,16 @@ AlgeoRenderer.prototype.drawObjects = function () {
     }
 };
 
-// 점·중점 렌더 (AlgeoMath 스타일 — 굵은 테두리·흰색 외곽 라벨)
+// 점·중점·교점·대상 위 점 렌더
 AlgeoRenderer.prototype.drawPointShape = function (obj) {
     const ctx = this.ctx;
     const isMid = obj.type === 'MIDPOINT';
-    const radius = isMid ? ALGEO_VIS.midpointRadius : ALGEO_VIS.pointRadius;
+    const isDep = obj.type === 'INTERSECTION' || obj.type === 'POINT_ON' || isMid;
+    const radius = isDep ? ALGEO_VIS.midpointRadius : ALGEO_VIS.pointRadius;
     const sx = this.toScreenX(obj.x);
     const sy = this.toScreenY(obj.y);
     const isHighlighted = this.highlightIds.indexOf(obj.id) >= 0;
+    let fillColor;
 
     if (isHighlighted) {
         ctx.beginPath();
@@ -2757,12 +3154,15 @@ AlgeoRenderer.prototype.drawPointShape = function (obj) {
     ctx.beginPath();
     ctx.arc(sx, sy, radius, 0, 2 * Math.PI);
     if (isHighlighted) {
-        ctx.fillStyle = ALGEO_VIS.highlightPoint;
+        fillColor = ALGEO_VIS.highlightPoint;
     } else if (isMid) {
-        ctx.fillStyle = ALGEO_VIS.midpoint;
+        fillColor = ALGEO_VIS.midpoint;
+    } else if (obj.type === 'INTERSECTION' || obj.type === 'POINT_ON') {
+        fillColor = ALGEO_VIS.midpoint;
     } else {
-        ctx.fillStyle = ALGEO_VIS.point;
+        fillColor = ALGEO_VIS.point;
     }
+    ctx.fillStyle = fillColor;
     ctx.fill();
     ctx.strokeStyle = ALGEO_VIS.pointStroke;
     ctx.lineWidth = 2;
@@ -3457,7 +3857,8 @@ AlgeoRenderer.prototype.drawSelectedObjectHighlight = function (obj) {
     let coeffs;
     let bounds;
 
-    if (obj.type === 'POINT' || obj.type === 'MIDPOINT') {
+    if (obj.type === 'POINT' || obj.type === 'MIDPOINT' ||
+        obj.type === 'INTERSECTION' || obj.type === 'POINT_ON') {
         sx = this.toScreenX(obj.x);
         sy = this.toScreenY(obj.y);
         arcR = ALGEO_VIS.selectionPointRing;
@@ -3635,6 +4036,7 @@ function AlgeoApp(engine, renderer) {
     this.activePoint = null;          // (레거시) 점 드래그 — dragTranslate 사용
     this.dragTranslate = null;        // 객체·점 평행 이동 { pointIds, sliderId, lastMathX, lastMathY }
     this.selectedPoints = [];         // 선분/원 작도를 위해 선택된 점 배열
+    this.selectedObjects = [];        // 교점 등 도형 2선택용 ID 배열
     this.selectedObjectId = null;     // 대수창에서 선택된 객체 ID
     this.algebraCmdDictOpen = false;  // 명령어 사전 패널 표시 여부
     this.algebraPanelOpen = true;     // 대수창 표시 여부
@@ -3828,7 +4230,8 @@ AlgeoApp.prototype.init = function () {
         if ($(e.target).closest('#algebraInput').length) {
             return;
         }
-        if (self.constructionDraft || self.selectedPoints.length > 0 || self.currentTool !== 'MOVE') {
+        if (self.constructionDraft || self.selectedPoints.length > 0 ||
+            self.selectedObjects.length > 0 || self.currentTool !== 'MOVE') {
             self.selectTool('MOVE');
             e.preventDefault();
         }
@@ -4016,6 +4419,7 @@ AlgeoApp.prototype.selectTool = function (toolId) {
 // 인터랙티브 작도 상태 초기화
 AlgeoApp.prototype.clearToolDraft = function () {
     this.selectedPoints = [];
+    this.selectedObjects = [];
     this.constructionDraft = null;
     this.renderer.toolPreview = null;
     this.syncHighlightToRenderer();
@@ -4368,6 +4772,15 @@ AlgeoApp.prototype.getGuideActiveStepIndex = function () {
     if (tool === 'MIDPOINT' || tool === 'PERP_BISECTOR') {
         return Math.min(n, 1);
     }
+    if (tool === 'INTERSECTION') {
+        return Math.min(this.selectedObjects.length, 1);
+    }
+    if (tool === 'POINT_ON_OBJECT') {
+        if (draft && draft.type === 'POINT_ON_OBJECT') {
+            return 1;
+        }
+        return 0;
+    }
     if (tool === 'SEGMENT' || tool === 'LINE') {
         if (draft && draft.type === tool) {
             return 1;
@@ -4564,7 +4977,8 @@ AlgeoApp.prototype.updateCanvasCursor = function () {
         this.currentTool === 'MIDPOINT' || this.currentTool === 'PERP_BISECTOR' ||
         this.currentTool === 'PARALLEL_LINE' || this.currentTool === 'PERP_LINE' ||
         this.currentTool === 'ANGLE' || this.currentTool === 'ARC' || this.currentTool === 'CIRCLE' ||
-        this.currentTool === 'POLYGON') {
+        this.currentTool === 'POLYGON' || this.currentTool === 'INTERSECTION' ||
+        this.currentTool === 'POINT_ON_OBJECT') {
         cursor = 'pointer';
     } else if (this.currentTool === 'SLIDER') {
         cursor = 'crosshair';
@@ -4577,9 +4991,9 @@ AlgeoApp.prototype.updateCanvasCursor = function () {
     this.setCanvasCursor(cursor);
 };
 
-// 작도 중 선택된 점을 렌더러에 전달
+// 작도 중 선택된 점·도형을 렌더러에 전달
 AlgeoApp.prototype.syncHighlightToRenderer = function () {
-    this.renderer.highlightIds = this.selectedPoints.slice();
+    this.renderer.highlightIds = this.selectedPoints.concat(this.selectedObjects);
 };
 
 // 단순 중심 줌
@@ -5157,6 +5571,10 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
                 r.draw();
             }
         }
+    } else if (this.currentTool === 'INTERSECTION') {
+        this.handleIntersectionMouseDown(mouseX, mouseY, hitPoint);
+    } else if (this.currentTool === 'POINT_ON_OBJECT') {
+        this.handlePointOnObjectMouseDown(mouseX, mouseY, hitPoint);
     } else if (this.currentTool === 'DELETE') {
         // 객체 삭제
         if (hitPoint) {
@@ -5229,6 +5647,111 @@ AlgeoApp.prototype.handleMouseMove = function (e) {
     }
 };
 
+// 교점: 도형 2개 선택 → 교점 생성 (원–원은 최대 2점)
+AlgeoApp.prototype.handleIntersectionMouseDown = function (mouseX, mouseY, hitPoint) {
+    const r = this.renderer;
+    let hitObj = this.findObjectAt(mouseX, mouseY);
+    let obj1;
+    let obj2;
+    let pts;
+    let i;
+    let name;
+    let created = 0;
+
+    if (hitObj && !ALGEO_INTERSECTABLE_TYPES[hitObj.type]) {
+        hitObj = null;
+    }
+    if (!hitObj) {
+        return;
+    }
+
+    if (this.selectedObjects.length === 1 && this.selectedObjects[0] === hitObj.id) {
+        return;
+    }
+
+    this.selectedObjects.push(hitObj.id);
+    this.syncHighlightToRenderer();
+
+    if (this.selectedObjects.length < 2) {
+        r.draw();
+        return;
+    }
+
+    obj1 = this.engine.objectMap[this.selectedObjects[0]];
+    obj2 = this.engine.objectMap[this.selectedObjects[1]];
+    this.selectedObjects = [];
+    this.syncHighlightToRenderer();
+
+    if (!obj1 || !obj2 || obj1.id === obj2.id) {
+        r.draw();
+        return;
+    }
+
+    pts = this.engine.computeIntersectionPoints(obj1, obj2);
+    if (!pts || pts.length === 0) {
+        r.draw();
+        return;
+    }
+
+    this.recordHistory('교점 생성');
+    for (i = 0; i < pts.length; i++) {
+        if (this.engine.findIntersectionByParents(obj1.id, obj2.id, i)) {
+            continue;
+        }
+        name = 'I' + obj1.name + obj2.name + (pts.length > 1 ? String(i + 1) : '');
+        this.engine.addIntersection(name, obj1.id, obj2.id, i, pts[i].x, pts[i].y);
+        created += 1;
+    }
+    if (created > 0) {
+        this.updateAlgebraView();
+    }
+    r.draw();
+};
+
+// 대상 위의 점: 도형 선택 → 위치 클릭
+AlgeoApp.prototype.handlePointOnObjectMouseDown = function (mouseX, mouseY, hitPoint) {
+    const r = this.renderer;
+    const draft = this.constructionDraft;
+    let hitObj;
+    let host;
+    let math;
+    let t;
+    let name;
+
+    if (draft && draft.type === 'POINT_ON_OBJECT') {
+        host = this.engine.objectMap[draft.hostId];
+        if (!host) {
+            this.constructionDraft = null;
+            this.syncHighlightToRenderer();
+            r.draw();
+            return;
+        }
+        math = this.screenToMath(mouseX, mouseY);
+        t = this.engine.projectMathToObjectT(host, math.x, math.y);
+        if (t === null) {
+            return;
+        }
+        name = this.getNextPointName();
+        this.recordHistory('대상 위의 점 생성');
+        this.engine.addPointOnObject(name, host.id, t);
+        this.constructionDraft = null;
+        this.selectedObjects = [];
+        this.syncHighlightToRenderer();
+        this.updateAlgebraView();
+        r.draw();
+        return;
+    }
+
+    hitObj = this.findObjectAt(mouseX, mouseY);
+    if (!hitObj || !ALGEO_INTERSECTABLE_TYPES[hitObj.type]) {
+        return;
+    }
+    this.constructionDraft = { type: 'POINT_ON_OBJECT', hostId: hitObj.id };
+    this.selectedObjects = [hitObj.id];
+    this.syncHighlightToRenderer();
+    r.draw();
+};
+
 // 마우스 업 핸들러
 AlgeoApp.prototype.handleMouseUp = function (e) {
     if (this.sliderDragSnapshot && this.sliderDragMoved) {
@@ -5253,7 +5776,8 @@ AlgeoApp.prototype.findPointAt = function (screenX, screenY) {
     const list = this.engine.objects;
     for (let i = 0; i < list.length; i++) {
         const obj = list[i];
-        if (obj.type === 'POINT' || obj.type === 'MIDPOINT') {
+        if (obj.type === 'POINT' || obj.type === 'MIDPOINT' ||
+            obj.type === 'INTERSECTION' || obj.type === 'POINT_ON') {
             if (!this.engine.isObjectVisible(obj)) {
                 continue;
             }
@@ -6550,6 +7074,12 @@ AlgeoApp.prototype.buildAlgebraPropsHtml = function (obj) {
     if (obj.type === 'MIDPOINT') {
         html += '<p>좌표 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')</p>';
         html += '<p class="props-note">종속 객체 — 부모 점을 이동하면 함께 바뀝니다.</p>';
+    } else if (obj.type === 'INTERSECTION') {
+        html += '<p>좌표 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')</p>';
+        html += '<p class="props-note">교점 — 부모 도형을 이동하면 함께 바뀝니다.</p>';
+    } else if (obj.type === 'POINT_ON') {
+        html += '<p>좌표 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')</p>';
+        html += '<p class="props-note">대상 위의 점 — 부모 도형을 따라 움직입니다.</p>';
     } else if (obj.type === 'ANGLE') {
         deg = this.engine.getAngleDegrees(obj);
         html += '<p>각도 ' + (deg !== null ? deg.toFixed(1) : '?') + '\u00B0</p>';
@@ -6734,6 +7264,18 @@ AlgeoApp.prototype.updateAlgebraView = function () {
             const p2 = this.engine.objectMap[obj.p2Id];
             if (p1 && p2) {
                 desc = '중점 ' + p1.name + p2.name + ' (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')';
+            }
+        } else if (obj.type === 'INTERSECTION') {
+            const o1 = this.engine.objectMap[obj.obj1Id];
+            const o2 = this.engine.objectMap[obj.obj2Id];
+            if (o1 && o2) {
+                desc = '교점 ' + o1.name + '∩' + o2.name +
+                    ' (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')';
+            }
+        } else if (obj.type === 'POINT_ON') {
+            const host = this.engine.objectMap[obj.hostId];
+            if (host) {
+                desc = host.name + ' 위의 점 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')';
             }
         } else if (obj.type === 'PERP_BISECTOR') {
             const p1 = this.engine.objectMap[obj.p1Id];
