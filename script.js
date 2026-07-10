@@ -152,7 +152,7 @@ const ALGEO_TOOL_CATEGORIES = [
         title: '선택·이동',
         tools: [
             { tool: 'MOVE', label: '이동', iconId: 'move', status: 'done', hint: '객체·점 드래그 / 빈 곳 Pan' },
-            { tool: 'SELECT', label: '선택', iconId: 'select', status: 'stub', shortcut: 'Esc', hint: '객체 단일 선택 (7-1)' },
+            { tool: 'SELECT', label: '선택', iconId: 'select', status: 'stub', hint: '객체 단일 선택 (7-1)' },
             { tool: 'GROUP_SELECT', label: '그룹선택', iconId: 'group_select', status: 'stub', shortcut: 'Shift+G', hint: '영역·다중 선택 (7-1)' }
         ]
     },
@@ -653,11 +653,11 @@ const ALGEO_SHORTCUTS = [
     },
     {
         id: 'redo',
-        keys: 'Ctrl+Y',
+        keys: 'Ctrl+Y / Ctrl+Shift+Z',
         label: '다시 실행',
         category: 'edit',
         active: true,
-        desc: '취소한 작업을 다시 적용합니다.'
+        desc: '취소한 작업을 다시 적용합니다. Ctrl+Y 또는 Ctrl+Shift+Z'
     },
     {
         id: 'hide_toggle',
@@ -785,7 +785,7 @@ const ALGEO_SHORTCUTS = [
         label: '작도 취소',
         category: 'draw',
         active: true,
-        desc: '진행 중인 작도·선택 점을 초기화하고 이동 도구로 돌아갑니다.'
+        desc: '진행 중인 작도·선택 점을 초기화하고 이동 도구로 돌아갑니다. (선택 도구 단축키가 아닙니다)'
     },
     {
         id: 'polygon_close',
@@ -793,15 +793,15 @@ const ALGEO_SHORTCUTS = [
         label: '다각형 닫기',
         category: 'draw',
         active: true,
-        desc: '다각형 작도 중 꼭짓점 3개 이상일 때 닫습니다.'
+        desc: '다각형 작도 중 꼭짓점 3개 이상일 때 닫습니다. 그 외에는 이동 도구로 돌아갑니다.'
     },
     {
         id: 'shortcut_help',
-        keys: '?',
+        keys: 'Shift+/',
         label: '단축키 안내',
         category: 'view',
         active: true,
-        desc: '단축키 목록 패널을 열거나 닫습니다.'
+        desc: '단축키 목록 패널을 열거나 닫습니다. 키보드에서 Shift와 / 를 함께 누릅니다 (? 문자).'
     },
     {
         id: 'toggle_grid',
@@ -1171,7 +1171,7 @@ function createAlgeoUI($container) {
         '                    <h3>대수창</h3>' +
         '                    <div class="sidebar-undo-group">' +
         '                        <button type="button" id="btnUndo" class="sidebar-undo-btn" title="실행 취소 (Ctrl+Z)" aria-label="실행 취소" disabled>↶</button>' +
-        '                        <button type="button" id="btnRedo" class="sidebar-undo-btn" title="다시 실행 (Ctrl+Y)" aria-label="다시 실행" disabled>↷</button>' +
+        '                        <button type="button" id="btnRedo" class="sidebar-undo-btn" title="다시 실행 (Ctrl+Y / Ctrl+Shift+Z)" aria-label="다시 실행" disabled>↷</button>' +
         '                    </div>' +
         '                </div>' +
         '                <button type="button" id="btnToggleAlgebra" class="sidebar-toggle-btn" title="대수창 숨기기" aria-label="대수창 숨기기">◀</button>' +
@@ -1225,7 +1225,7 @@ function createAlgeoUI($container) {
         '            </div>' +
             '            <div class="algeo-right-bar-wrap">' +
             '                <div class="algeo-right-bar">' +
-            '                    <button type="button" class="right-bar-btn" id="btnShortcutHelp" title="단축키 안내 (?)" aria-label="단축키 안내">' +
+            '                    <button type="button" class="right-bar-btn" id="btnShortcutHelp" title="단축키 안내 (Shift+/)" aria-label="단축키 안내">' +
             renderAlgeoIcon('shortcuts', 'bar-icon', true) +
             '                    </button>' +
             '                    <button type="button" class="right-bar-btn" id="btnToggleTheme" title="다크 모드" aria-label="다크 모드">' +
@@ -4207,18 +4207,27 @@ AlgeoApp.prototype.initToolGuide = function () {
 };
 
 // 단축키 키 조합 문자열 → <kbd> HTML
+// 예: 'Ctrl+Z' · 'Shift+G' · 'Ctrl+Y / Ctrl+Shift+Z' (대안은 " / "로 구분)
 function buildShortcutKeysHtml(keys) {
-    const parts = keys.split('+');
+    const alternatives = keys.split(/\s*\/\s*/);
     let html = '';
+    let a;
     let i;
+    let parts;
     let part;
 
-    for (i = 0; i < parts.length; i++) {
-        part = parts[i];
-        if (i > 0) {
-            html += '<span class="shortcut-key-plus">+</span>';
+    for (a = 0; a < alternatives.length; a++) {
+        if (a > 0) {
+            html += '<span class="shortcut-key-or">또는</span>';
         }
-        html += '<kbd class="shortcut-kbd">' + part + '</kbd>';
+        parts = alternatives[a].split('+');
+        for (i = 0; i < parts.length; i++) {
+            part = parts[i];
+            if (i > 0) {
+                html += '<span class="shortcut-key-plus">+</span>';
+            }
+            html += '<kbd class="shortcut-kbd">' + part + '</kbd>';
+        }
     }
 
     return html;
