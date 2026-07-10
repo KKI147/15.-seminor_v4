@@ -28,8 +28,9 @@
 
 | 항목 | 상태 | 비고 |
 |------|------|------|
-| 좌측 레일 + 카테고리 플라이아웃 | ✅ | `ui_layout.md` UI-1 |
-| 플라이아웃 `hint` 문구 | ✅ | `ALGEO_TOOL_CATEGORIES[].hint`, `.flyout-tool-hint` |
+| 좌측 레일 + 카테고리 플라이아웃 | ✅ | 원본 9+1 (`railOnly` 포함), `ui_layout.md` |
+| 플라이아웃 `hint` 문구 | ✅ 메타 | CSS로 숨김 — 표시 여부는 [`tool_catalog.md`](tool_catalog.md) 개선 제안 |
+| stub 도구 UI 맵 | ✅ | `status:'stub'`, 배지·가이드·클릭 무시 (5단계) |
 | 통합 작도 상태 `constructionDraft` | ✅ | 호·원·선분·직선·각·평행·수직 |
 | `drawToolPreview()` 실시간 미리보기 | ✅ | 위 도구 전부 |
 | 호 3점 모델 (`p1Id`, `p2Id`, `guideId`) | ✅ | 엔진·렌더·히트테스트·`Arc(A,B,C)` 파서 |
@@ -217,6 +218,7 @@
 | UX-2 | 대수창 토글 ✅, 격자·스냅 ✅, SVG 아이콘 [`icon_guidelines.md`](icon_guidelines.md) |
 | UX-3 | 다각형 작도 — `constructionDraft` + 미리보기 + Enter/첫 점 닫기 |
 | UX-4 | 도구 가이드 — `ALGEO_TOOL_GUIDES` + `#toolGuide` + 동적 단계 |
+| 5단계 | 레일 9+1 · stub 맵 · Shift+G · [`tool_catalog.md`](tool_catalog.md) 개선 메모 |
 
 ---
 
@@ -224,5 +226,6 @@
 
 - [`ui_layout.md`](ui_layout.md) — DOM 구조·레일·2단계 UI 계획
 - [`tool_guide_plan.md`](tool_guide_plan.md) — 도구 가이드 패널 설계
+- [`tool_catalog.md`](tool_catalog.md) — 전체 도구·stub 상태·개선 메모
 - [`task.md`](task.md) — 단계별 체크리스트
 - [`README.md`](README.md) — 로드맵·실행 방법

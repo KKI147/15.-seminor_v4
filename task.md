@@ -1,6 +1,6 @@
 # 알지오메스 클론코딩 — 진행 체크리스트
 
-> 전체 로드맵: [`README.md`](README.md) · 전체 도구 52종: [`tool_catalog.md`](tool_catalog.md)
+> 전체 로드맵: [`README.md`](README.md) · 전체 도구: [`tool_catalog.md`](tool_catalog.md)
 
 ---
 
@@ -16,11 +16,11 @@
 
 > [`ui_layout.md`](ui_layout.md) · [`ux_guidelines.md`](ux_guidelines.md)
 
-- `[x]` UI-1 좌측 레일 + 플라이아웃 (7카테고리, SVG)
+- `[x]` UI-1 좌측 레일 + 플라이아웃 (원본 9+1, SVG)
 - `[x]` UI-2 격자/스냅 우측 바
     - `[x]` 대수창 표시/숨김 · 생성순/종류순 · Undo UI
 - `[x]` UX-1 ~ UX-4 작도 미리보기 · 가이드 패널
-- 아이콘 규칙 (SVG 전용, **앞으로 모든 UI 아이콘 동일**): [`icon_guidelines.md`](icon_guidelines.md) · [`.cursor/rules/svg-icons.mdc`](.cursor/rules/svg-icons.mdc)
+- 아이콘 규칙 (SVG 전용): [`icon_guidelines.md`](icon_guidelines.md) · [`.cursor/rules/svg-icons.mdc`](.cursor/rules/svg-icons.mdc)
 
 ---
 
@@ -34,29 +34,35 @@
 
 ---
 
-# 5단계 — 도구 UI 전체 맵 ← **다음**
+# 5단계 — 도구 UI 전체 맵 ✅ (2026-07-10)
 
-원본 레일 9칸 + 설정 · 플라이아웃 52종 (`images/`)
+원본 레일 9칸 + 설정 · 플라이아웃 전체 노출 (`done` | `stub`)
 
-- `[ ]` 5-1 `ALGEO_TOOL_CATEGORIES` 재구성 (목표 구조: [`tool_catalog.md`](tool_catalog.md))
-- `[ ]` 5-2 미구현 도구 `stub` 등록
-- `[ ]` 5-3 단축키 골격 (D, I, M, S, L, P, H, …)
-- `[ ]` 5-4 플라이아웃·레일 스타일 정렬 (SVG 아이콘 유지 — [`icon_guidelines.md`](icon_guidelines.md))
+- `[x]` 5-1 `ALGEO_TOOL_CATEGORIES` 재구성 (원본 순서, `transform`·`misc`·`draw`·`blockcoding`·`settings`)
+- `[x]` 5-2 미구현 도구 `stub` 등록 (배지·가이드·클릭 무시)
+- `[x]` 5-3 단축키 골격 (`ALGEO_TOOL_KEY_MAP`: D,I,M,O,S,L,V,C,P,R,T,E,B + Shift+G)
+- `[x]` 5-4 플라이아웃·레일 스타일 · stub SVG 아이콘 (`algeo-icons.js`)
+
+**개선 반영** (상세: [`tool_catalog.md`](tool_catalog.md) 「5단계 개선 메모」)
+
+- SELECT/GROUP_SELECT → `pointer`만 (misc 중복 제거)
+- 그룹선택 단축키 `G` → `Shift+G` (격자 G와 충돌 회피)
+- 블록코딩·설정은 `railOnly` (플라이아웃 없음, 가이드 안내)
 
 ---
 
-# 6단계 — 기하 작도 확장
+# 6단계 — 기하 작도 확장 ← **다음**
 
 - `[ ]` 6-1 점 — 교점, 대상 위의 점, 라인 트레이서
 - `[ ]` 6-2 선 — 주어진 길이 선분, 반직선, 각 이등분선, 접선, 벡터
 - `[ ]` 6-3 원 — 컴퍼스, 세 점, 중심+반지름, 부채꼴, 활꼴
-- `[ ]` 6-4 다각형 — 정다각형×2, 주어진 크기의 각, 카테고리 분리
+- `[ ]` 6-4 다각형 — 정다각형×2, 주어진 크기의 각
 
 ---
 
 # 7단계 — 선택·대수 UI 객체
 
-- `[ ]` 7-1 선택, 그룹선택
+- `[ ]` 7-1 선택, 그룹선택 (`stub` → `done`)
 - `[ ]` 7-2 텍스트, 체크박스
 
 ---
@@ -93,17 +99,19 @@
 
 - `[x]` 12-1 다크/라이트 테마 (UI + 캔버스)
 - `[ ]` 12-2 터치 이벤트
-- `[ ]` 12-3 키보드 단축키 완성
+- `[ ]` 12-3 키보드 단축키 완성 (5-3 골격 완료, 동작 연동은 도구 구현 시)
 - `[ ]` 12-4 파일 저장·불러오기
-- `[x]` 12-5 도구 SVG 아이콘 — **핵심 UI** (레일·플라이아웃·가이드·우측 바) [`icon_guidelines.md`](icon_guidelines.md)
-- `[ ]` 12-5b 52종 stub 도구 SVG (`algeo-icons.js`에 순차 추가)
+- `[x]` 12-5 도구 SVG 아이콘 — 핵심 UI + **5단계 stub 전체**
+- `[x]` 12-5b 52종+ stub 도구 SVG (`algeo-icons.js`)
 
 ---
 
 ## 진행 요약
 
-| 완료 | 전체 도구 |
-|------|-----------|
-| 19 / 52 | 37% (`tool_catalog.md` 기준) |
+| 구분 | 개수 |
+|------|------|
+| 플라이아웃 도구 | **54** (`done` 15 + `stub` 39) |
+| 레일 전용 | 블록코딩 · 설정 |
+| 엔진 구현률 | **15 / 54 ≈ 28%** (UI 맵은 100%) |
 
-**권장 순서**: ~~4-5 격자·스냅~~ → **5단계 UI 맵** → 6단계 기하 → 7~11 → 12
+**권장 순서**: ~~5단계 UI 맵~~ → **6단계 기하** → 7~11 → 12

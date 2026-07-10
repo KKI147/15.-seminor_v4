@@ -136,13 +136,24 @@ function getCanvasMousePos(canvas, e) {
 }
 
 // 좌측 도구 레일 카테고리 (플라이아웃 서브메뉴 구성)
+// 5단계: 원본 레일 순서(블록코딩→…→설정). status: done | stub
+// SELECT/GROUP_SELECT는 pointer에만 두고 misc 중복은 제거 (개선안)
 const ALGEO_TOOL_CATEGORIES = [
+    {
+        id: 'blockcoding',
+        iconId: 'cat-blockcoding',
+        title: '블록코딩',
+        railOnly: true,
+        railHint: '11단계에서 구현 예정'
+    },
     {
         id: 'pointer',
         iconId: 'cat-pointer',
-        title: '이동·선택',
+        title: '선택·이동',
         tools: [
-            { tool: 'MOVE', label: '이동', iconId: 'move', hint: '객체·점 드래그 / 빈 곳 Pan' }
+            { tool: 'MOVE', label: '이동', iconId: 'move', status: 'done', hint: '객체·점 드래그 / 빈 곳 Pan' },
+            { tool: 'SELECT', label: '선택', iconId: 'select', status: 'stub', shortcut: 'Esc', hint: '객체 단일 선택 (7-1)' },
+            { tool: 'GROUP_SELECT', label: '그룹선택', iconId: 'group_select', status: 'stub', shortcut: 'Shift+G', hint: '영역·다중 선택 (7-1)' }
         ]
     },
     {
@@ -150,30 +161,14 @@ const ALGEO_TOOL_CATEGORIES = [
         iconId: 'cat-point',
         title: '점',
         tools: [
-            { tool: 'POINT', label: '점', iconId: 'point', shortcut: 'D', hint: '빈 곳 클릭' },
-            { tool: 'MIDPOINT', label: '중점', iconId: 'midpoint', shortcut: 'M', hint: '점 2개 선택' }
-        ]
-    },
-    {
-        id: 'line',
-        iconId: 'cat-line',
-        title: '선',
-        tools: [
-            { tool: 'SEGMENT', label: '선분', iconId: 'segment', hint: '점1 → 드래그 → 점2' },
-            { tool: 'LINE', label: '직선', iconId: 'line', hint: '점1 → 드래그 → 점2' },
-            { tool: 'PERP_BISECTOR', label: '수직이등분선', iconId: 'perp_bisector', hint: '점 2개 선택' },
-            { tool: 'PARALLEL_LINE', label: '평행선', iconId: 'parallel_line', hint: '기준2점 → 통과점' },
-            { tool: 'PERP_LINE', label: '수직선', iconId: 'perp_line', hint: '기준2점 → 통과점' },
-            { tool: 'ANGLE', label: '각도', iconId: 'angle', hint: '변1 → 꼭짓점 → 조절' }
-        ]
-    },
-    {
-        id: 'polygon',
-        iconId: 'cat-polygon',
-        title: '다각형',
-        tools: [
-            { tool: 'POLYGON', label: '다각형', iconId: 'polygon', shortcut: 'P', hint: '꼭짓점 클릭 → 첫 점으로 닫기' }
-            // 6-4: REGULAR_POLYGON_SIDE, REGULAR_POLYGON_CENTER, ANGLE_GIVEN 등 추가 예정
+            { tool: 'POINT', label: '점', iconId: 'point', status: 'done', shortcut: 'D', hint: '빈 곳 클릭' },
+            { tool: 'INTERSECTION', label: '교점', iconId: 'intersection', status: 'stub', shortcut: 'I', hint: '두 대상의 교점 (6-1)' },
+            { tool: 'POINT_ON_OBJECT', label: '대상 위의 점', iconId: 'point_on_object', status: 'stub', shortcut: 'O', hint: '선·원 위 점 (6-1)' },
+            { tool: 'LINE_TRACER', label: '라인 트레이서', iconId: 'line_tracer', status: 'stub', hint: '경로 따라 이동 (6-1)' },
+            { tool: 'MIDPOINT', label: '중점', iconId: 'midpoint', status: 'done', shortcut: 'M', hint: '점 2개 선택' },
+            { tool: 'INSERT_IMAGE', label: '그림 넣기', iconId: 'insert_image', status: 'stub', hint: '이미지 삽입 (10-1)' },
+            { tool: 'INSERT_VIDEO', label: '동영상 넣기', iconId: 'insert_video', status: 'stub', hint: '동영상 삽입 (10-1)' },
+            { tool: 'TABLE', label: '표', iconId: 'table', status: 'stub', hint: '표 삽입 (10-2)' }
         ]
     },
     {
@@ -181,26 +176,92 @@ const ALGEO_TOOL_CATEGORIES = [
         iconId: 'cat-circle',
         title: '원',
         tools: [
-            { tool: 'CIRCLE', label: '원', iconId: 'circle', hint: '중심 → 드래그 → 확정' },
-            { tool: 'ARC', label: '호', iconId: 'arc', hint: '끝점2 → 호 위 점' }
+            { tool: 'CIRCLE', label: '원 : 중심과 한 점', iconId: 'circle', status: 'done', shortcut: 'C', hint: '중심 → 드래그 → 확정' },
+            { tool: 'COMPASS', label: '컴퍼스', iconId: 'compass', status: 'stub', hint: '반지름 복사 작도 (6-3)' },
+            { tool: 'CIRCLE_3P', label: '원 : 세 점', iconId: 'circle_3p', status: 'stub', hint: '세 점으로 원 (6-3)' },
+            { tool: 'CIRCLE_RADIUS', label: '원 : 중심과 반지름', iconId: 'circle_radius', status: 'stub', hint: '숫자·변수 반지름 (6-3)' },
+            { tool: 'ARC', label: '호', iconId: 'arc', status: 'done', hint: '끝점2 → 호 위 점' },
+            { tool: 'SECTOR', label: '부채꼴', iconId: 'sector', status: 'stub', hint: '부채꼴 영역 (6-3)' },
+            { tool: 'CIRCULAR_SEGMENT', label: '활꼴', iconId: 'circular_segment', status: 'stub', hint: '활꼴 영역 (6-3)' }
         ]
     },
     {
-        id: 'slider',
-        iconId: 'cat-slider',
-        title: '슬라이더',
+        id: 'line',
+        iconId: 'cat-line',
+        title: '선',
         tools: [
-            { tool: 'SLIDER', label: '슬라이더', iconId: 'slider', hint: '캔버스 클릭 생성' }
+            { tool: 'SEGMENT', label: '선분', iconId: 'segment', status: 'done', shortcut: 'S', hint: '점1 → 드래그 → 점2' },
+            { tool: 'SEGMENT_GIVEN_LENGTH', label: '주어진 길이의 선분', iconId: 'segment_given_length', status: 'stub', hint: '길이 입력 (6-2)' },
+            { tool: 'LINE', label: '직선', iconId: 'line', status: 'done', shortcut: 'L', hint: '점1 → 드래그 → 점2' },
+            { tool: 'RAY', label: '반직선', iconId: 'ray', status: 'stub', hint: '시작점 → 방향 (6-2)' },
+            { tool: 'PARALLEL_LINE', label: '평행선', iconId: 'parallel_line', status: 'done', hint: '기준2점 → 통과점' },
+            { tool: 'PERP_LINE', label: '수선', iconId: 'perp_line', status: 'done', hint: '기준2점 → 통과점' },
+            { tool: 'PERP_BISECTOR', label: '수직이등분선', iconId: 'perp_bisector', status: 'done', shortcut: 'V', hint: '점 2개 선택' },
+            { tool: 'ANGLE_BISECTOR', label: '각의 이등분선', iconId: 'angle_bisector', status: 'stub', hint: '각 이등분 (6-2)' },
+            { tool: 'TANGENT', label: '접선', iconId: 'tangent', status: 'stub', hint: '원에 접하는 선 (6-2)' },
+            { tool: 'VECTOR', label: '벡터', iconId: 'vector', status: 'stub', hint: '화살표 선분 (6-2)' },
+            { tool: 'ANGLE', label: '각도', iconId: 'angle', status: 'done', hint: '변1 → 꼭짓점 → 조절' }
         ]
     },
     {
-        id: 'edit',
-        iconId: 'cat-edit',
-        title: '편집',
+        id: 'polygon',
+        iconId: 'cat-polygon',
+        title: '다각형',
         tools: [
-            { tool: 'HIDE_OBJECT', label: '대상 숨기기', iconId: 'hide_object', shortcut: 'H', hint: '객체 클릭' },
-            { tool: 'DELETE', label: '삭제', iconId: 'delete', hint: '객체 클릭' }
+            { tool: 'POLYGON', label: '다각형', iconId: 'polygon', status: 'done', shortcut: 'P', hint: '꼭짓점 클릭 → 첫 점으로 닫기' },
+            { tool: 'REGULAR_POLYGON_SIDE', label: '정다각형 : 한 변', iconId: 'regular_polygon_side', status: 'stub', hint: '한 변 + n (6-4)' },
+            { tool: 'REGULAR_POLYGON_CENTER', label: '정다각형 : 중심과 한 점', iconId: 'regular_polygon_center', status: 'stub', hint: '중심·꼭짓점 (6-4)' },
+            { tool: 'ANGLE_GIVEN', label: '주어진 크기의 각', iconId: 'angle_given', status: 'stub', hint: '고정 각도 (6-4)' }
         ]
+    },
+    {
+        id: 'transform',
+        iconId: 'cat-transform',
+        title: '변환·측정',
+        tools: [
+            { tool: 'MEASURE_LENGTH', label: '길이', iconId: 'measure_length', status: 'stub', hint: '길이 측정 (8-1)' },
+            { tool: 'MEASURE_ANGLE', label: '각도', iconId: 'measure_angle', status: 'stub', hint: '각도 측정 (8-1)' },
+            { tool: 'MEASURE_AREA', label: '넓이', iconId: 'measure_area', status: 'stub', hint: '넓이 측정 (8-1)' },
+            { tool: 'REFLECT_POINT', label: '점대칭', iconId: 'reflect_point', status: 'stub', shortcut: 'R', hint: '점대칭 변환 (9-1)' },
+            { tool: 'REFLECT_LINE', label: '선대칭', iconId: 'reflect_line', status: 'stub', hint: '선대칭 변환 (9-1)' },
+            { tool: 'ROTATE', label: '회전', iconId: 'rotate', status: 'stub', hint: '회전 변환 (9-2)' },
+            { tool: 'TRANSLATE', label: '평행이동', iconId: 'translate', status: 'stub', hint: '평행이동 (9-2)' },
+            { tool: 'DILATE', label: '점을 중심으로 확대', iconId: 'dilate', status: 'stub', hint: '확대·축소 (9-2)' },
+            { tool: 'TILE', label: '타일', iconId: 'tile', status: 'stub', hint: '패턴 반복 (9-3)' }
+        ]
+    },
+    {
+        id: 'misc',
+        iconId: 'cat-misc',
+        title: '기타·객체',
+        tools: [
+            { tool: 'TEXT', label: '텍스트', iconId: 'text', status: 'stub', shortcut: 'T', hint: '텍스트 상자 (7-2)' },
+            { tool: 'SLIDER', label: '슬라이더', iconId: 'slider', status: 'done', hint: '캔버스 클릭 생성' },
+            { tool: 'USER_TOOL', label: '사용자 도구', iconId: 'user_tool', status: 'stub', hint: '사용자 정의 (11-2)' },
+            { tool: 'CHECKBOX', label: '체크박스', iconId: 'checkbox', status: 'stub', hint: '표시 토글 (7-2)' },
+            { tool: 'BLOCK_EVENT_BTN', label: '블록코딩 이벤트 버튼', iconId: 'block_event_btn', status: 'stub', hint: '이벤트 버튼 (11-1)' },
+            { tool: 'HIDE_OBJECT', label: '대상 숨기기', iconId: 'hide_object', status: 'done', shortcut: 'H', hint: '객체 클릭' },
+            { tool: 'DELETE', label: '삭제', iconId: 'delete', status: 'done', hint: '객체 클릭' }
+        ]
+    },
+    {
+        id: 'draw',
+        iconId: 'cat-draw',
+        title: '펜·꾸미기',
+        tools: [
+            { tool: 'DECORATE_LEADER', label: '꾸미기: 설명선', iconId: 'decorate_leader', status: 'stub', shortcut: 'E', hint: '설명선 (8-2)' },
+            { tool: 'DECORATE_LENGTH', label: '꾸미기: 길이', iconId: 'decorate_length', status: 'stub', hint: '길이 표시 (8-2)' },
+            { tool: 'DECORATE_ANGLE', label: '꾸미기: 각도', iconId: 'decorate_angle', status: 'stub', hint: '각도 표시 (8-2)' },
+            { tool: 'DECORATE_PARALLEL', label: '꾸미기: 평행', iconId: 'decorate_parallel', status: 'stub', hint: '평행 표시 (8-2)' },
+            { tool: 'PEN', label: '그리기', iconId: 'pen', status: 'stub', shortcut: 'B', hint: '펜그림 (8-3)' }
+        ]
+    },
+    {
+        id: 'settings',
+        iconId: 'cat-settings',
+        title: '설정',
+        railOnly: true,
+        railHint: '11단계에서 설정 패널 예정 (격자·스냅은 우측 바)'
     }
 ];
 
@@ -318,9 +379,9 @@ const ALGEO_TOOL_GUIDES = {
         tips: ['점 삭제 시 연결된 도형도 함께 제거될 수 있습니다.']
     },
     SLIDER: {
-        summary: '⇔ 슬라이더 도구로 캔버스에 숫자 변수를 만듭니다.',
+        summary: '슬라이더 도구로 캔버스에 숫자 변수를 만듭니다.',
         steps: [
-            '좌측 ⇔ 슬라이더 도구를 선택합니다.',
+            '좌측 기타·객체에서 슬라이더 도구를 선택합니다.',
             '캔버스를 클릭해 슬라이더를 배치합니다.',
             '손잡이를 드래그하거나 막대를 클릭해 값을 바꿉니다.'
         ],
@@ -333,6 +394,202 @@ const ALGEO_TOOL_GUIDES = {
             '대수창 왼쪽 눈 아이콘으로 다시 표시할 수 있습니다.'
         ],
         tips: ['단축키 H — 선택 객체 표시/숨김 토글', '숨긴 객체는 캔버스에서 선택·이동되지 않습니다.']
+    },
+    // ── stub 도구 (5단계 UI 맵 — 엔진 미구현) ──
+    SELECT: {
+        summary: '객체를 하나씩 선택합니다. (준비 중)',
+        steps: ['7단계에서 구현 예정입니다.'],
+        tips: ['지금은 이동 도구로 객체를 드래그할 수 있습니다.']
+    },
+    GROUP_SELECT: {
+        summary: '여러 객체를 한꺼번에 선택합니다. (준비 중)',
+        steps: ['7단계에서 구현 예정입니다.'],
+        tips: ['단축키 Shift+G — 그룹선택 도구 (예정)']
+    },
+    INTERSECTION: {
+        summary: '두 도형의 교점을 만듭니다. (준비 중)',
+        steps: ['6-1단계에서 구현 예정입니다.'],
+        tips: ['단축키 I']
+    },
+    POINT_ON_OBJECT: {
+        summary: '선·원 등 대상 위에 점을 둡니다. (준비 중)',
+        steps: ['6-1단계에서 구현 예정입니다.'],
+        tips: ['단축키 O']
+    },
+    LINE_TRACER: {
+        summary: '경로를 따라 움직이는 점을 만듭니다. (준비 중)',
+        steps: ['6-1단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    INSERT_IMAGE: {
+        summary: '그림을 캔버스에 넣습니다. (준비 중)',
+        steps: ['10단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    INSERT_VIDEO: {
+        summary: '동영상을 캔버스에 넣습니다. (준비 중)',
+        steps: ['10단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    TABLE: {
+        summary: '표를 삽입합니다. (준비 중)',
+        steps: ['10단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    COMPASS: {
+        summary: '반지름을 복사해 원을 그립니다. (준비 중)',
+        steps: ['6-3단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    CIRCLE_3P: {
+        summary: '세 점을 지나는 원을 그립니다. (준비 중)',
+        steps: ['6-3단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    CIRCLE_RADIUS: {
+        summary: '중심과 반지름(숫자·변수)으로 원을 그립니다. (준비 중)',
+        steps: ['6-3단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    SECTOR: {
+        summary: '부채꼴을 그립니다. (준비 중)',
+        steps: ['6-3단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    CIRCULAR_SEGMENT: {
+        summary: '활꼴을 그립니다. (준비 중)',
+        steps: ['6-3단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    SEGMENT_GIVEN_LENGTH: {
+        summary: '길이를 지정한 선분을 그립니다. (준비 중)',
+        steps: ['6-2단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    RAY: {
+        summary: '한 점에서 시작해 한쪽으로만 뻗는 반직선을 그립니다. (준비 중)',
+        steps: ['6-2단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    ANGLE_BISECTOR: {
+        summary: '각의 이등분선을 그립니다. (준비 중)',
+        steps: ['6-2단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    TANGENT: {
+        summary: '원에 접하는 직선을 그립니다. (준비 중)',
+        steps: ['6-2단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    VECTOR: {
+        summary: '방향이 있는 벡터를 그립니다. (준비 중)',
+        steps: ['6-2단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    REGULAR_POLYGON_SIDE: {
+        summary: '한 변을 기준으로 정다각형을 그립니다. (준비 중)',
+        steps: ['6-4단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    REGULAR_POLYGON_CENTER: {
+        summary: '중심과 한 점으로 정다각형을 그립니다. (준비 중)',
+        steps: ['6-4단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    ANGLE_GIVEN: {
+        summary: '크기를 지정한 각을 그립니다. (준비 중)',
+        steps: ['6-4단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    MEASURE_LENGTH: {
+        summary: '길이를 측정해 표시합니다. (준비 중)',
+        steps: ['8-1단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    MEASURE_ANGLE: {
+        summary: '각도를 측정해 표시합니다. (준비 중)',
+        steps: ['8-1단계에서 구현 예정입니다. 작도용 「각도」와는 별개입니다.'],
+        tips: []
+    },
+    MEASURE_AREA: {
+        summary: '넓이를 측정해 표시합니다. (준비 중)',
+        steps: ['8-1단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    REFLECT_POINT: {
+        summary: '점을 기준으로 대칭 이동합니다. (준비 중)',
+        steps: ['9단계에서 구현 예정입니다.'],
+        tips: ['단축키 R']
+    },
+    REFLECT_LINE: {
+        summary: '직선을 기준으로 대칭 이동합니다. (준비 중)',
+        steps: ['9단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    ROTATE: {
+        summary: '점을 중심으로 회전합니다. (준비 중)',
+        steps: ['9단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    TRANSLATE: {
+        summary: '평행이동합니다. (준비 중)',
+        steps: ['9단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    DILATE: {
+        summary: '점을 중심으로 확대·축소합니다. (준비 중)',
+        steps: ['9단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    TILE: {
+        summary: '도형을 타일처럼 반복합니다. (준비 중)',
+        steps: ['9단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    TEXT: {
+        summary: '텍스트 상자를 넣습니다. (준비 중)',
+        steps: ['7-2단계에서 구현 예정입니다.'],
+        tips: ['단축키 T']
+    },
+    USER_TOOL: {
+        summary: '사용자 정의 도구입니다. (준비 중)',
+        steps: ['11단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    CHECKBOX: {
+        summary: '표시를 켜고 끄는 체크박스를 만듭니다. (준비 중)',
+        steps: ['7-2단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    BLOCK_EVENT_BTN: {
+        summary: '블록코딩 이벤트 버튼을 만듭니다. (준비 중)',
+        steps: ['11단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    DECORATE_LEADER: {
+        summary: '설명선을 그립니다. (준비 중)',
+        steps: ['8-2단계에서 구현 예정입니다.'],
+        tips: ['단축키 E']
+    },
+    DECORATE_LENGTH: {
+        summary: '길이 꾸미기 표시를 넣습니다. (준비 중)',
+        steps: ['8-2단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    DECORATE_ANGLE: {
+        summary: '각도 꾸미기 표시를 넣습니다. (준비 중)',
+        steps: ['8-2단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    DECORATE_PARALLEL: {
+        summary: '평행 표시를 넣습니다. (준비 중)',
+        steps: ['8-2단계에서 구현 예정입니다.'],
+        tips: []
+    },
+    PEN: {
+        summary: '펜으로 자유롭게 그립니다. (준비 중)',
+        steps: ['8-3단계에서 구현 예정입니다.'],
+        tips: ['단축키 B']
     }
 };
 
@@ -415,24 +672,112 @@ const ALGEO_SHORTCUTS = [
         keys: 'D',
         label: '점 도구',
         category: 'tool',
-        active: false,
+        active: true,
         desc: '점 생성 도구를 선택합니다.'
+    },
+    {
+        id: 'tool_intersection',
+        keys: 'I',
+        label: '교점 도구',
+        category: 'tool',
+        active: true,
+        desc: '교점 도구를 선택합니다. (준비 중)'
     },
     {
         id: 'tool_midpoint',
         keys: 'M',
         label: '중점 도구',
         category: 'tool',
-        active: false,
+        active: true,
         desc: '중점 도구를 선택합니다.'
+    },
+    {
+        id: 'tool_point_on',
+        keys: 'O',
+        label: '대상 위의 점',
+        category: 'tool',
+        active: true,
+        desc: '대상 위의 점 도구를 선택합니다. (준비 중)'
+    },
+    {
+        id: 'tool_segment',
+        keys: 'S',
+        label: '선분 도구',
+        category: 'tool',
+        active: true,
+        desc: '선분 도구를 선택합니다.'
+    },
+    {
+        id: 'tool_line',
+        keys: 'L',
+        label: '직선 도구',
+        category: 'tool',
+        active: true,
+        desc: '직선 도구를 선택합니다.'
+    },
+    {
+        id: 'tool_perp_bisector',
+        keys: 'V',
+        label: '수직이등분선',
+        category: 'tool',
+        active: true,
+        desc: '수직이등분선 도구를 선택합니다.'
+    },
+    {
+        id: 'tool_circle',
+        keys: 'C',
+        label: '원 도구',
+        category: 'tool',
+        active: true,
+        desc: '원(중심과 한 점) 도구를 선택합니다.'
     },
     {
         id: 'tool_polygon',
         keys: 'P',
         label: '다각형 도구',
         category: 'tool',
-        active: false,
+        active: true,
         desc: '다각형 도구를 선택합니다.'
+    },
+    {
+        id: 'tool_reflect',
+        keys: 'R',
+        label: '점대칭',
+        category: 'tool',
+        active: true,
+        desc: '점대칭 도구를 선택합니다. (준비 중)'
+    },
+    {
+        id: 'tool_text',
+        keys: 'T',
+        label: '텍스트',
+        category: 'tool',
+        active: true,
+        desc: '텍스트 도구를 선택합니다. (준비 중)'
+    },
+    {
+        id: 'tool_decorate',
+        keys: 'E',
+        label: '설명선',
+        category: 'tool',
+        active: true,
+        desc: '꾸미기 설명선 도구를 선택합니다. (준비 중)'
+    },
+    {
+        id: 'tool_pen',
+        keys: 'B',
+        label: '펜 그리기',
+        category: 'tool',
+        active: true,
+        desc: '펜그림 도구를 선택합니다. (준비 중)'
+    },
+    {
+        id: 'tool_group_select',
+        keys: 'Shift+G',
+        label: '그룹선택',
+        category: 'tool',
+        active: true,
+        desc: '그룹선택 도구를 선택합니다. (준비 중) G 단독은 격자 토글입니다.'
     },
     {
         id: 'draw_cancel',
@@ -440,7 +785,7 @@ const ALGEO_SHORTCUTS = [
         label: '작도 취소',
         category: 'draw',
         active: true,
-        desc: '진행 중인 작도·선택 점을 초기화합니다.'
+        desc: '진행 중인 작도·선택 점을 초기화하고 이동 도구로 돌아갑니다.'
     },
     {
         id: 'polygon_close',
@@ -475,6 +820,23 @@ const ALGEO_SHORTCUTS = [
         desc: '점 배치·이동 시 격자 교차점 맞춤을 켜거나 끕니다.'
     }
 ];
+
+// 문자 단축키 → toolId (입력란 포커스 시 무시). Esc·G·H·N 등은 별도 처리
+const ALGEO_TOOL_KEY_MAP = {
+    66: 'PEN',           // B
+    67: 'CIRCLE',        // C
+    68: 'POINT',         // D
+    69: 'DECORATE_LEADER', // E
+    73: 'INTERSECTION',  // I
+    76: 'LINE',          // L
+    77: 'MIDPOINT',      // M
+    79: 'POINT_ON_OBJECT', // O
+    80: 'POLYGON',       // P
+    82: 'REFLECT_POINT', // R
+    83: 'SEGMENT',       // S
+    84: 'TEXT',          // T
+    86: 'PERP_BISECTOR'  // V
+};
 
 // 캔버스·UI 테마 localStorage 키
 const ALGEO_THEME_STORAGE_KEY = 'algeo_theme';
@@ -594,6 +956,9 @@ function findToolCategoryId(toolId) {
     let j;
     for (i = 0; i < ALGEO_TOOL_CATEGORIES.length; i++) {
         const cat = ALGEO_TOOL_CATEGORIES[i];
+        if (!cat.tools) {
+            continue;
+        }
         for (j = 0; j < cat.tools.length; j++) {
             if (cat.tools[j].tool === toolId) {
                 return cat.id;
@@ -603,7 +968,7 @@ function findToolCategoryId(toolId) {
     return 'pointer';
 }
 
-// 도구 ID로 레일 메타(라벨·아이콘·hint·guide) 조회
+// 도구 메타 조회 (라벨·아이콘·hint·status·guide)
 function findToolMeta(toolId) {
     let i;
     let j;
@@ -612,6 +977,9 @@ function findToolMeta(toolId) {
 
     for (i = 0; i < ALGEO_TOOL_CATEGORIES.length; i++) {
         cat = ALGEO_TOOL_CATEGORIES[i];
+        if (!cat.tools) {
+            continue;
+        }
         for (j = 0; j < cat.tools.length; j++) {
             item = cat.tools[j];
             if (item.tool === toolId) {
@@ -619,6 +987,8 @@ function findToolMeta(toolId) {
                     label: item.label,
                     iconId: item.iconId || resolveAlgeoIconId(item.tool),
                     hint: item.hint || '',
+                    status: item.status || 'done',
+                    shortcut: item.shortcut || '',
                     guide: ALGEO_TOOL_GUIDES[toolId] || null
                 };
             }
@@ -629,8 +999,27 @@ function findToolMeta(toolId) {
         label: toolId,
         iconId: resolveAlgeoIconId(toolId),
         hint: '',
+        status: 'done',
+        shortcut: '',
         guide: ALGEO_TOOL_GUIDES[toolId] || null
     };
+}
+
+// stub(미구현) 도구 여부
+function isToolStub(toolId) {
+    const meta = findToolMeta(toolId);
+    return meta.status === 'stub';
+}
+
+// 카테고리 메타 조회
+function findCategoryMeta(categoryId) {
+    let i;
+    for (i = 0; i < ALGEO_TOOL_CATEGORIES.length; i++) {
+        if (ALGEO_TOOL_CATEGORIES[i].id === categoryId) {
+            return ALGEO_TOOL_CATEGORIES[i];
+        }
+    }
+    return null;
 }
 
 // 좌측 도구 레일 버튼 HTML 생성
@@ -639,7 +1028,8 @@ function buildToolRailHtml() {
     let i;
     for (i = 0; i < ALGEO_TOOL_CATEGORIES.length; i++) {
         const cat = ALGEO_TOOL_CATEGORIES[i];
-        html += '<button type="button" class="tool-rail-btn" data-category="' + cat.id + '" title="' + cat.title + '">';
+        const railOnlyClass = cat.railOnly ? ' rail-only' : '';
+        html += '<button type="button" class="tool-rail-btn' + railOnlyClass + '" data-category="' + cat.id + '" title="' + cat.title + '">';
         html += renderAlgeoIcon(cat.iconId, 'rail-icon-tile');
         html += '</button>';
     }
@@ -3339,6 +3729,7 @@ AlgeoApp.prototype.init = function () {
     self.updateCanvasCursor();
 
     // Esc — 작도 취소·이동 복귀 / Enter — 다각형 닫기·이동 복귀 / Ctrl+Z·Y — Undo·Redo
+    // 문자 단축키 — ALGEO_TOOL_KEY_MAP (Shift+G = 그룹선택 stub)
     $(document).on('keydown', function (e) {
         if (e.ctrlKey && !e.altKey) {
             if (e.keyCode === 90 && !e.shiftKey) {
@@ -3395,7 +3786,16 @@ AlgeoApp.prototype.init = function () {
             e.preventDefault();
             return;
         }
-        if (e.keyCode === 71 && !e.ctrlKey && !e.altKey) {
+        // Shift+G — 그룹선택 (G 단독은 격자)
+        if (e.keyCode === 71 && e.shiftKey && !e.ctrlKey && !e.altKey) {
+            if ($(e.target).closest('input, textarea').length) {
+                return;
+            }
+            self.selectTool('GROUP_SELECT');
+            e.preventDefault();
+            return;
+        }
+        if (e.keyCode === 71 && !e.ctrlKey && !e.altKey && !e.shiftKey) {
             if ($(e.target).closest('input, textarea').length) {
                 return;
             }
@@ -3410,6 +3810,15 @@ AlgeoApp.prototype.init = function () {
             }
             self.setSnapEnabled(!self.renderer.snapEnabled);
             self.showViewGuide('snap');
+            e.preventDefault();
+            return;
+        }
+        // 문자 단축키 → 도구 선택 (입력란·수정키 제외)
+        if (!e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey && ALGEO_TOOL_KEY_MAP[e.keyCode]) {
+            if ($(e.target).closest('input, textarea').length) {
+                return;
+            }
+            self.selectTool(ALGEO_TOOL_KEY_MAP[e.keyCode]);
             e.preventDefault();
             return;
         }
@@ -3491,8 +3900,16 @@ AlgeoApp.prototype.initToolRail = function () {
     });
 };
 
-// 도구 카테고리 플라이아웃 토글
+// 도구 카테고리 플라이아웃 토글 (railOnly는 안내만)
 AlgeoApp.prototype.toggleToolCategory = function (categoryId) {
+    const cat = findCategoryMeta(categoryId);
+
+    if (cat && cat.railOnly) {
+        this.closeToolFlyout();
+        this.showRailOnlyNotice(cat);
+        return;
+    }
+
     if (this.openToolCategoryId === categoryId) {
         this.closeToolFlyout();
         return;
@@ -3503,6 +3920,25 @@ AlgeoApp.prototype.toggleToolCategory = function (categoryId) {
     this.syncToolRailUI();
 };
 
+// 레일 전용(블록코딩·설정) 클릭 시 가이드로 안내
+AlgeoApp.prototype.showRailOnlyNotice = function (cat) {
+    this.guideOverride = null;
+    this.guideCollapsed = false;
+    $('#toolGuide').removeClass('collapsed');
+    $('#btnCollapseGuide').text('\u2212').attr('title', '안내 접기');
+    if (!this.guideHidden) {
+        $('#toolGuide').removeClass('hidden');
+        $('#btnOpenGuide').removeClass('visible');
+    }
+    $('#toolGuideIcon').html(renderAlgeoIcon(cat.iconId, 'guide-icon-tile'));
+    $('#toolGuideTitle').text(cat.title);
+    $('#toolGuideSummary').text(cat.railHint || '준비 중입니다.');
+    $('#toolGuideSteps').html(
+        '<li class="guide-step active">이 메뉴는 이후 단계에서 연결됩니다.</li>'
+    );
+    $('#toolGuideTips').html('');
+};
+
 // 플라이아웃 닫기
 AlgeoApp.prototype.closeToolFlyout = function () {
     this.openToolCategoryId = null;
@@ -3510,7 +3946,7 @@ AlgeoApp.prototype.closeToolFlyout = function () {
     this.syncToolRailUI();
 };
 
-// 플라이아웃 본문 렌더링
+// 플라이아웃 본문 렌더링 (stub 배지 포함)
 AlgeoApp.prototype.renderToolFlyout = function (categoryId) {
     let i;
     let j;
@@ -3522,7 +3958,7 @@ AlgeoApp.prototype.renderToolFlyout = function (categoryId) {
             break;
         }
     }
-    if (!cat) {
+    if (!cat || !cat.tools) {
         return;
     }
 
@@ -3532,19 +3968,24 @@ AlgeoApp.prototype.renderToolFlyout = function (categoryId) {
     for (j = 0; j < cat.tools.length; j++) {
         const item = cat.tools[j];
         const isActive = item.tool === this.currentTool;
+        const isStub = item.status === 'stub';
         const activeClass = isActive ? ' active' : '';
+        const stubClass = isStub ? ' is-stub' : '';
         const shortcutHtml = item.shortcut
             ? '<span class="flyout-shortcut">' + item.shortcut + '</span>'
             : '';
-
+        const stubBadge = isStub
+            ? '<span class="flyout-stub-badge" title="준비 중">준비</span>'
+            : '';
         const hintHtml = item.hint
             ? '<span class="flyout-tool-hint">' + item.hint + '</span>'
             : '';
 
-        bodyHtml += '<button type="button" class="flyout-tool-item' + activeClass + '" data-tool="' + item.tool + '">';
+        bodyHtml += '<button type="button" class="flyout-tool-item' + activeClass + stubClass +
+            '" data-tool="' + item.tool + '" data-status="' + (item.status || 'done') + '">';
         bodyHtml += renderAlgeoIcon(item.iconId || item.tool, 'flyout-icon-tile');
         bodyHtml += '<span class="flyout-tool-text">';
-        bodyHtml += '<span class="flyout-tool-label">' + item.label + '</span>';
+        bodyHtml += '<span class="flyout-tool-label">' + item.label + stubBadge + '</span>';
         bodyHtml += hintHtml;
         bodyHtml += '</span>';
         bodyHtml += shortcutHtml;
@@ -3554,7 +3995,7 @@ AlgeoApp.prototype.renderToolFlyout = function (categoryId) {
     $('#flyoutBody').html(bodyHtml);
 };
 
-// 작도 도구 선택 및 UI 동기화
+// 작도 도구 선택 및 UI 동기화 (stub도 선택 가능 — 가이드로 안내)
 AlgeoApp.prototype.selectTool = function (toolId) {
     this.currentTool = toolId;
     this.guideOverride = null;
@@ -3992,7 +4433,11 @@ AlgeoApp.prototype.syncToolGuide = function () {
     }
 
     $('#toolGuideIcon').html(renderAlgeoIcon(meta.iconId, 'guide-icon-tile'));
-    $('#toolGuideTitle').text(meta.label);
+    if (meta.status === 'stub') {
+        $('#toolGuideTitle').html(meta.label + ' <span class="guide-stub-badge">준비 중</span>');
+    } else {
+        $('#toolGuideTitle').text(meta.label);
+    }
 
     if (!guide) {
         $('#toolGuideSummary').text(meta.hint || '');
@@ -4095,7 +4540,9 @@ AlgeoApp.prototype.getEventCanvasPos = function (e) {
 AlgeoApp.prototype.updateCanvasCursor = function () {
     let cursor = 'default';
 
-    if (this.currentTool === 'MOVE') {
+    if (isToolStub(this.currentTool)) {
+        cursor = 'not-allowed';
+    } else if (this.currentTool === 'MOVE') {
         cursor = 'grab';
     } else if (this.currentTool === 'POINT') {
         cursor = 'crosshair';
@@ -4541,6 +4988,12 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
     const pos = this.getEventCanvasPos(e);
     const mouseX = pos.x;
     const mouseY = pos.y;
+
+    // stub 도구 — 작도 없이 가이드만 (클릭 무시)
+    if (isToolStub(this.currentTool)) {
+        this.syncToolGuide();
+        return;
+    }
 
     // 1. 마우스 위치 아래에 있는 점 탐색
     const hitPoint = this.findPointAt(mouseX, mouseY);

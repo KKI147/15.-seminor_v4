@@ -406,6 +406,43 @@
     background-color: #ffffff;
 }
 
+.flyout-tool-item.is-stub {
+    opacity: 0.72;
+}
+
+.flyout-tool-item.is-stub:hover {
+    opacity: 0.9;
+}
+
+.flyout-stub-badge,
+.guide-stub-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 5px;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0.02em;
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.15);
+    border: 1px solid rgba(251, 191, 36, 0.35);
+    border-radius: 3px;
+    vertical-align: middle;
+}
+
+.guide-stub-badge {
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.tool-rail-btn.rail-only {
+    opacity: 0.85;
+}
+
+.tool-rail-btn.rail-only:hover {
+    opacity: 1;
+}
+
 .flyout-tool-text {
     display: flex;
     flex-direction: column;

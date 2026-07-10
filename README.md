@@ -101,15 +101,15 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 
 | 단계 | 내용 | 상태 |
 |------|------|------|
-| UI-1 | 좌측 레일·플라이아웃·우측 줌 바 | ✅ (5카테고리) |
-| UI-2 | 대수창 탭 · Undo · 격자/스냅 | 🔄 → **4-5**, **5단계** |
+| UI-1 | 좌측 레일·플라이아웃·우측 줌 바 | ✅ (원본 9+1) |
+| UI-2 | 대수창 탭 · Undo · 격자/스냅 | ✅ |
 | UX-4 | 도구 가이드 패널 | ✅ |
-| **5단계** | 레일 9+1 · 플라이아웃 **52종** | ⬜ [`tool_catalog.md`](tool_catalog.md) |
+| **5단계** | 레일 9+1 · 플라이아웃 stub 맵 | ✅ [`tool_catalog.md`](tool_catalog.md) |
 
-**4-1·4-2 구현 완료** — 속성 패널 · Undo/Redo
+**다음**: **6단계** 기하 작도 확장 (교점·반직선·컴퍼스 등 stub → done)
 
 - 레이아웃: [`ui_layout.md`](ui_layout.md)
-- **작도 UX·조작 명세·다음 UX 작업**: [`ux_guidelines.md`](ux_guidelines.md)
+- **작도 UX·조작 명세**: [`ux_guidelines.md`](ux_guidelines.md)
 
 ---
 
@@ -128,7 +128,7 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 | 2단계 | 수식 입력 · 함수 · 기하 문자열 · 하이라이트 | ✅ |
 | 3단계 | 직선 · 중점 · 수직이등분 · 평행/수선 · 각도·호 · 다각형 | ✅ |
 
-구현 완료 도구 **17종** (카탈로그 `done` 참고). 상세 조작은 아래 「1단계 도구 표」 및 [`ux_guidelines.md`](ux_guidelines.md).
+엔진 구현 **15종** + UI stub **39종** (카탈로그 참고). 상세 조작은 [`ux_guidelines.md`](ux_guidelines.md).
 
 ---
 
@@ -146,16 +146,18 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 
 ---
 
-### 5단계 — 도구 UI 전체 맵
+### 5단계 — 도구 UI 전체 맵 ✅ (2026-07-10)
 
-원본과 동일한 **레일 9칸 + 설정** · 플라이아웃 **52종** 노출 (`status: done | stub`).
+원본과 동일한 **레일 9칸 + 설정** · 플라이아웃 전체 노출 (`status: done | stub`).
 
-| # | 항목 |
-|---|------|
-| 5-1 | `ALGEO_TOOL_CATEGORIES` 재구성 (다각형 분리, `misc`·`transform`·`draw` 추가) |
-| 5-2 | 미구현 도구 `stub` — 클릭 시 안내, 가이드·단축키 메타만 등록 |
-| 5-3 | 단축키 골격 (D, I, M, S, L, P, H, Esc, G, T, B, …) |
-| 5-4 | 플라이아웃·레일 스타일 원본 정렬 (`images/` 참고) |
+| # | 항목 | 상태 |
+|---|------|------|
+| 5-1 | `ALGEO_TOOL_CATEGORIES` 재구성 (원본 순서, transform·misc·draw·blockcoding·settings) | ✅ |
+| 5-2 | 미구현 도구 `stub` — 배지·가이드·캔버스 클릭 무시 | ✅ |
+| 5-3 | 단축키 골격 (`ALGEO_TOOL_KEY_MAP` + Shift+G) | ✅ |
+| 5-4 | stub SVG 아이콘 · 플라이아웃 스타일 | ✅ |
+
+개선 메모·단축키 충돌 해결: [`tool_catalog.md`](tool_catalog.md) 「5단계 개선 메모」
 
 ---
 
@@ -219,25 +221,25 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 | 12-2 | 터치(모바일) 이벤트 | ⬜ |
 | 12-3 | 키보드 단축키 완성 | ⬜ |
 | 12-4 | 파일 저장·불러오기 (JSON) | ⬜ |
-| 12-5 | 도구 SVG 아이콘 — **핵심 UI** ✅ / 52종 전체 ⬜ | 🔄 | [`icon_guidelines.md`](icon_guidelines.md) |
+| 12-5 | 도구 SVG 아이콘 — 핵심 UI + stub 전체 | ✅ | [`icon_guidelines.md`](icon_guidelines.md) |
 
 ---
 
 ## 현재 진행 위치
 
 ```
-[1~3단계] ████████████████████ 100%  (핵심 작도 17종)
-[4단계]   ████████████████████ 100%  (4-5 격자·스냅 ✅)
-[5단계]   ░░░░░░░░░░░░░░░░░░░░   0%   ← **다음**
-[6단계]   ░░░░░░░░░░░░░░░░░░░░   0%   (기하 +22종)
+[1~3단계] ████████████████████ 100%  (핵심 작도)
+[4단계]   ████████████████████ 100%  (슬라이더·숨김·격자·스냅)
+[5단계]   ████████████████████ 100%  (레일 9+1 · stub UI 맵) ✅
+[6단계]   ░░░░░░░░░░░░░░░░░░░░   0%   ← **다음** (기하 stub→done)
 [7~8단계] ░░░░░░░░░░░░░░░░░░░░   0%
 [9~11단계]░░░░░░░░░░░░░░░░░░░░   0%
-[12단계]  ██████░░░░░░░░░░░░░░  30%   (테마·SVG 핵심 ✅)
+[12단계]  ████████░░░░░░░░░░░░  40%   (테마·SVG ✅ / 터치·저장 ⬜)
 ```
 
-**다음 작업**: **5-1 레일 전체 맵** → stub·단축키
+**다음 작업**: **6-1 점 도구** (교점 · 대상 위의 점 · 라인 트레이서)
 
-**전체 목표**: 플라이아웃 **52종** + 레일 블록코딩·설정 — [`tool_catalog.md`](tool_catalog.md)
+**전체 목표**: 플라이아웃 **54종** (done 15 + stub 39) + 레일 블록코딩·설정 — [`tool_catalog.md`](tool_catalog.md)
 
 ---
 
