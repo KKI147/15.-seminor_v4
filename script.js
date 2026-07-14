@@ -88,25 +88,33 @@ const ALGEBRA_TYPE_ORDER = {
     MIDPOINT: 1,
     INTERSECTION: 2,
     POINT_ON: 3,
-    SEGMENT: 4,
-    VECTOR: 5,
-    LINE: 6,
-    RAY: 7,
-    PERP_BISECTOR: 8,
-    ANGLE_BISECTOR: 9,
-    PARALLEL_LINE: 10,
-    PERP_LINE: 11,
-    TANGENT: 12,
-    CIRCLE: 13,
-    CIRCLE_3P: 14,
-    ARC: 15,
-    SECTOR: 16,
-    CIRCULAR_SEGMENT: 17,
-    ANGLE: 18,
-    POLYGON: 19,
-    SLIDER: 20,
-    FUNCTION: 21
+    REGULAR_VERTEX: 4,
+    FIXED_ANGLE_POINT: 5,
+    SEGMENT: 6,
+    VECTOR: 7,
+    LINE: 8,
+    RAY: 9,
+    PERP_BISECTOR: 10,
+    ANGLE_BISECTOR: 11,
+    PARALLEL_LINE: 12,
+    PERP_LINE: 13,
+    TANGENT: 14,
+    CIRCLE: 15,
+    CIRCLE_3P: 16,
+    ARC: 17,
+    SECTOR: 18,
+    CIRCULAR_SEGMENT: 19,
+    ANGLE: 20,
+    POLYGON: 21,
+    SLIDER: 22,
+    FUNCTION: 23
 };
+
+// 점류 객체인지 여부 (자유점·종속점)
+function isAlgeoPointType(type) {
+    return type === 'POINT' || type === 'MIDPOINT' || type === 'INTERSECTION' ||
+        type === 'POINT_ON' || type === 'REGULAR_VERTEX' || type === 'FIXED_ANGLE_POINT';
+}
 
 // 교점·대상 위 점 작도에 쓸 수 있는 도형 타입
 const ALGEO_INTERSECTABLE_TYPES = {
@@ -233,9 +241,9 @@ const ALGEO_TOOL_CATEGORIES = [
         title: '다각형',
         tools: [
             { tool: 'POLYGON', label: '다각형', iconId: 'polygon', status: 'done', shortcut: 'P', hint: '꼭짓점 클릭 → 첫 점으로 닫기' },
-            { tool: 'REGULAR_POLYGON_SIDE', label: '정다각형 : 한 변', iconId: 'regular_polygon_side', status: 'stub', hint: '한 변 + n (6-4)' },
-            { tool: 'REGULAR_POLYGON_CENTER', label: '정다각형 : 중심과 한 점', iconId: 'regular_polygon_center', status: 'stub', hint: '중심·꼭짓점 (6-4)' },
-            { tool: 'ANGLE_GIVEN', label: '주어진 크기의 각', iconId: 'angle_given', status: 'stub', hint: '고정 각도 (6-4)' }
+            { tool: 'REGULAR_POLYGON_SIDE', label: '정다각형 : 한 변', iconId: 'regular_polygon_side', status: 'done', hint: '한 변 두 점 → 꼭짓점 수' },
+            { tool: 'REGULAR_POLYGON_CENTER', label: '정다각형 : 중심과 한 점', iconId: 'regular_polygon_center', status: 'done', hint: '중심·꼭짓점 → 꼭짓점 수' },
+            { tool: 'ANGLE_GIVEN', label: '주어진 크기의 각', iconId: 'angle_given', status: 'done', hint: '두 점 → 각도 → 방향' }
         ]
     },
     {
@@ -555,19 +563,33 @@ const ALGEO_TOOL_GUIDES = {
         tips: ['빈 곳 클릭 시 점이 자동 생성됩니다.', 'Esc — 작도 취소']
     },
     REGULAR_POLYGON_SIDE: {
-        summary: '한 변을 기준으로 정다각형을 그립니다. (준비 중)',
-        steps: ['6-4단계에서 구현 예정입니다.'],
-        tips: []
+        summary: '한 변을 기준으로 정 n각형을 그립니다.',
+        steps: [
+            '한 변의 첫 번째 점을 클릭합니다.',
+            '한 변의 두 번째 점을 클릭합니다.',
+            '꼭짓점 개수 n을 입력합니다. (3 이상)',
+            '마우스로 방향을 고른 뒤 클릭해 확정합니다.'
+        ],
+        tips: ['빈 곳 클릭 시 점이 자동 생성됩니다.', 'Esc — 작도 취소']
     },
     REGULAR_POLYGON_CENTER: {
-        summary: '중심과 한 점으로 정다각형을 그립니다. (준비 중)',
-        steps: ['6-4단계에서 구현 예정입니다.'],
-        tips: []
+        summary: '중심과 한 꼭짓점으로 정 n각형을 그립니다.',
+        steps: [
+            '중심점을 클릭합니다.',
+            '한 꼭짓점을 클릭합니다.',
+            '꼭짓점 개수 n을 입력합니다. (3 이상)'
+        ],
+        tips: ['빈 곳 클릭 시 점이 자동 생성됩니다.', 'Esc — 작도 취소']
     },
     ANGLE_GIVEN: {
-        summary: '크기를 지정한 각을 그립니다. (준비 중)',
-        steps: ['6-4단계에서 구현 예정입니다.'],
-        tips: []
+        summary: '크기를 지정한 각을 그립니다.',
+        steps: [
+            '첫 번째 점(변 위)을 클릭합니다.',
+            '꼭짓점을 클릭합니다.',
+            '각도(도)를 입력합니다.',
+            '마우스로 방향을 고른 뒤 클릭해 확정합니다.'
+        ],
+        tips: ['확정 점은 첫 변과 같은 길이로 생성됩니다.', 'Esc — 작도 취소']
     },
     MEASURE_LENGTH: {
         summary: '길이를 측정해 표시합니다. (준비 중)',
@@ -1409,7 +1431,7 @@ AlgeoEngine.prototype.findCircleByCenterAndPoint = function (centerId, pointId) 
     return null;
 };
 
-// 이름으로 점 객체 검색 (대소문자 구분 후, 없으면 대소문자 무시 재검색)
+// 이름으로 자유 점 검색 (대소문자 구분 후, 없으면 대소문자 무시 재검색)
 AlgeoEngine.prototype.findPointByName = function (name) {
     const list = this.objects;
     let i;
@@ -1429,6 +1451,19 @@ AlgeoEngine.prototype.findPointByName = function (name) {
     }
 
     return fallback;
+};
+
+// 점류(자유·종속) 이름 중복 검사
+AlgeoEngine.prototype.findAnyPointLikeByName = function (name) {
+    const list = this.objects;
+    let i;
+
+    for (i = 0; i < list.length; i++) {
+        if (isAlgeoPointType(list[i].type) && list[i].name === name) {
+            return list[i];
+        }
+    }
+    return null;
 };
 
 // 점 객체 추가
@@ -2525,6 +2560,18 @@ AlgeoEngine.prototype.recalculateObject = function (obj) {
             obj.x = coords.x;
             obj.y = coords.y;
         }
+    } else if (obj.type === 'REGULAR_VERTEX') {
+        coords = this.getRegularVertexCoords(obj);
+        if (coords) {
+            obj.x = coords.x;
+            obj.y = coords.y;
+        }
+    } else if (obj.type === 'FIXED_ANGLE_POINT') {
+        coords = this.getFixedAnglePointCoords(obj);
+        if (coords) {
+            obj.x = coords.x;
+            obj.y = coords.y;
+        }
     }
 };
 
@@ -2769,7 +2816,7 @@ AlgeoEngine.prototype.addPolygon = function (name, vertexIds) {
     let i;
     for (i = 0; i < vertexIds.length; i++) {
         const pt = this.objectMap[vertexIds[i]];
-        if (!pt || (pt.type !== 'POINT' && pt.type !== 'MIDPOINT')) {
+        if (!pt || !isAlgeoPointType(pt.type)) {
             return null;
         }
     }
@@ -2792,6 +2839,211 @@ AlgeoEngine.prototype.addPolygon = function (name, vertexIds) {
     this.objects.push(poly);
     this.objectMap[id] = poly;
     return poly;
+};
+
+// 한 변(p0→p1) 기준 정 n각형 꼭짓점 좌표 (orient: +1 반시계 / -1 시계)
+AlgeoEngine.prototype.computeRegularPolygonFromSide = function (p0, p1, n, orient) {
+    const verts = [];
+    const ang = (orient >= 0 ? 1 : -1) * (2 * Math.PI / n);
+    const cosA = Math.cos(ang);
+    const sinA = Math.sin(ang);
+    let i;
+    let prev;
+    let prev2;
+    let dx;
+    let dy;
+
+    if (!p0 || !p1 || n < 3) {
+        return null;
+    }
+    verts.push({ x: p0.x, y: p0.y });
+    verts.push({ x: p1.x, y: p1.y });
+    for (i = 2; i < n; i++) {
+        prev = verts[i - 1];
+        prev2 = verts[i - 2];
+        dx = prev.x - prev2.x;
+        dy = prev.y - prev2.y;
+        verts.push({
+            x: prev.x + dx * cosA - dy * sinA,
+            y: prev.y + dx * sinA + dy * cosA
+        });
+    }
+    return verts;
+};
+
+// 중심·한 꼭짓점 기준 정 n각형 꼭짓점 좌표
+AlgeoEngine.prototype.computeRegularPolygonFromCenter = function (center, first, n) {
+    const verts = [];
+    let i;
+    let ang;
+    let cosA;
+    let sinA;
+    let dx;
+    let dy;
+
+    if (!center || !first || n < 3) {
+        return null;
+    }
+    dx = first.x - center.x;
+    dy = first.y - center.y;
+    for (i = 0; i < n; i++) {
+        ang = 2 * Math.PI * i / n;
+        cosA = Math.cos(ang);
+        sinA = Math.sin(ang);
+        verts.push({
+            x: center.x + dx * cosA - dy * sinA,
+            y: center.y + dx * sinA + dy * cosA
+        });
+    }
+    return verts;
+};
+
+// 정다각형 종속 꼭짓점 좌표 계산
+AlgeoEngine.prototype.getRegularVertexCoords = function (obj) {
+    let p0;
+    let p1;
+    let center;
+    let first;
+    let verts;
+
+    if (!obj || obj.type !== 'REGULAR_VERTEX') {
+        return null;
+    }
+    if (obj.mode === 'SIDE') {
+        p0 = this.objectMap[obj.sideP1Id];
+        p1 = this.objectMap[obj.sideP2Id];
+        verts = this.computeRegularPolygonFromSide(p0, p1, obj.sides, obj.orient);
+    } else if (obj.mode === 'CENTER') {
+        center = this.objectMap[obj.centerId];
+        first = this.objectMap[obj.firstId];
+        verts = this.computeRegularPolygonFromCenter(center, first, obj.sides);
+    } else {
+        return null;
+    }
+    if (!verts || !verts[obj.index]) {
+        return null;
+    }
+    return verts[obj.index];
+};
+
+// 주어진 크기 각의 끝점 좌표 (꼭짓점 기준, ray1과 동일 길이)
+AlgeoEngine.prototype.getFixedAnglePointCoords = function (obj) {
+    let vertex;
+    let ray1;
+    let dx;
+    let dy;
+    let len;
+    let baseAng;
+    let ang;
+
+    if (!obj || obj.type !== 'FIXED_ANGLE_POINT') {
+        return null;
+    }
+    vertex = this.objectMap[obj.vertexId];
+    ray1 = this.objectMap[obj.ray1Id];
+    if (!vertex || !ray1) {
+        return null;
+    }
+    dx = ray1.x - vertex.x;
+    dy = ray1.y - vertex.y;
+    len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 1e-10) {
+        return null;
+    }
+    baseAng = Math.atan2(dy, dx);
+    ang = baseAng + (obj.orient >= 0 ? 1 : -1) * (obj.degrees * Math.PI / 180);
+    return {
+        x: vertex.x + len * Math.cos(ang),
+        y: vertex.y + len * Math.sin(ang)
+    };
+};
+
+// 정다각형 종속 꼭짓점 추가
+AlgeoEngine.prototype.addRegularVertex = function (name, config) {
+    const id = this.generateId();
+    const vertex = {
+        id: id,
+        type: 'REGULAR_VERTEX',
+        name: name,
+        mode: config.mode,
+        index: config.index,
+        sides: config.sides,
+        x: 0,
+        y: 0,
+        parents: [],
+        children: []
+    };
+    let i;
+    let parent;
+    let coords;
+
+    if (config.mode === 'SIDE') {
+        vertex.sideP1Id = config.sideP1Id;
+        vertex.sideP2Id = config.sideP2Id;
+        vertex.orient = config.orient >= 0 ? 1 : -1;
+        vertex.parents = [config.sideP1Id, config.sideP2Id];
+    } else {
+        vertex.centerId = config.centerId;
+        vertex.firstId = config.firstId;
+        vertex.parents = [config.centerId, config.firstId];
+    }
+
+    coords = this.getRegularVertexCoords(vertex);
+    if (!coords) {
+        return null;
+    }
+    vertex.x = coords.x;
+    vertex.y = coords.y;
+
+    for (i = 0; i < vertex.parents.length; i++) {
+        parent = this.objectMap[vertex.parents[i]];
+        if (!parent) {
+            return null;
+        }
+        parent.children.push(id);
+    }
+
+    this.objects.push(vertex);
+    this.objectMap[id] = vertex;
+    return vertex;
+};
+
+// 주어진 크기 각의 끝점 추가
+AlgeoEngine.prototype.addFixedAnglePoint = function (name, ray1Id, vertexId, degrees, orient) {
+    const id = this.generateId();
+    const pt = {
+        id: id,
+        type: 'FIXED_ANGLE_POINT',
+        name: name,
+        ray1Id: ray1Id,
+        vertexId: vertexId,
+        degrees: degrees,
+        orient: orient >= 0 ? 1 : -1,
+        x: 0,
+        y: 0,
+        parents: [ray1Id, vertexId],
+        children: []
+    };
+    let ray1;
+    let vertex;
+    let coords;
+
+    ray1 = this.objectMap[ray1Id];
+    vertex = this.objectMap[vertexId];
+    if (!ray1 || !vertex) {
+        return null;
+    }
+    coords = this.getFixedAnglePointCoords(pt);
+    if (!coords) {
+        return null;
+    }
+    pt.x = coords.x;
+    pt.y = coords.y;
+    ray1.children.push(id);
+    vertex.children.push(id);
+    this.objects.push(pt);
+    this.objectMap[id] = pt;
+    return pt;
 };
 
 // 이름으로 함수 객체 검색
@@ -3113,6 +3365,17 @@ AlgeoEngine.prototype.collectFreePointIdsInto = function (pointRefId, seen, resu
         this.mergeFreePointIds(this.collectFreePointIdsForObject(this.objectMap[pt.obj2Id]), seen, result);
     } else if (pt.type === 'POINT_ON') {
         this.mergeFreePointIds(this.collectFreePointIdsForObject(this.objectMap[pt.hostId]), seen, result);
+    } else if (pt.type === 'REGULAR_VERTEX') {
+        if (pt.mode === 'SIDE') {
+            this.collectFreePointIdsInto(pt.sideP1Id, seen, result);
+            this.collectFreePointIdsInto(pt.sideP2Id, seen, result);
+        } else {
+            this.collectFreePointIdsInto(pt.centerId, seen, result);
+            this.collectFreePointIdsInto(pt.firstId, seen, result);
+        }
+    } else if (pt.type === 'FIXED_ANGLE_POINT') {
+        this.collectFreePointIdsInto(pt.ray1Id, seen, result);
+        this.collectFreePointIdsInto(pt.vertexId, seen, result);
     }
 };
 
@@ -3142,8 +3405,7 @@ AlgeoEngine.prototype.collectFreePointIdsForObject = function (obj) {
         return result;
     }
 
-    if (obj.type === 'POINT' || obj.type === 'MIDPOINT' ||
-        obj.type === 'INTERSECTION' || obj.type === 'POINT_ON') {
+    if (isAlgeoPointType(obj.type)) {
         return this.collectFreePointIdsForPointRef(obj.id);
     }
 
@@ -3709,8 +3971,7 @@ AlgeoRenderer.prototype.drawObjects = function () {
     // 2단계: 점(Point)·중점(Midpoint) 그리기 (모든 선/원 위에 보이도록)
     for (let i = 0; i < list.length; i++) {
         const obj = list[i];
-        if ((obj.type === 'POINT' || obj.type === 'MIDPOINT' ||
-            obj.type === 'INTERSECTION' || obj.type === 'POINT_ON') && engine.isObjectVisible(obj)) {
+        if (isAlgeoPointType(obj.type) && engine.isObjectVisible(obj)) {
             this.drawPointShape(obj);
         }
     }
@@ -3724,11 +3985,12 @@ AlgeoRenderer.prototype.drawObjects = function () {
     }
 };
 
-// 점·중점·교점·대상 위 점 렌더
+// 점·중점·교점·대상 위 점·정다각형·고정각 점 렌더
 AlgeoRenderer.prototype.drawPointShape = function (obj) {
     const ctx = this.ctx;
     const isMid = obj.type === 'MIDPOINT';
-    const isDep = obj.type === 'INTERSECTION' || obj.type === 'POINT_ON' || isMid;
+    const isDep = obj.type === 'INTERSECTION' || obj.type === 'POINT_ON' || isMid ||
+        obj.type === 'REGULAR_VERTEX' || obj.type === 'FIXED_ANGLE_POINT';
     const radius = isDep ? ALGEO_VIS.midpointRadius : ALGEO_VIS.pointRadius;
     const sx = this.toScreenX(obj.x);
     const sy = this.toScreenY(obj.y);
@@ -3747,9 +4009,7 @@ AlgeoRenderer.prototype.drawPointShape = function (obj) {
     ctx.arc(sx, sy, radius, 0, 2 * Math.PI);
     if (isHighlighted) {
         fillColor = ALGEO_VIS.highlightPoint;
-    } else if (isMid) {
-        fillColor = ALGEO_VIS.midpoint;
-    } else if (obj.type === 'INTERSECTION' || obj.type === 'POINT_ON') {
+    } else if (isDep) {
         fillColor = ALGEO_VIS.midpoint;
     } else {
         fillColor = ALGEO_VIS.point;
@@ -4235,7 +4495,139 @@ AlgeoRenderer.prototype.drawToolPreview = function (preview) {
         }
 
         ctx.restore();
+        return;
     }
+
+    if (preview.type === 'REGULAR_POLYGON_SIDE') {
+        const p0 = engine.objectMap[preview.sideP1Id];
+        const p1 = engine.objectMap[preview.sideP2Id];
+        let orient;
+        let verts;
+        let i;
+        if (!p0 || !p1 || !(preview.sides >= 3)) {
+            return;
+        }
+        orient = this.getPreviewOrientFromMouse(p0, p1, preview.mathX, preview.mathY);
+        verts = engine.computeRegularPolygonFromSide(p0, p1, preview.sides, orient);
+        if (!verts) {
+            return;
+        }
+        ctx.save();
+        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = ALGEO_VIS.previewPolygon;
+        ctx.fillStyle = ALGEO_VIS.previewPolygonFill;
+        ctx.lineWidth = 3;
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(this.toScreenX(verts[0].x), this.toScreenY(verts[0].y));
+        for (i = 1; i < verts.length; i++) {
+            ctx.lineTo(this.toScreenX(verts[i].x), this.toScreenY(verts[i].y));
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+        return;
+    }
+
+    if (preview.type === 'REGULAR_POLYGON_CENTER') {
+        const center = engine.objectMap[preview.centerId];
+        const first = engine.objectMap[preview.firstId];
+        let verts;
+        let i;
+        if (!center || !first || !(preview.sides >= 3)) {
+            return;
+        }
+        verts = engine.computeRegularPolygonFromCenter(center, first, preview.sides);
+        if (!verts) {
+            return;
+        }
+        ctx.save();
+        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = ALGEO_VIS.previewPolygon;
+        ctx.fillStyle = ALGEO_VIS.previewPolygonFill;
+        ctx.lineWidth = 3;
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(this.toScreenX(verts[0].x), this.toScreenY(verts[0].y));
+        for (i = 1; i < verts.length; i++) {
+            ctx.lineTo(this.toScreenX(verts[i].x), this.toScreenY(verts[i].y));
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+        return;
+    }
+
+    if (preview.type === 'ANGLE_GIVEN') {
+        const ray1 = engine.objectMap[preview.ray1Id];
+        const vertex = engine.objectMap[preview.vertexId];
+        let orient;
+        let tip;
+        let sx;
+        let sy;
+        let v1x;
+        let v1y;
+        let m1;
+        let baseAng;
+        let ang;
+        let r;
+        if (!ray1 || !vertex || !(preview.degrees > 0)) {
+            return;
+        }
+        orient = this.getPreviewOrientFromMouse(vertex, ray1, preview.mathX, preview.mathY);
+        v1x = ray1.x - vertex.x;
+        v1y = ray1.y - vertex.y;
+        m1 = Math.sqrt(v1x * v1x + v1y * v1y);
+        if (m1 < 1e-10) {
+            return;
+        }
+        baseAng = Math.atan2(v1y, v1x);
+        ang = baseAng + (orient >= 0 ? 1 : -1) * (preview.degrees * Math.PI / 180);
+        tip = {
+            x: vertex.x + m1 * Math.cos(ang),
+            y: vertex.y + m1 * Math.sin(ang)
+        };
+        sx = this.toScreenX(vertex.x);
+        sy = this.toScreenY(vertex.y);
+        r = Math.min(36, Math.sqrt(
+            Math.pow(this.toScreenX(ray1.x) - sx, 2) + Math.pow(this.toScreenY(ray1.y) - sy, 2)
+        ) * 0.45);
+        ctx.save();
+        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = ALGEO_VIS.previewSegment;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(this.toScreenX(ray1.x), this.toScreenY(ray1.y));
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(this.toScreenX(tip.x), this.toScreenY(tip.y));
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(sx, sy, Math.max(12, r),
+            this.mathAngleToCanvas(baseAng),
+            this.mathAngleToCanvas(ang),
+            orient < 0);
+        ctx.strokeStyle = ALGEO_VIS.angle || ALGEO_VIS.previewSegment;
+        ctx.stroke();
+        ctx.restore();
+    }
+};
+
+// 마우스 위치가 기준 벡터(a→b)의 왼쪽(+1)인지 오른쪽(-1)인지
+AlgeoRenderer.prototype.getPreviewOrientFromMouse = function (a, b, mathX, mathY) {
+    const abx = b.x - a.x;
+    const aby = b.y - a.y;
+    const amx = mathX - a.x;
+    const amy = mathY - a.y;
+    const cross = abx * amy - aby * amx;
+    return cross >= 0 ? 1 : -1;
+};
+
+// 수학 각도(atan2, y↑) → Canvas arc 각도(y↓)
+AlgeoRenderer.prototype.mathAngleToCanvas = function (mathAng) {
+    return -mathAng;
 };
 
 // 원 위의 점 — 중심·반지름·마우스 방향으로 투영
@@ -4843,7 +5235,8 @@ AlgeoRenderer.prototype.drawSelectedObjectHighlight = function (obj) {
     let bounds;
 
     if (obj.type === 'POINT' || obj.type === 'MIDPOINT' ||
-        obj.type === 'INTERSECTION' || obj.type === 'POINT_ON') {
+        obj.type === 'INTERSECTION' || obj.type === 'POINT_ON' ||
+        obj.type === 'REGULAR_VERTEX' || obj.type === 'FIXED_ANGLE_POINT') {
         sx = this.toScreenX(obj.x);
         sy = this.toScreenY(obj.y);
         arcR = ALGEO_VIS.selectionPointRing;
@@ -5520,6 +5913,18 @@ AlgeoApp.prototype.updateToolPreviewFromMouse = function (mouseX, mouseY) {
         preview.refP2Id = draft.refP2Id;
     } else if (draft.type === 'POLYGON') {
         preview.vertexIds = draft.vertexIds.slice();
+    } else if (draft.type === 'REGULAR_POLYGON_SIDE') {
+        preview.sideP1Id = draft.sideP1Id;
+        preview.sideP2Id = draft.sideP2Id;
+        preview.sides = draft.sides;
+    } else if (draft.type === 'REGULAR_POLYGON_CENTER') {
+        preview.centerId = draft.centerId;
+        preview.firstId = draft.firstId;
+        preview.sides = draft.sides;
+    } else if (draft.type === 'ANGLE_GIVEN') {
+        preview.ray1Id = draft.ray1Id;
+        preview.vertexId = draft.vertexId;
+        preview.degrees = draft.degrees;
     }
 
     r.toolPreview = preview;
@@ -5935,6 +6340,30 @@ AlgeoApp.prototype.getGuideActiveStepIndex = function () {
         }
         return 0;
     }
+    if (tool === 'REGULAR_POLYGON_SIDE') {
+        if (draft && draft.type === 'REGULAR_POLYGON_SIDE' && draft.sides) {
+            return 3;
+        }
+        if (n >= 1) {
+            return 1;
+        }
+        return 0;
+    }
+    if (tool === 'REGULAR_POLYGON_CENTER') {
+        if (n >= 1) {
+            return 1;
+        }
+        return 0;
+    }
+    if (tool === 'ANGLE_GIVEN') {
+        if (draft && draft.type === 'ANGLE_GIVEN' && draft.degrees) {
+            return 3;
+        }
+        if (n >= 1) {
+            return 1;
+        }
+        return 0;
+    }
     return 0;
 };
 
@@ -6089,7 +6518,9 @@ AlgeoApp.prototype.updateCanvasCursor = function () {
         this.currentTool === 'COMPASS' || this.currentTool === 'CIRCLE_3P' ||
         this.currentTool === 'CIRCLE_RADIUS' || this.currentTool === 'SECTOR' ||
         this.currentTool === 'CIRCULAR_SEGMENT' ||
-        this.currentTool === 'POLYGON' || this.currentTool === 'INTERSECTION' ||
+        this.currentTool === 'POLYGON' || this.currentTool === 'REGULAR_POLYGON_SIDE' ||
+        this.currentTool === 'REGULAR_POLYGON_CENTER' || this.currentTool === 'ANGLE_GIVEN' ||
+        this.currentTool === 'INTERSECTION' ||
         this.currentTool === 'POINT_ON_OBJECT') {
         cursor = 'pointer';
     } else if (this.currentTool === 'SLIDER') {
@@ -7058,8 +7489,6 @@ AlgeoApp.prototype.confirmCircularSegmentDraft = function (mouseX, mouseY, hitPo
 };
 
 // 다각형: 꼭짓점 순 클릭 → 첫 점 재클릭 또는 Enter로 닫기
-
-// 다각형: 꼭짓점 순 클릭 → 첫 점 재클릭 또는 Enter로 닫기
 AlgeoApp.prototype.handlePolygonMouseDown = function (e, hitPoint) {
     const r = this.renderer;
     const pos = this.getEventCanvasPos(e);
@@ -7135,6 +7564,268 @@ AlgeoApp.prototype.buildPolygonName = function (vertexIds) {
     }
 
     return name;
+};
+
+// 꼭짓점 개수 n 입력 (3 이상, 취소 시 null)
+AlgeoApp.prototype.promptRegularPolygonSides = function () {
+    let str;
+    let n;
+
+    str = window.prompt('정다각형의 꼭짓점 개수 n을 입력하세요. (3 이상)', '5');
+    if (str === null) {
+        return null;
+    }
+    n = parseInt(str, 10);
+    if (isNaN(n) || n < 3) {
+        n = 5;
+    }
+    return n;
+};
+
+// 한 변 기준 정다각형 생성 (방향은 마우스 쪽으로)
+AlgeoApp.prototype.handleRegularPolygonSideMouseDown = function (e, hitPoint) {
+    const r = this.renderer;
+    const pos = this.getEventCanvasPos(e);
+    const mouseX = pos.x;
+    const mouseY = pos.y;
+    let draft;
+    let p0;
+    let p1;
+    let math;
+    let orient;
+    let sides;
+    let p2Id;
+    let vertexIds;
+    let i;
+    let vt;
+    let name;
+    let polyName;
+
+    if (this.constructionDraft && this.constructionDraft.type === 'REGULAR_POLYGON_SIDE' &&
+        this.constructionDraft.sides) {
+        draft = this.constructionDraft;
+        p0 = this.engine.objectMap[draft.sideP1Id];
+        p1 = this.engine.objectMap[draft.sideP2Id];
+        if (!p0 || !p1) {
+            this.clearToolDraft();
+            r.draw();
+            return;
+        }
+        math = this.screenToMath(mouseX, mouseY);
+        orient = r.getPreviewOrientFromMouse(p0, p1, math.x, math.y);
+        this.recordHistory('정다각형(한 변) 생성');
+        vertexIds = [draft.sideP1Id, draft.sideP2Id];
+        for (i = 2; i < draft.sides; i++) {
+            vt = this.engine.addRegularVertex(this.getNextPointName(), {
+                mode: 'SIDE',
+                sideP1Id: draft.sideP1Id,
+                sideP2Id: draft.sideP2Id,
+                index: i,
+                sides: draft.sides,
+                orient: orient
+            });
+            if (!vt) {
+                this.clearToolDraft();
+                r.draw();
+                return;
+            }
+            vertexIds.push(vt.id);
+        }
+        polyName = this.buildPolygonName(vertexIds);
+        if (!this.engine.findPolygonByVertices(vertexIds)) {
+            this.engine.addPolygon(polyName, vertexIds);
+        }
+        this.clearToolDraft();
+        this.updateAlgebraView();
+        r.draw();
+        return;
+    }
+
+    if (this.selectedPoints.length === 0) {
+        this.selectedPoints.push(this.resolvePointAtClick(mouseX, mouseY, hitPoint));
+        this.syncHighlightToRenderer();
+        this.syncToolGuide();
+        r.draw();
+        return;
+    }
+
+    p2Id = this.resolvePointAtClick(mouseX, mouseY, hitPoint);
+    if (p2Id === this.selectedPoints[0]) {
+        r.draw();
+        return;
+    }
+
+    sides = this.promptRegularPolygonSides();
+    if (sides === null) {
+        this.selectedPoints = [];
+        this.syncHighlightToRenderer();
+        r.draw();
+        return;
+    }
+
+    this.constructionDraft = {
+        type: 'REGULAR_POLYGON_SIDE',
+        sideP1Id: this.selectedPoints[0],
+        sideP2Id: p2Id,
+        sides: sides
+    };
+    this.selectedPoints = [];
+    this.renderer.highlightIds = [this.constructionDraft.sideP1Id, p2Id];
+    this.syncToolGuide();
+    this.updateToolPreviewFromMouse(mouseX, mouseY);
+};
+
+// 중심·한 점 기준 정다각형 생성
+AlgeoApp.prototype.handleRegularPolygonCenterMouseDown = function (e, hitPoint) {
+    const r = this.renderer;
+    const pos = this.getEventCanvasPos(e);
+    const mouseX = pos.x;
+    const mouseY = pos.y;
+    let centerId;
+    let firstId;
+    let sides;
+    let vertexIds;
+    let i;
+    let vt;
+    let polyName;
+
+    if (this.selectedPoints.length === 0) {
+        this.selectedPoints.push(this.resolvePointAtClick(mouseX, mouseY, hitPoint));
+        this.syncHighlightToRenderer();
+        this.syncToolGuide();
+        r.draw();
+        return;
+    }
+
+    centerId = this.selectedPoints[0];
+    firstId = this.resolvePointAtClick(mouseX, mouseY, hitPoint);
+    if (firstId === centerId) {
+        r.draw();
+        return;
+    }
+
+    sides = this.promptRegularPolygonSides();
+    if (sides === null) {
+        this.selectedPoints = [];
+        this.syncHighlightToRenderer();
+        r.draw();
+        return;
+    }
+
+    this.recordHistory('정다각형(중심) 생성');
+    vertexIds = [firstId];
+    for (i = 1; i < sides; i++) {
+        vt = this.engine.addRegularVertex(this.getNextPointName(), {
+            mode: 'CENTER',
+            centerId: centerId,
+            firstId: firstId,
+            index: i,
+            sides: sides
+        });
+        if (!vt) {
+            this.selectedPoints = [];
+            this.syncHighlightToRenderer();
+            r.draw();
+            return;
+        }
+        vertexIds.push(vt.id);
+    }
+    polyName = this.buildPolygonName(vertexIds);
+    if (!this.engine.findPolygonByVertices(vertexIds)) {
+        this.engine.addPolygon(polyName, vertexIds);
+    }
+    this.selectedPoints = [];
+    this.syncHighlightToRenderer();
+    this.clearToolDraft();
+    this.updateAlgebraView();
+    r.draw();
+};
+
+// 주어진 크기의 각: 변점 → 꼭짓점 → 각도 → 방향 클릭
+AlgeoApp.prototype.handleAngleGivenMouseDown = function (e, hitPoint) {
+    const r = this.renderer;
+    const pos = this.getEventCanvasPos(e);
+    const mouseX = pos.x;
+    const mouseY = pos.y;
+    let draft;
+    let ray1;
+    let vertex;
+    let math;
+    let orient;
+    let degStr;
+    let degrees;
+    let tipPt;
+    let name;
+
+    if (this.constructionDraft && this.constructionDraft.type === 'ANGLE_GIVEN' &&
+        this.constructionDraft.degrees) {
+        draft = this.constructionDraft;
+        ray1 = this.engine.objectMap[draft.ray1Id];
+        vertex = this.engine.objectMap[draft.vertexId];
+        if (!ray1 || !vertex) {
+            this.clearToolDraft();
+            r.draw();
+            return;
+        }
+        math = this.screenToMath(mouseX, mouseY);
+        orient = r.getPreviewOrientFromMouse(vertex, ray1, math.x, math.y);
+        this.recordHistory('주어진 크기 각 생성');
+        tipPt = this.engine.addFixedAnglePoint(
+            this.getNextPointName(),
+            draft.ray1Id,
+            draft.vertexId,
+            draft.degrees,
+            orient
+        );
+        if (tipPt && !this.engine.findAngleByPoints(draft.ray1Id, draft.vertexId, tipPt.id)) {
+            name = '\u2220' + ray1.name + vertex.name + tipPt.name;
+            this.engine.addAngle(name, draft.ray1Id, draft.vertexId, tipPt.id);
+        }
+        this.clearToolDraft();
+        this.updateAlgebraView();
+        r.draw();
+        return;
+    }
+
+    if (this.selectedPoints.length === 0) {
+        this.selectedPoints.push(this.resolvePointAtClick(mouseX, mouseY, hitPoint));
+        this.syncHighlightToRenderer();
+        this.syncToolGuide();
+        r.draw();
+        return;
+    }
+
+    if (this.selectedPoints.length === 1) {
+        const vertexId = this.resolvePointAtClick(mouseX, mouseY, hitPoint);
+        if (vertexId === this.selectedPoints[0]) {
+            r.draw();
+            return;
+        }
+        degStr = window.prompt('각의 크기(도)를 입력하세요.', '60');
+        if (degStr === null) {
+            this.selectedPoints = [];
+            this.syncHighlightToRenderer();
+            r.draw();
+            return;
+        }
+        degrees = parseFloat(degStr);
+        if (!(degrees > 0) || isNaN(degrees)) {
+            degrees = 60;
+        }
+        this.constructionDraft = {
+            type: 'ANGLE_GIVEN',
+            ray1Id: this.selectedPoints[0],
+            vertexId: vertexId,
+            degrees: degrees
+        };
+        this.selectedPoints = [];
+        this.renderer.highlightIds = [
+            this.constructionDraft.ray1Id,
+            this.constructionDraft.vertexId
+        ];
+        this.syncToolGuide();
+        this.updateToolPreviewFromMouse(mouseX, mouseY);
+    }
 };
 
 // 마우스 다운 핸들러
@@ -7254,6 +7945,12 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
         this.handleParallelPerpMouseDown(e, hitPoint);
     } else if (this.currentTool === 'POLYGON') {
         this.handlePolygonMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'REGULAR_POLYGON_SIDE') {
+        this.handleRegularPolygonSideMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'REGULAR_POLYGON_CENTER') {
+        this.handleRegularPolygonCenterMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'ANGLE_GIVEN') {
+        this.handleAngleGivenMouseDown(e, hitPoint);
     } else if (this.currentTool === 'SLIDER') {
         const hitSlider = this.findSliderAt(mouseX, mouseY);
         if (hitSlider) {
@@ -7521,8 +8218,7 @@ AlgeoApp.prototype.findPointAt = function (screenX, screenY) {
     const list = this.engine.objects;
     for (let i = 0; i < list.length; i++) {
         const obj = list[i];
-        if (obj.type === 'POINT' || obj.type === 'MIDPOINT' ||
-            obj.type === 'INTERSECTION' || obj.type === 'POINT_ON') {
+        if (isAlgeoPointType(obj.type)) {
             if (!this.engine.isObjectVisible(obj)) {
                 continue;
             }
@@ -8001,7 +8697,7 @@ AlgeoApp.prototype.getNextPointName = function () {
         const suffix = count >= 26 ? String(Math.floor(count / 26)) : '';
         name = String.fromCharCode(charCode) + suffix;
         count += 1;
-    } while (this.engine.findPointByName(name) !== null);
+    } while (this.engine.findAnyPointLikeByName(name) !== null);
 
     return name;
 };
@@ -8901,6 +9597,12 @@ AlgeoApp.prototype.buildAlgebraPropsHtml = function (obj) {
     } else if (obj.type === 'POINT_ON') {
         html += '<p>좌표 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')</p>';
         html += '<p class="props-note">대상 위의 점 — 부모 도형을 따라 움직입니다.</p>';
+    } else if (obj.type === 'REGULAR_VERTEX') {
+        html += '<p>좌표 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')</p>';
+        html += '<p class="props-note">정다각형 꼭짓점 — 기준 점을 이동하면 함께 바뀝니다.</p>';
+    } else if (obj.type === 'FIXED_ANGLE_POINT') {
+        html += '<p>좌표 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')</p>';
+        html += '<p class="props-note">고정각 끝점 — ' + obj.degrees + '° · 부모 점을 이동하면 함께 바뀝니다.</p>';
     } else if (obj.type === 'ANGLE') {
         deg = this.engine.getAngleDegrees(obj);
         html += '<p>각도 ' + (deg !== null ? deg.toFixed(1) : '?') + '\u00B0</p>';
@@ -9110,6 +9812,10 @@ AlgeoApp.prototype.updateAlgebraView = function () {
             if (host) {
                 desc = host.name + ' 위의 점 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')';
             }
+        } else if (obj.type === 'REGULAR_VERTEX') {
+            desc = '정다각형 꼭짓점 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')';
+        } else if (obj.type === 'FIXED_ANGLE_POINT') {
+            desc = '고정각 ' + obj.degrees + '° (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')';
         } else if (obj.type === 'PERP_BISECTOR') {
             const p1 = this.engine.objectMap[obj.p1Id];
             const p2 = this.engine.objectMap[obj.p2Id];

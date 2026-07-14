@@ -5,24 +5,24 @@
 - [x] Click CIRCLE tool and draw circle with center A and point C
 - [x] Click MOVE tool and drag A, verify dynamic updates
 - [x] Verify sidebar object list
-- [ ] Type `D = (3, 4)` in algebra input and verify point creation
-- [ ] Type `A = (0, 0)` to move existing point A
-- [ ] Verify selection highlight when picking points for segment/circle
-- [ ] Type `y = 2x + 1` and verify purple function graph
-- [ ] Type `y = -x + 3` and verify second function (name: g)
-- [ ] Delete function graph with DELETE tool
-- [ ] Create points A=(0,0), B=(3,0), then type `AB` for segment
-- [ ] Type `⊙(A, C)` or `⊙AC` for circle with center A
-- [ ] Re-type `AB` and verify no duplicate segment
-- [ ] Click algebra list item and verify cyan highlight on canvas
-- [ ] Click same item again to deselect
-- [ ] Click empty canvas to clear selection
-- [ ] LINE tool: pick two points, verify dashed indigo infinite line
-- [ ] Drag point and verify line updates
-- [ ] Type `Line(A,B)` in algebra input
-- [ ] Delete line with DELETE tool
-- [ ] POLYGON tool: click A, B, C, D, click A again to close
-- [ ] POLYGON: drag vertex, verify shape updates
-- [ ] Type `Polygon(A,B,C,D)` in algebra input
-- [ ] Delete polygon with DELETE tool (edge or interior click)
-- [ ] Enter key closes polygon draft (3+ vertices)
+- [x] Type `D = (3, 4)` in algebra input and verify point creation
+- [x] Type `A = (0, 0)` to move existing point A
+- [x] Verify selection highlight when picking points for segment/circle
+- [x] Type `y = 2x + 1` and verify purple function graph
+- [x] Type `y = -x + 3` and verify second function (name: g)
+- [x] Delete function graph with DELETE tool
+- [x] Create points A=(0,0), B=(3,0), then type `AB` for segment
+- [x] Type `⊙(A, C)` or `⊙AC` for circle with center A
+- [x] Re-type `AB` and verify no duplicate segment
+- [x] Click algebra list item and verify cyan highlight on canvas
+- [x] Click same item again to deselect
+- [x] Click empty canvas to clear selection
+- [x] LINE tool: pick two points, verify dashed indigo infinite line
+- [x] Drag point and verify line updates
+- [x] Type `Line(A,B)` in algebra input
+- [x] Delete line with DELETE tool
+- [x] POLYGON tool: click A, B, C, D, click A again to close
+- [x] POLYGON: drag vertex, verify shape updates
+- [x] Type `Polygon(A,B,C,D)` in algebra input
+- [x] Delete polygon with DELETE tool (edge or interior click)
+- [x] Enter key closes polygon draft (3+ vertices)
