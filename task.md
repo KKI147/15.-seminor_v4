@@ -1,6 +1,7 @@
 # 알지오메스 클론코딩 — 진행 체크리스트
 
-> 전체 로드맵: [`README.md`](README.md) · 전체 도구: [`tool_catalog.md`](tool_catalog.md)
+> 전체 로드맵: [`README.md`](README.md) · 전체 도구: [`tool_catalog.md`](tool_catalog.md)  
+> **목표 범위·우선순위(2번 작도 에디터)**: [`editor_parity_plan.md`](editor_parity_plan.md) — 블록코딩·포털 등은 Won't
 
 ---
 
@@ -138,6 +139,8 @@
 | 레일 전용 | 블록코딩 · 설정 |
 | 엔진 구현률 | **30 / 54 = 56%** (UI 맵은 100%) |
 
-**권장 순서**: ~~5단계~~ → ~~6단계~~ → **7-1 선택·그룹선택** → 7-2 → 8~11 → 12
+**권장 순서** ([`editor_parity_plan.md`](editor_parity_plan.md) §5):  
+~~5~~ → ~~6~~ → **7-1 선택** → 스타일/Undo → **8-1 측정** → **9 변환** → **12-4 저장** → 꾸미기/텍스트 → 그림/설정 → Could  
+(11 블록코딩·사용자도구·동영상 = 2번 Won't)
 
 **UI**: 실제 서비스 수준으로 정갈·구성 있게 — [`ux_guidelines.md`](ux_guidelines.md) 「UI 서비스 품질」

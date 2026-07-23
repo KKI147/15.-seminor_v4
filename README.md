@@ -4,7 +4,7 @@
 
 **배포 주소**: [https://kki147.github.io/15.-seminor_v4/)
 
-> **진행 방식**: 이 README의 로드맵 순서대로 구현합니다.  
+> **진행 방식**: 이 README의 로드맵을 따르되, **목표 범위·우선순위는 [`editor_parity_plan.md`](editor_parity_plan.md)** (작도 에디터 = 원본 대비 2번)를 우선합니다.  
 > 완료 여부는 [`task.md`](task.md) 에서 체크하며, 세부 설계는 [`implementation_plan.md`](implementation_plan.md) 를 참고합니다.
 
 Z:\프로젝트\Homework\2024\김경일\동아(캔버스)\
@@ -106,10 +106,12 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 | UX-4 | 도구 가이드 패널 | ✅ |
 | **5단계** | 레일 9+1 · 플라이아웃 stub 맵 | ✅ [`tool_catalog.md`](tool_catalog.md) |
 
-**다음**: **7단계** 선택·그룹선택 · 텍스트·체크박스
+**다음**: **7-1 선택·그룹선택** → 스타일/Undo → 측정 → 변환 → 저장  
+([`editor_parity_plan.md`](editor_parity_plan.md) §5 권장 순서)
 
 - 레이아웃: [`ui_layout.md`](ui_layout.md)
 - **작도 UX·조작 명세**: [`ux_guidelines.md`](ux_guidelines.md)
+- **목표 범위(2번)·Must/Won't**: [`editor_parity_plan.md`](editor_parity_plan.md)
 
 ---
 
@@ -239,7 +241,10 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 
 **다음 작업**: **7-1 선택·그룹선택** (`SELECT` · `GROUP_SELECT`)
 
-**전체 목표**: 플라이아웃 **54종** (done 30 + stub 24) + 레일 블록코딩·설정 — [`tool_catalog.md`](tool_catalog.md)
+**제품 목표**: 원본 **작도 에디터** 수준(2번). 포털·블록코딩 본편은 비목표 — [`editor_parity_plan.md`](editor_parity_plan.md)
+
+**도구 카탈로그**: 플라이아웃 **54종** (done 30 + stub 24) — [`tool_catalog.md`](tool_catalog.md)  
+(2번 실무 완성선에서는 블록코딩·동영상·사용자 도구를 필수로 두지 않음)
 
 **UI**: 서비스 품질 원칙 — [`ux_guidelines.md`](ux_guidelines.md) §1
 
@@ -300,6 +305,7 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 
 | 파일 | 용도 |
 |------|------|
+| [`editor_parity_plan.md`](editor_parity_plan.md) | **목표 범위(작도 에디터 2번)** · Must/Should/Could/Won't · 권장 작업 순서 |
 | [`task.md`](task.md) | 단계별 완료 체크 (구현 시 업데이트) |
 | [`implementation_plan.md`](implementation_plan.md) | 초기 설계·아키텍처 결정 기록 |
 | [`scratchpad_imsf86e0.md`](scratchpad_imsf86e0.md) | 수동 테스트 시나리오 |
