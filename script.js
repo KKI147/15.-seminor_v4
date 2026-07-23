@@ -1076,12 +1076,180 @@ const ALGEO_VIS_DARK = {
 // 현재 활성 캔버스 팔레트 (setTheme 시 갱신)
 let ALGEO_VIS = ALGEO_VIS_LIGHT;
 
+// 스타일 패널 색상 프리셋
+const ALGEO_STYLE_PRESETS = [
+    '#e11d48', '#1d4ed8', '#047857', '#b45309', '#0f172a',
+    '#9333ea', '#0e7490', '#c2410c', '#64748b'
+];
+
+// 선 굵기 선택지
+const ALGEO_STYLE_WIDTHS = [1.5, 2.5, 3.5, 5, 7];
+
 // 테마에 맞는 캔버스 팔레트 반환
 function getAlgeoVisPalette(theme) {
     if (theme === 'dark') {
         return ALGEO_VIS_DARK;
     }
     return ALGEO_VIS_LIGHT;
+}
+
+// 객체 타입별 기본 시각 스타일
+function getTypeStyleDefaults(type) {
+    const vis = ALGEO_VIS;
+    const map = {
+        POINT: { stroke: vis.point, fill: vis.point, lineWidth: 2, dash: [], fillOpacity: 1 },
+        MIDPOINT: { stroke: vis.midpoint, fill: vis.midpoint, lineWidth: 2, dash: [], fillOpacity: 1 },
+        INTERSECTION: { stroke: vis.midpoint, fill: vis.midpoint, lineWidth: 2, dash: [], fillOpacity: 1 },
+        POINT_ON: { stroke: vis.midpoint, fill: vis.midpoint, lineWidth: 2, dash: [], fillOpacity: 1 },
+        REGULAR_VERTEX: { stroke: vis.midpoint, fill: vis.midpoint, lineWidth: 2, dash: [], fillOpacity: 1 },
+        FIXED_ANGLE_POINT: { stroke: vis.midpoint, fill: vis.midpoint, lineWidth: 2, dash: [], fillOpacity: 1 },
+        SEGMENT: { stroke: vis.segment, fill: null, lineWidth: 3.5, dash: [], fillOpacity: 1 },
+        VECTOR: { stroke: vis.vector, fill: null, lineWidth: 3.5, dash: [], fillOpacity: 1 },
+        LINE: { stroke: vis.line, fill: null, lineWidth: 3, dash: [12, 6], fillOpacity: 1 },
+        RAY: { stroke: vis.ray, fill: null, lineWidth: 3, dash: [10, 5], fillOpacity: 1 },
+        PERP_BISECTOR: { stroke: vis.perpBisector, fill: null, lineWidth: 3, dash: [8, 5], fillOpacity: 1 },
+        ANGLE_BISECTOR: { stroke: vis.angleBisector, fill: null, lineWidth: 3, dash: [7, 4], fillOpacity: 1 },
+        PARALLEL_LINE: { stroke: vis.parallel, fill: null, lineWidth: 3, dash: [10, 5], fillOpacity: 1 },
+        PERP_LINE: { stroke: vis.perpLine, fill: null, lineWidth: 3, dash: [6, 4], fillOpacity: 1 },
+        TANGENT: { stroke: vis.tangent, fill: null, lineWidth: 3, dash: [8, 4], fillOpacity: 1 },
+        CIRCLE: { stroke: vis.circle, fill: null, lineWidth: 3, dash: [], fillOpacity: 1 },
+        CIRCLE_3P: { stroke: vis.circle, fill: null, lineWidth: 3, dash: [], fillOpacity: 1 },
+        ARC: { stroke: vis.arc, fill: null, lineWidth: 3.5, dash: [], fillOpacity: 1 },
+        SECTOR: { stroke: vis.sector, fill: vis.sectorFill, lineWidth: 3, dash: [], fillOpacity: 1 },
+        CIRCULAR_SEGMENT: {
+            stroke: vis.circularSegment,
+            fill: vis.circularSegmentFill,
+            lineWidth: 3.5,
+            dash: [],
+            fillOpacity: 1
+        },
+        ANGLE: { stroke: vis.angle, fill: vis.angleFill, lineWidth: 2.5, dash: [], fillOpacity: 1 },
+        POLYGON: { stroke: vis.polygon, fill: vis.polygonFill, lineWidth: 3, dash: [], fillOpacity: 1 },
+        FUNCTION: { stroke: vis.function, fill: null, lineWidth: 3, dash: [], fillOpacity: 1 },
+        SLIDER: { stroke: vis.slider, fill: vis.sliderThumb, lineWidth: 4, dash: [], fillOpacity: 1 }
+    };
+
+    return map[type] || {
+        stroke: vis.axis,
+        fill: null,
+        lineWidth: 3,
+        dash: [],
+        fillOpacity: 1
+    };
+}
+
+// dashMode → 점선 패턴
+function dashPatternFromMode(mode, fallbackDash) {
+    if (mode === 'solid') {
+        return [];
+    }
+    if (mode === 'dashed') {
+        return [8, 5];
+    }
+    if (mode === 'dotted') {
+        return [2, 4];
+    }
+    return fallbackDash || [];
+}
+
+// 저장된 dash에서 모드 추정 (UI 표시용)
+function dashModeFromPattern(dash) {
+    if (!dash || dash.length === 0) {
+        return 'solid';
+    }
+    if (dash[0] <= 3) {
+        return 'dotted';
+    }
+    return 'dashed';
+}
+
+// #hex 또는 rgb/rgba에 불투명도 적용
+function colorWithOpacity(color, opacity) {
+    let hex;
+    let r;
+    let g;
+    let b;
+    let m;
+    let a;
+
+    if (opacity === null || opacity === undefined || opacity >= 0.999) {
+        return color;
+    }
+    a = Math.max(0, Math.min(1, opacity));
+
+    if (!color) {
+        return 'rgba(0,0,0,' + a + ')';
+    }
+
+    m = /^#([0-9a-fA-F]{6})$/.exec(color);
+    if (m) {
+        hex = m[1];
+        r = parseInt(hex.substring(0, 2), 16);
+        g = parseInt(hex.substring(2, 4), 16);
+        b = parseInt(hex.substring(4, 6), 16);
+        return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+    }
+
+    m = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(color);
+    if (m) {
+        return 'rgba(' + m[1] + ',' + m[2] + ',' + m[3] + ',' + a + ')';
+    }
+
+    return color;
+}
+
+// 객체에 적용할 최종 그리기 스타일
+function resolveObjectStyle(obj) {
+    const defaults = getTypeStyleDefaults(obj.type);
+    const s = obj.style || {};
+    let fill = s.fill || defaults.fill;
+    let fillOpacity = s.fillOpacity !== undefined && s.fillOpacity !== null
+        ? s.fillOpacity
+        : defaults.fillOpacity;
+    const fillable = obj.type === 'POLYGON' || obj.type === 'SECTOR' ||
+        obj.type === 'CIRCULAR_SEGMENT' || obj.type === 'ANGLE' ||
+        isAlgeoPointType(obj.type);
+
+    if (s.fillOpacity !== undefined && s.fillOpacity !== null && fillable) {
+        fill = colorWithOpacity(s.fill || s.stroke || defaults.stroke, fillOpacity);
+    } else if (!s.fill && s.stroke && (
+        obj.type === 'POLYGON' || obj.type === 'SECTOR' ||
+        obj.type === 'CIRCULAR_SEGMENT' || obj.type === 'ANGLE'
+    )) {
+        fill = colorWithOpacity(s.stroke, 0.18);
+    }
+
+    return {
+        stroke: s.stroke || defaults.stroke,
+        fill: fill,
+        lineWidth: s.lineWidth !== undefined && s.lineWidth !== null
+            ? s.lineWidth
+            : defaults.lineWidth,
+        dash: s.dashMode
+            ? dashPatternFromMode(s.dashMode, defaults.dash)
+            : (defaults.dash || []),
+        dashMode: s.dashMode || dashModeFromPattern(defaults.dash),
+        showLabel: s.showLabel !== false,
+        fillOpacity: fillOpacity
+    };
+}
+
+// 객체에 스타일 패치 병합
+function applyStylePatchToObject(obj, patch) {
+    let key;
+
+    if (!obj.style) {
+        obj.style = {};
+    }
+    for (key in patch) {
+        if (Object.prototype.hasOwnProperty.call(patch, key)) {
+            if (patch[key] === null || patch[key] === '') {
+                delete obj.style[key];
+            } else {
+                obj.style[key] = patch[key];
+            }
+        }
+    }
 }
 
 // 도구 ID가 속한 카테고리 검색
@@ -3910,6 +4078,16 @@ AlgeoRenderer.prototype.drawObjects = function () {
     const ctx = this.ctx;
     const list = this.engine.objects;
     const engine = this.engine;
+    let style;
+    let p1;
+    let p2;
+    let circ;
+    let linePts;
+    let center;
+    let guide;
+    let ray1;
+    let vertex;
+    let ray2;
 
     // 1단계: 함수 → 직선 → 선분 → 원 순으로 그리기 (점보다 뒤에 오도록)
     for (let i = 0; i < list.length; i++) {
@@ -3934,101 +4112,114 @@ AlgeoRenderer.prototype.drawObjects = function () {
             continue;
         }
 
+        style = resolveObjectStyle(obj);
+
         if (obj.type === 'LINE') {
-            const p1 = this.engine.objectMap[obj.p1Id];
-            const p2 = this.engine.objectMap[obj.p2Id];
+            p1 = this.engine.objectMap[obj.p1Id];
+            p2 = this.engine.objectMap[obj.p2Id];
             if (p1 && p2) {
-                this.drawLine(p1, p2, ALGEO_VIS.line, [12, 6], 3);
+                this.drawLine(p1, p2, style.stroke, style.dash, style.lineWidth);
             }
         } else if (obj.type === 'RAY') {
-            const p1 = this.engine.objectMap[obj.p1Id];
-            const p2 = this.engine.objectMap[obj.p2Id];
+            p1 = this.engine.objectMap[obj.p1Id];
+            p2 = this.engine.objectMap[obj.p2Id];
             if (p1 && p2) {
-                this.drawRay(p1, p2, ALGEO_VIS.ray, [10, 5], 3);
+                this.drawRay(p1, p2, style.stroke, style.dash, style.lineWidth);
             }
         } else if (obj.type === 'PERP_BISECTOR') {
-            const linePts = this.engine.getPerpBisectorLinePoints(obj);
+            linePts = this.engine.getPerpBisectorLinePoints(obj);
             if (linePts) {
-                this.drawLine(linePts.p1, linePts.p2, ALGEO_VIS.perpBisector, [8, 5], 3);
+                this.drawLine(linePts.p1, linePts.p2, style.stroke, style.dash, style.lineWidth);
             }
         } else if (obj.type === 'ANGLE_BISECTOR') {
-            const linePts = this.engine.getAngleBisectorLinePoints(obj);
+            linePts = this.engine.getAngleBisectorLinePoints(obj);
             if (linePts) {
-                this.drawRay(linePts.p1, linePts.p2, ALGEO_VIS.angleBisector, [7, 4], 3);
+                this.drawRay(linePts.p1, linePts.p2, style.stroke, style.dash, style.lineWidth);
             }
         } else if (obj.type === 'PARALLEL_LINE') {
-            const linePts = this.engine.getParallelLinePoints(obj);
+            linePts = this.engine.getParallelLinePoints(obj);
             if (linePts) {
-                this.drawLine(linePts.p1, linePts.p2, ALGEO_VIS.parallel, [10, 5], 3);
+                this.drawLine(linePts.p1, linePts.p2, style.stroke, style.dash, style.lineWidth);
             }
         } else if (obj.type === 'PERP_LINE') {
-            const linePts = this.engine.getPerpLinePoints(obj);
+            linePts = this.engine.getPerpLinePoints(obj);
             if (linePts) {
-                this.drawLine(linePts.p1, linePts.p2, ALGEO_VIS.perpLine, [6, 4], 3);
+                this.drawLine(linePts.p1, linePts.p2, style.stroke, style.dash, style.lineWidth);
             }
         } else if (obj.type === 'TANGENT') {
-            const linePts = this.engine.getTangentLinePoints(obj);
+            linePts = this.engine.getTangentLinePoints(obj);
             if (linePts) {
-                this.drawLine(linePts.p1, linePts.p2, ALGEO_VIS.tangent, [8, 4], 3);
+                this.drawLine(linePts.p1, linePts.p2, style.stroke, style.dash, style.lineWidth);
             }
         } else if (obj.type === 'SEGMENT') {
-            const p1 = this.engine.objectMap[obj.p1Id];
-            const p2 = this.engine.objectMap[obj.p2Id];
+            p1 = this.engine.objectMap[obj.p1Id];
+            p2 = this.engine.objectMap[obj.p2Id];
             if (p1 && p2) {
+                ctx.save();
                 ctx.beginPath();
                 ctx.moveTo(this.toScreenX(p1.x), this.toScreenY(p1.y));
                 ctx.lineTo(this.toScreenX(p2.x), this.toScreenY(p2.y));
-                ctx.strokeStyle = ALGEO_VIS.segment;
-                ctx.lineWidth = 3.5;
+                ctx.strokeStyle = style.stroke;
+                ctx.lineWidth = style.lineWidth;
                 ctx.lineCap = 'round';
+                ctx.setLineDash(style.dash || []);
                 ctx.stroke();
+                ctx.restore();
             }
         } else if (obj.type === 'VECTOR') {
-            const p1 = this.engine.objectMap[obj.p1Id];
-            const p2 = this.engine.objectMap[obj.p2Id];
+            p1 = this.engine.objectMap[obj.p1Id];
+            p2 = this.engine.objectMap[obj.p2Id];
             if (p1 && p2) {
-                this.drawVectorShape(p1, p2, ALGEO_VIS.vector, 3.5);
+                this.drawVectorShape(p1, p2, style.stroke, style.lineWidth);
             }
         } else if (obj.type === 'CIRCLE' || obj.type === 'CIRCLE_3P') {
-            const circ = this.engine.getCircleGeometry(obj);
+            circ = this.engine.getCircleGeometry(obj);
             if (circ) {
                 const cx = this.toScreenX(circ.center.x);
                 const cy = this.toScreenY(circ.center.y);
                 const screenRadius = circ.radius * this.scale;
 
+                ctx.save();
                 ctx.beginPath();
                 ctx.arc(cx, cy, screenRadius, 0, 2 * Math.PI);
-                ctx.strokeStyle = ALGEO_VIS.circle;
-                ctx.lineWidth = 3;
+                ctx.strokeStyle = style.stroke;
+                ctx.lineWidth = style.lineWidth;
+                ctx.setLineDash(style.dash || []);
                 ctx.stroke();
+                ctx.restore();
             }
         } else if (obj.type === 'SECTOR') {
-            const center = this.engine.objectMap[obj.centerId];
-            const p1 = this.engine.objectMap[obj.p1Id];
-            const p2 = this.engine.objectMap[obj.p2Id];
+            center = this.engine.objectMap[obj.centerId];
+            p1 = this.engine.objectMap[obj.p1Id];
+            p2 = this.engine.objectMap[obj.p2Id];
             if (center && p1 && p2) {
-                this.drawSectorShape(center, p1, p2, ALGEO_VIS.sector, ALGEO_VIS.sectorFill, 3);
+                this.drawSectorShape(center, p1, p2, style.stroke, style.fill || ALGEO_VIS.sectorFill, style.lineWidth);
             }
         } else if (obj.type === 'CIRCULAR_SEGMENT') {
-            const p1 = this.engine.objectMap[obj.p1Id];
-            const p2 = this.engine.objectMap[obj.p2Id];
-            const guide = this.engine.objectMap[obj.guideId];
+            p1 = this.engine.objectMap[obj.p1Id];
+            p2 = this.engine.objectMap[obj.p2Id];
+            guide = this.engine.objectMap[obj.guideId];
             if (p1 && p2 && guide) {
-                this.drawCircularSegmentShape(p1, p2, guide, ALGEO_VIS.circularSegment, ALGEO_VIS.circularSegmentFill, 3.5);
+                this.drawCircularSegmentShape(
+                    p1, p2, guide,
+                    style.stroke,
+                    style.fill || ALGEO_VIS.circularSegmentFill,
+                    style.lineWidth
+                );
             }
         } else if (obj.type === 'ARC') {
-            const p1 = this.engine.objectMap[obj.p1Id];
-            const p2 = this.engine.objectMap[obj.p2Id];
-            const guide = this.engine.objectMap[obj.guideId];
+            p1 = this.engine.objectMap[obj.p1Id];
+            p2 = this.engine.objectMap[obj.p2Id];
+            guide = this.engine.objectMap[obj.guideId];
             if (p1 && p2 && guide) {
-                this.drawArcThreePoints(p1, p2, guide, ALGEO_VIS.arc, 3.5);
+                this.drawArcThreePoints(p1, p2, guide, style.stroke, style.lineWidth);
             }
         } else if (obj.type === 'ANGLE') {
-            const ray1 = this.engine.objectMap[obj.ray1Id];
-            const vertex = this.engine.objectMap[obj.vertexId];
-            const ray2 = this.engine.objectMap[obj.ray2Id];
+            ray1 = this.engine.objectMap[obj.ray1Id];
+            vertex = this.engine.objectMap[obj.vertexId];
+            ray2 = this.engine.objectMap[obj.ray2Id];
             if (ray1 && vertex && ray2) {
-                this.drawAngleShape(ray1, vertex, ray2);
+                this.drawAngleShape(ray1, vertex, ray2, obj);
             }
         }
     }
@@ -4060,6 +4251,7 @@ AlgeoRenderer.prototype.drawPointShape = function (obj) {
     const sx = this.toScreenX(obj.x);
     const sy = this.toScreenY(obj.y);
     const isHighlighted = this.highlightIds.indexOf(obj.id) >= 0;
+    const style = resolveObjectStyle(obj);
     let fillColor;
 
     if (isHighlighted) {
@@ -4074,10 +4266,8 @@ AlgeoRenderer.prototype.drawPointShape = function (obj) {
     ctx.arc(sx, sy, radius, 0, 2 * Math.PI);
     if (isHighlighted) {
         fillColor = ALGEO_VIS.highlightPoint;
-    } else if (isDep) {
-        fillColor = ALGEO_VIS.midpoint;
     } else {
-        fillColor = ALGEO_VIS.point;
+        fillColor = style.fill || style.stroke;
     }
     ctx.fillStyle = fillColor;
     ctx.fill();
@@ -4085,10 +4275,12 @@ AlgeoRenderer.prototype.drawPointShape = function (obj) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    this.drawCanvasLabel(obj.name, sx + 10, sy - 10, {
-        font: 'bold 13px Outfit, sans-serif',
-        color: ALGEO_VIS.axis
-    });
+    if (style.showLabel) {
+        this.drawCanvasLabel(obj.name, sx + 10, sy - 10, {
+            font: 'bold 13px Outfit, sans-serif',
+            color: ALGEO_VIS.axis
+        });
+    }
 };
 
 // 캔버스 라벨 (흰색 외곽선으로 격자 위 가독성 확보)
@@ -4120,6 +4312,7 @@ AlgeoRenderer.prototype.drawPolygonShape = function (obj) {
     const ctx = this.ctx;
     const ids = obj.vertexIds;
     const screenPts = [];
+    const style = resolveObjectStyle(obj);
     let i;
     let cx = 0;
     let cy = 0;
@@ -4143,6 +4336,7 @@ AlgeoRenderer.prototype.drawPolygonShape = function (obj) {
     cx /= screenPts.length;
     cy /= screenPts.length;
 
+    ctx.save();
     ctx.beginPath();
     ctx.moveTo(screenPts[0].x, screenPts[0].y);
     for (i = 1; i < screenPts.length; i++) {
@@ -4150,18 +4344,22 @@ AlgeoRenderer.prototype.drawPolygonShape = function (obj) {
     }
     ctx.closePath();
 
-    ctx.fillStyle = ALGEO_VIS.polygonFill;
+    ctx.fillStyle = style.fill || ALGEO_VIS.polygonFill;
     ctx.fill();
-    ctx.strokeStyle = ALGEO_VIS.polygon;
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = style.stroke;
+    ctx.lineWidth = style.lineWidth;
     ctx.lineJoin = 'round';
+    ctx.setLineDash(style.dash || []);
     ctx.stroke();
+    ctx.restore();
 
-    this.drawCanvasLabel(obj.name, cx, cy - 8, {
-        font: 'bold 12px Outfit, sans-serif',
-        color: ALGEO_VIS.polygon,
-        align: 'center'
-    });
+    if (style.showLabel) {
+        this.drawCanvasLabel(obj.name, cx, cy - 8, {
+            font: 'bold 12px Outfit, sans-serif',
+            color: style.stroke,
+            align: 'center'
+        });
+    }
 };
 
 // 호·원·선 작도 도구 실시간 미리보기 (AlgeoMath 스타일)
@@ -4863,7 +5061,7 @@ AlgeoRenderer.prototype.drawCircularSegmentShape = function (p1, p2, guide, stro
 };
 
 // 각도 표시 (꼭짓점 호 + 도 단위 라벨)
-AlgeoRenderer.prototype.drawAngleShape = function (ray1, vertex, ray2) {
+AlgeoRenderer.prototype.drawAngleShape = function (ray1, vertex, ray2, angleObj) {
     const bx = this.toScreenX(vertex.x);
     const by = this.toScreenY(vertex.y);
     const sx1 = this.toScreenX(ray1.x);
@@ -4873,6 +5071,12 @@ AlgeoRenderer.prototype.drawAngleShape = function (ray1, vertex, ray2) {
     const arcR = 34;
     const sweep = this.getArcScreenSweep(bx, by, sx1, sy1, sx2, sy2);
     const ctx = this.ctx;
+    const style = angleObj ? resolveObjectStyle(angleObj) : {
+        stroke: ALGEO_VIS.angle,
+        fill: ALGEO_VIS.angleFill,
+        lineWidth: 2.5,
+        showLabel: true
+    };
     const v1x = ray1.x - vertex.x;
     const v1y = ray1.y - vertex.y;
     const v2x = ray2.x - vertex.x;
@@ -4891,17 +5095,17 @@ AlgeoRenderer.prototype.drawAngleShape = function (ray1, vertex, ray2) {
     ctx.moveTo(bx, by);
     ctx.arc(bx, by, arcR, sweep.startA, sweep.endA, sweep.ccw);
     ctx.closePath();
-    ctx.fillStyle = ALGEO_VIS.angleFill;
+    ctx.fillStyle = style.fill || ALGEO_VIS.angleFill;
     ctx.fill();
 
     ctx.beginPath();
     ctx.arc(bx, by, arcR, sweep.startA, sweep.endA, sweep.ccw);
-    ctx.strokeStyle = ALGEO_VIS.angle;
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = style.stroke;
+    ctx.lineWidth = style.lineWidth;
     ctx.lineCap = 'round';
     ctx.stroke();
 
-    if (degrees !== null) {
+    if (degrees !== null && style.showLabel !== false) {
         const midA = sweep.startA + (sweep.endA - sweep.startA) / 2;
         const labelR = arcR + 16;
         const lx = bx + Math.cos(midA) * labelR;
@@ -4909,7 +5113,7 @@ AlgeoRenderer.prototype.drawAngleShape = function (ray1, vertex, ray2) {
         this.drawCanvasLabel(degrees.toFixed(1) + '\u00B0', lx, ly + 4, {
             align: 'center',
             font: 'bold 12px Outfit, sans-serif',
-            color: ALGEO_VIS.functionLabel
+            color: style.stroke
         });
     }
 };
@@ -4966,7 +5170,7 @@ AlgeoRenderer.prototype.drawLine = function (p1, p2, color, dashPattern, baseWid
     const ctx = this.ctx;
     const end = this.getLineScreenEndpoints(p1, p2);
     const strokeColor = color || '#4f46e5';
-    const dash = dashPattern || [10, 6];
+    const dash = Array.isArray(dashPattern) ? dashPattern : [10, 6];
     const width = baseWidth || 2.5;
 
     if (!end) {
@@ -5044,7 +5248,7 @@ AlgeoRenderer.prototype.drawRay = function (origin, through, color, dashPattern,
     const ctx = this.ctx;
     const end = this.getRayScreenEndpoints(origin, through);
     const strokeColor = color || ALGEO_VIS.ray;
-    const dash = dashPattern || [10, 5];
+    const dash = Array.isArray(dashPattern) ? dashPattern : [10, 5];
     const width = baseWidth || 3;
 
     if (!end) {
@@ -5122,9 +5326,11 @@ AlgeoRenderer.prototype.drawFunction = function (obj) {
     let mathY;
     let sx;
     let sy;
+    let style;
 
     coeffs = this.engine.getFunctionCoeffs(obj);
 
+    ctx.save();
     ctx.beginPath();
     for (let mathX = left; mathX <= right; mathX += step) {
         mathY = coeffs.slope * mathX + coeffs.intercept;
@@ -5139,10 +5345,13 @@ AlgeoRenderer.prototype.drawFunction = function (obj) {
         }
     }
 
-    ctx.strokeStyle = ALGEO_VIS.function;
-    ctx.lineWidth = 3;
+    style = resolveObjectStyle(obj);
+    ctx.strokeStyle = style.stroke;
+    ctx.lineWidth = style.lineWidth;
     ctx.lineCap = 'round';
+    ctx.setLineDash(style.dash || []);
     ctx.stroke();
+    ctx.restore();
 };
 
 // 슬라이더 화면 영역 (트랙·손잡이 좌표)
@@ -10125,6 +10334,62 @@ AlgeoApp.prototype.initAlgebraSidebar = function () {
         }
     });
 
+    $('#algebraPropsPanel').on('click', '.style-swatch', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        self.applyStylePatchToSelection({
+            stroke: $(this).attr('data-color')
+        }, '스타일: 색상');
+    });
+
+    $('#algebraPropsPanel').on('change', '.style-color-input', function (e) {
+        e.stopPropagation();
+        self.applyStylePatchToSelection({
+            stroke: $(this).val()
+        }, '스타일: 색상');
+    });
+
+    $('#algebraPropsPanel').on('change', '.style-width-select', function (e) {
+        e.stopPropagation();
+        self.applyStylePatchToSelection({
+            lineWidth: parseFloat($(this).val())
+        }, '스타일: 굵기');
+    });
+
+    $('#algebraPropsPanel').on('change', '.style-dash-select', function (e) {
+        e.stopPropagation();
+        self.applyStylePatchToSelection({
+            dashMode: $(this).val()
+        }, '스타일: 선 종류');
+    });
+
+    $('#algebraPropsPanel').on('change', '.style-label-check', function (e) {
+        e.stopPropagation();
+        self.applyStylePatchToSelection({
+            showLabel: $(this).prop('checked')
+        }, '스타일: 라벨');
+    });
+
+    $('#algebraPropsPanel').on('change', '.style-opacity-range', function (e) {
+        const pct = parseInt($(this).val(), 10);
+        e.stopPropagation();
+        $(this).closest('.style-form-row').find('.style-opacity-value').text(pct + '%');
+        self.applyStylePatchToSelection({
+            fillOpacity: pct / 100
+        }, '스타일: 채움');
+    });
+
+    $('#algebraPropsPanel').on('input', '.style-opacity-range', function () {
+        const pct = parseInt($(this).val(), 10);
+        $(this).closest('.style-form-row').find('.style-opacity-value').text(pct + '%');
+    });
+
+    $('#algebraPropsPanel').on('click', '.style-reset-btn', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        self.resetStyleOfSelection();
+    });
+
     $('#algebraPropsPanel').on('mousedown click', function (e) {
         e.stopPropagation();
     });
@@ -10179,10 +10444,7 @@ AlgeoApp.prototype.buildAlgebraPropsHtml = function (obj) {
         html += '<label class="prop-field">y <input type="text" class="prop-input" data-prop="y" value="' + obj.y.toFixed(2) + '" /></label>';
         html += '<button type="button" class="prop-apply-btn">적용</button>';
         html += '</div>';
-        return html;
-    }
-
-    if (obj.type === 'SEGMENT') {
+    } else if (obj.type === 'SEGMENT') {
         p1 = this.engine.objectMap[obj.p1Id];
         p2 = this.engine.objectMap[obj.p2Id];
         if (p1 && p2) {
@@ -10196,10 +10458,7 @@ AlgeoApp.prototype.buildAlgebraPropsHtml = function (obj) {
             html += '<button type="button" class="prop-apply-btn">적용</button>';
             html += '</div>';
         }
-        return html;
-    }
-
-    if (obj.type === 'CIRCLE') {
+    } else if (obj.type === 'CIRCLE') {
         center = this.engine.objectMap[obj.centerId];
         point = this.engine.objectMap[obj.pointId];
         if (center && point) {
@@ -10213,10 +10472,7 @@ AlgeoApp.prototype.buildAlgebraPropsHtml = function (obj) {
             html += '<button type="button" class="prop-apply-btn">적용</button>';
             html += '</div>';
         }
-        return html;
-    }
-
-    if (obj.type === 'SLIDER') {
+    } else if (obj.type === 'SLIDER') {
         html += '<div class="algebra-props-form">';
         html += '<label class="prop-field">최소 <input type="text" class="prop-input" data-prop="min" value="' + obj.min + '" /></label>';
         html += '<label class="prop-field">최대 <input type="text" class="prop-input" data-prop="max" value="' + obj.max + '" /></label>';
@@ -10224,43 +10480,201 @@ AlgeoApp.prototype.buildAlgebraPropsHtml = function (obj) {
         html += '<label class="prop-field">간격 <input type="text" class="prop-input" data-prop="step" value="' + obj.step + '" /></label>';
         html += '<button type="button" class="prop-apply-btn">적용</button>';
         html += '</div>';
-        return html;
-    }
-
-    if (obj.type === 'FUNCTION') {
+    } else if (obj.type === 'FUNCTION') {
         html += '<div class="algebra-props-form">';
         html += '<label class="prop-field">기울기 a <input type="text" class="prop-input" data-prop="slope" value="' + obj.slope + '" /></label>';
         html += '<label class="prop-field">절편 b <input type="text" class="prop-input" data-prop="intercept" value="' + obj.intercept + '" /></label>';
         html += '<button type="button" class="prop-apply-btn">적용</button>';
         html += '</div>';
-        return html;
+    } else {
+        html += '<div class="algebra-props-readonly">';
+        if (obj.type === 'MIDPOINT') {
+            html += '<p>좌표 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')</p>';
+            html += '<p class="props-note">종속 객체 — 부모 점을 이동하면 함께 바뀝니다.</p>';
+        } else if (obj.type === 'INTERSECTION') {
+            html += '<p>좌표 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')</p>';
+            html += '<p class="props-note">교점 — 부모 도형을 이동하면 함께 바뀝니다.</p>';
+        } else if (obj.type === 'POINT_ON') {
+            html += '<p>좌표 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')</p>';
+            html += '<p class="props-note">대상 위의 점 — 부모 도형을 따라 움직입니다.</p>';
+        } else if (obj.type === 'REGULAR_VERTEX') {
+            html += '<p>좌표 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')</p>';
+            html += '<p class="props-note">정다각형 꼭짓점 — 기준 점을 이동하면 함께 바뀝니다.</p>';
+        } else if (obj.type === 'FIXED_ANGLE_POINT') {
+            html += '<p>좌표 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')</p>';
+            html += '<p class="props-note">고정각 끝점 — ' + obj.degrees + '° · 부모 점을 이동하면 함께 바뀝니다.</p>';
+        } else if (obj.type === 'ANGLE') {
+            deg = this.engine.getAngleDegrees(obj);
+            html += '<p>각도 ' + (deg !== null ? deg.toFixed(1) : '?') + '\u00B0</p>';
+            html += '<p class="props-note">종속 객체 — 꼭짓점·변의 점을 이동하세요.</p>';
+        } else {
+            html += '<p class="props-note">이 객체는 좌표를 직접 편집할 수 없습니다.<br>아래에서 시각 스타일을 바꿀 수 있습니다.</p>';
+        }
+        html += '</div>';
     }
 
-    html += '<div class="algebra-props-readonly">';
-    if (obj.type === 'MIDPOINT') {
-        html += '<p>좌표 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')</p>';
-        html += '<p class="props-note">종속 객체 — 부모 점을 이동하면 함께 바뀝니다.</p>';
-    } else if (obj.type === 'INTERSECTION') {
-        html += '<p>좌표 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')</p>';
-        html += '<p class="props-note">교점 — 부모 도형을 이동하면 함께 바뀝니다.</p>';
-    } else if (obj.type === 'POINT_ON') {
-        html += '<p>좌표 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')</p>';
-        html += '<p class="props-note">대상 위의 점 — 부모 도형을 따라 움직입니다.</p>';
-    } else if (obj.type === 'REGULAR_VERTEX') {
-        html += '<p>좌표 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')</p>';
-        html += '<p class="props-note">정다각형 꼭짓점 — 기준 점을 이동하면 함께 바뀝니다.</p>';
-    } else if (obj.type === 'FIXED_ANGLE_POINT') {
-        html += '<p>좌표 (' + obj.x.toFixed(2) + ', ' + obj.y.toFixed(2) + ')</p>';
-        html += '<p class="props-note">고정각 끝점 — ' + obj.degrees + '° · 부모 점을 이동하면 함께 바뀝니다.</p>';
-    } else if (obj.type === 'ANGLE') {
-        deg = this.engine.getAngleDegrees(obj);
-        html += '<p>각도 ' + (deg !== null ? deg.toFixed(1) : '?') + '\u00B0</p>';
-        html += '<p class="props-note">종속 객체 — 꼭짓점·변의 점을 이동하세요.</p>';
-    } else {
-        html += '<p class="props-note">이 객체는 직접 편집할 수 없습니다.<br>캔버스에서 부모 점을 이동하거나 삭제하세요.</p>';
+    html += this.buildStylePropsHtml(obj);
+    return html;
+};
+
+// 채움 투명도를 쓰는 타입인지
+AlgeoApp.prototype.objectSupportsFillOpacity = function (type) {
+    return type === 'POLYGON' || type === 'SECTOR' ||
+        type === 'CIRCULAR_SEGMENT' || type === 'ANGLE' ||
+        isAlgeoPointType(type);
+};
+
+// 스타일 편집 UI HTML
+AlgeoApp.prototype.buildStylePropsHtml = function (obj) {
+    const style = resolveObjectStyle(obj);
+    let html = '';
+    let i;
+    let w;
+    let activeClass;
+    let supportsFill = this.objectSupportsFillOpacity(obj.type);
+
+    html += '<div class="algebra-style-section" data-style-root="1">';
+    html += '<div class="algebra-style-heading">스타일</div>';
+    html += '<div class="style-swatch-row">';
+    for (i = 0; i < ALGEO_STYLE_PRESETS.length; i++) {
+        activeClass = style.stroke.toLowerCase() === ALGEO_STYLE_PRESETS[i].toLowerCase() ? ' active' : '';
+        html += '<button type="button" class="style-swatch' + activeClass + '" data-color="' +
+            ALGEO_STYLE_PRESETS[i] + '" title="' + ALGEO_STYLE_PRESETS[i] +
+            '" style="background-color:' + ALGEO_STYLE_PRESETS[i] + '"></button>';
     }
+    html += '<label class="style-color-picker" title="사용자 색">';
+    html += '<input type="color" class="style-color-input" value="' + this.normalizeHexColor(style.stroke) + '" />';
+    html += '</label>';
+    html += '</div>';
+
+    html += '<div class="algebra-props-form style-form-row">';
+    html += '<label class="prop-field">굵기 <select class="prop-input style-width-select">';
+    for (i = 0; i < ALGEO_STYLE_WIDTHS.length; i++) {
+        w = ALGEO_STYLE_WIDTHS[i];
+        html += '<option value="' + w + '"' +
+            (Math.abs(style.lineWidth - w) < 0.01 ? ' selected' : '') + '>' + w + '</option>';
+    }
+    html += '</select></label>';
+
+    html += '<label class="prop-field">선 스타일 <select class="prop-input style-dash-select">';
+    html += '<option value="solid"' + (style.dashMode === 'solid' ? ' selected' : '') + '>실선</option>';
+    html += '<option value="dashed"' + (style.dashMode === 'dashed' ? ' selected' : '') + '>파선</option>';
+    html += '<option value="dotted"' + (style.dashMode === 'dotted' ? ' selected' : '') + '>점선</option>';
+    html += '</select></label>';
+
+    html += '<label class="prop-field style-check-field">' +
+        '<span>라벨</span>' +
+        '<input type="checkbox" class="style-label-check"' + (style.showLabel ? ' checked' : '') + ' />' +
+        '</label>';
+    html += '</div>';
+
+    if (supportsFill) {
+        html += '<div class="algebra-props-form style-form-row">';
+        html += '<label class="prop-field">채움 투명도 <input type="range" class="style-opacity-range" min="0" max="100" step="5" value="' +
+            Math.round(style.fillOpacity * 100) + '" /></label>';
+        html += '<span class="style-opacity-value">' + Math.round(style.fillOpacity * 100) + '%</span>';
+        html += '</div>';
+    }
+
+    html += '<button type="button" class="style-reset-btn">스타일 초기화</button>';
     html += '</div>';
     return html;
+};
+
+// 다중 선택 시 스타일만 일괄 편집
+AlgeoApp.prototype.buildMultiStylePropsHtml = function () {
+    const n = this.selectionIds.length;
+    const primary = this.engine.objectMap[this.selectedObjectId] ||
+        this.engine.objectMap[this.selectionIds[0]];
+    let html = '';
+
+    html += '<div class="algebra-props-title">' + n + '개 선택 <span class="props-type">스타일 일괄</span></div>';
+    html += '<p class="props-note">아래 스타일은 선택된 모든 객체에 적용됩니다.</p>';
+    if (primary) {
+        html += this.buildStylePropsHtml(primary);
+    }
+    return html;
+};
+
+// 색상을 #rrggbb 로 정규화 (color input용)
+AlgeoApp.prototype.normalizeHexColor = function (color) {
+    let m;
+    let r;
+    let g;
+    let b;
+    let toHex;
+
+    if (!color) {
+        return '#1d4ed8';
+    }
+    m = /^#([0-9a-fA-F]{6})$/.exec(color);
+    if (m) {
+        return '#' + m[1].toLowerCase();
+    }
+    m = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(color);
+    if (m) {
+        toHex = function (n) {
+            const h = parseInt(n, 10).toString(16);
+            return h.length === 1 ? '0' + h : h;
+        };
+        r = toHex(m[1]);
+        g = toHex(m[2]);
+        b = toHex(m[3]);
+        return '#' + r + g + b;
+    }
+    return '#1d4ed8';
+};
+
+// 선택 객체(들)에 스타일 패치 적용 + Undo
+AlgeoApp.prototype.applyStylePatchToSelection = function (patch, label) {
+    const ids = this.selectionIds.length > 0
+        ? this.selectionIds.slice()
+        : (this.selectedObjectId ? [this.selectedObjectId] : []);
+    let i;
+    let obj;
+    let snapshot;
+
+    if (ids.length === 0) {
+        return;
+    }
+
+    snapshot = this.captureEngineState();
+    for (i = 0; i < ids.length; i++) {
+        obj = this.engine.objectMap[ids[i]];
+        if (obj) {
+            applyStylePatchToObject(obj, patch);
+        }
+    }
+    this.pushUndoEntry(snapshot, label || '스타일 변경');
+    this.updateAlgebraView();
+    this.syncAlgebraPropsPanel();
+    this.renderer.draw();
+};
+
+// 선택 객체 스타일 초기화
+AlgeoApp.prototype.resetStyleOfSelection = function () {
+    const ids = this.selectionIds.length > 0
+        ? this.selectionIds.slice()
+        : (this.selectedObjectId ? [this.selectedObjectId] : []);
+    let i;
+    let obj;
+    let snapshot;
+
+    if (ids.length === 0) {
+        return;
+    }
+
+    snapshot = this.captureEngineState();
+    for (i = 0; i < ids.length; i++) {
+        obj = this.engine.objectMap[ids[i]];
+        if (obj) {
+            delete obj.style;
+        }
+    }
+    this.pushUndoEntry(snapshot, '스타일 초기화');
+    this.updateAlgebraView();
+    this.syncAlgebraPropsPanel();
+    this.renderer.draw();
 };
 
 // 선택 객체 속성 패널 갱신
@@ -10269,14 +10683,19 @@ AlgeoApp.prototype.syncAlgebraPropsPanel = function () {
     const objId = this.selectedObjectId;
     let obj;
 
+    if (this.selectionIds.length > 1) {
+        $panel.html(this.buildMultiStylePropsHtml());
+        return;
+    }
+
     if (!objId) {
-        $panel.html('<p class="algebra-props-placeholder">객체를 선택하면 속성을 편집할 수 있습니다.</p>');
+        $panel.html('<p class="algebra-props-placeholder">객체를 선택하면 속성·스타일을 편집할 수 있습니다.</p>');
         return;
     }
 
     obj = this.engine.objectMap[objId];
     if (!obj) {
-        $panel.html('<p class="algebra-props-placeholder">객체를 선택하면 속성을 편집할 수 있습니다.</p>');
+        $panel.html('<p class="algebra-props-placeholder">객체를 선택하면 속성·스타일을 편집할 수 있습니다.</p>');
         return;
     }
 
@@ -10566,11 +10985,13 @@ AlgeoApp.prototype.updateAlgebraView = function () {
         const itemClass = 'algebra-item' + (isVisible ? '' : ' algebra-item-hidden');
         const visLabel = isVisible ? '숨기기' : '표시';
         const visIcon = isVisible ? '\u25C9' : '\u25CB';
+        const styleStroke = resolveObjectStyle(obj).stroke;
+        const colorStyle = ' style="background-color:' + styleStroke + '"';
 
         const itemHtml =
             '<div class="' + itemClass + '" data-id="' + obj.id + '">' +
             '    <button type="button" class="obj-visibility-btn" title="' + visLabel + '" aria-label="' + visLabel + '">' + visIcon + '</button>' +
-            '    <span class="obj-color-indicator ' + obj.type.toLowerCase() + '"></span>' +
+            '    <span class="obj-color-indicator ' + obj.type.toLowerCase() + '"' + colorStyle + '></span>' +
             '    <div class="obj-info">' +
             '        <span class="obj-name">' + obj.name + '</span>' +
             '        <span class="obj-desc">' + desc + '</span>' +

@@ -592,13 +592,13 @@
     border-bottom-color: var(--accent-color);
 }
 
-/* 대수창 속성 편집 패널 (4-1) */
+/* 대수창 속성 편집 패널 (4-1) + 스타일 (M5) */
 .algebra-props-panel {
     flex-shrink: 0;
     padding: 10px 12px;
     border-bottom: 1px solid var(--border-color);
     background-color: var(--surface-muted);
-    max-height: 160px;
+    max-height: 300px;
     overflow-y: auto;
 }
 
@@ -690,6 +690,110 @@
     font-size: 11px !important;
     color: var(--text-secondary) !important;
     line-height: 1.4;
+}
+
+/* 객체 스타일 패널 (M5) */
+.algebra-style-section {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border-color);
+}
+
+.algebra-style-heading {
+    margin: 0 0 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+}
+
+.style-swatch-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 8px;
+}
+
+.style-swatch {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.18);
+}
+
+.style-swatch.active {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 1px var(--accent-color);
+}
+
+.style-color-picker {
+    display: inline-flex;
+    width: 22px;
+    height: 22px;
+    overflow: hidden;
+    border-radius: 4px;
+    border: 1px solid var(--input-border);
+    cursor: pointer;
+}
+
+.style-color-input {
+    width: 32px;
+    height: 32px;
+    margin: -5px;
+    padding: 0;
+    border: none;
+    cursor: pointer;
+    background: transparent;
+}
+
+.style-form-row {
+    margin-bottom: 6px;
+}
+
+.style-check-field {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    min-width: auto;
+}
+
+.style-check-field input {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+}
+
+.style-opacity-range {
+    width: 110px;
+    accent-color: var(--accent-color);
+}
+
+.style-opacity-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 36px;
+}
+
+.style-reset-btn {
+    margin-top: 2px;
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--field-bg);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.style-reset-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
 }
 
 .sidebar-toggle-btn {

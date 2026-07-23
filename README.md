@@ -106,7 +106,7 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 | UX-4 | 도구 가이드 패널 | ✅ |
 | **5단계** | 레일 9+1 · 플라이아웃 stub 맵 | ✅ [`tool_catalog.md`](tool_catalog.md) |
 
-**다음**: 스타일/Undo 보강 → **8-1 측정** → 변환 → 저장  
+**다음**: **8-1 측정** → 변환 → 저장  
 ([`editor_parity_plan.md`](editor_parity_plan.md) §5 권장 순서)
 
 - 레이아웃: [`ui_layout.md`](ui_layout.md)
@@ -235,11 +235,12 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 [5단계]   ████████████████████ 100%  (레일 9+1 · stub UI 맵) ✅
 [6단계]   ████████████████████ 100%  ✅ (6-1~6-4)
 [7단계]   ██████████░░░░░░░░░░  50%   (7-1 ✅ / 7-2 ⬜)
-[8~11단계]░░░░░░░░░░░░░░░░░░░░   0%   ← **다음: 측정·스타일**
+[깊이 M5·M6] ████████████████████ 100%  (스타일 패널 · Undo 스냅샷)
+[8~11단계]░░░░░░░░░░░░░░░░░░░░   0%   ← **다음: 8-1 측정**
 [12단계]  ████████░░░░░░░░░░░░  40%   (테마·SVG ✅ / 터치·저장 ⬜)
 ```
 
-**다음 작업**: 스타일/속성 패널·Undo 보강, 또는 **8-1 측정** (`MEASURE_*`)
+**다음 작업**: **8-1 측정** (`MEASURE_LENGTH` · `MEASURE_ANGLE` · `MEASURE_AREA`)
 
 **제품 목표**: 원본 **작도 에디터** 수준(2번). 포털·블록코딩 본편은 비목표 — [`editor_parity_plan.md`](editor_parity_plan.md)
 
