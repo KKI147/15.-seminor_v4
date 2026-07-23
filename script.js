@@ -184,8 +184,8 @@ const ALGEO_TOOL_CATEGORIES = [
         title: '선택·이동',
         tools: [
             { tool: 'MOVE', label: '이동', iconId: 'move', status: 'done', hint: '객체·점 드래그 / 빈 곳 Pan' },
-            { tool: 'SELECT', label: '선택', iconId: 'select', status: 'stub', hint: '객체 단일 선택 (7-1)' },
-            { tool: 'GROUP_SELECT', label: '그룹선택', iconId: 'group_select', status: 'stub', shortcut: 'Shift+G', hint: '영역·다중 선택 (7-1)' }
+            { tool: 'SELECT', label: '선택', iconId: 'select', status: 'done', hint: '클릭 선택 · Shift 토글 · 드래그 이동' },
+            { tool: 'GROUP_SELECT', label: '그룹선택', iconId: 'group_select', status: 'done', shortcut: 'Shift+G', hint: '드래그 박스 · 다중 선택' }
         ]
     },
     {
@@ -427,17 +427,25 @@ const ALGEO_TOOL_GUIDES = {
         ],
         tips: ['단축키 H — 선택 객체 표시/숨김 토글', '숨긴 객체는 캔버스에서 선택·이동되지 않습니다.']
     },
-    // ── stub 도구 (5단계 UI 맵 — 엔진 미구현) ──
     SELECT: {
-        summary: '객체를 하나씩 선택합니다. (준비 중)',
-        steps: ['7단계에서 구현 예정입니다.'],
-        tips: ['지금은 이동 도구로 객체를 드래그할 수 있습니다.']
+        summary: '객체를 클릭해 선택하고, 선택한 객체를 이동·삭제합니다.',
+        steps: [
+            '객체를 클릭하면 선택됩니다.',
+            'Shift+클릭으로 선택을 추가하거나 해제합니다.',
+            '선택된 객체를 드래그하면 이동합니다.'
+        ],
+        tips: ['빈 곳 클릭 — 선택 해제', 'Delete — 선택 삭제', 'H — 선택 숨김', 'Esc — 이동 도구']
     },
     GROUP_SELECT: {
-        summary: '여러 객체를 한꺼번에 선택합니다. (준비 중)',
-        steps: ['7단계에서 구현 예정입니다.'],
-        tips: ['단축키 Shift+G — 그룹선택 도구 (예정)']
+        summary: '드래그 상자로 여러 객체를 한꺼번에 선택합니다.',
+        steps: [
+            '빈 곳을 드래그해 선택 상자를 그립니다.',
+            '상자 안의 객체가 선택됩니다.',
+            'Shift+드래그로 기존 선택에 추가합니다.'
+        ],
+        tips: ['클릭으로도 단건 선택 가능', 'Delete — 선택 삭제', '단축키 Shift+G']
     },
+    // ── stub 도구 (5단계 UI 맵 — 엔진 미구현) ──
     INTERSECTION: {
         summary: '두 도형(선·원)이 만나는 교점을 만듭니다.',
         steps: [
@@ -758,6 +766,22 @@ const ALGEO_SHORTCUTS = [
         desc: '선택 객체 표시·숨김. 선택 없으면 숨기기 도구로 전환.'
     },
     {
+        id: 'delete_selection',
+        keys: 'Delete',
+        label: '선택 삭제',
+        category: 'edit',
+        active: true,
+        desc: '선택된 객체를 삭제합니다.'
+    },
+    {
+        id: 'select_toggle',
+        keys: 'Shift+클릭',
+        label: '선택 토글',
+        category: 'edit',
+        active: true,
+        desc: '선택·그룹선택 도구에서 객체를 선택에 추가하거나 해제합니다.'
+    },
+    {
         id: 'tool_point',
         keys: 'D',
         label: '점 도구',
@@ -867,7 +891,7 @@ const ALGEO_SHORTCUTS = [
         label: '그룹선택',
         category: 'tool',
         active: true,
-        desc: '그룹선택 도구 (준비 중). G 단독은 격자 토글.'
+        desc: '드래그 박스로 다중 선택. G 단독은 격자 토글.'
     },
     {
         id: 'draw_cancel',
@@ -3605,7 +3629,9 @@ function AlgeoRenderer(engine, canvas) {
     this.offsetX = 0;           // 캔버스 중심에서 원점까지의 픽셀 X 오프셋
     this.offsetY = 0;           // 캔버스 중심에서 원점까지의 픽셀 Y 오프셋
     this.highlightIds = [];     // 작도 중 강조 표시할 점 ID 목록
-    this.selectedObjectId = null; // 대수창에서 선택된 객체 ID
+    this.selectedObjectId = null; // 대수창·선택 도구의 주 선택 객체 ID
+    this.selectionIds = [];     // 캔버스 다중 선택 ID 목록
+    this.marqueeRect = null;    // 그룹선택 드래그 상자 { x1, y1, x2, y2 }
     this.toolPreview = null;    // 호·원 작도 중 실시간 미리보기
     this.showGrid = true;       // 격자·눈금 표시
     this.snapEnabled = false;   // 격자 스냅(자석)
@@ -3715,13 +3741,52 @@ AlgeoRenderer.prototype.draw = function () {
         this.drawToolPreview(this.toolPreview);
     }
 
-    // 4. 선택된 객체 — 표시 중일 때만 강조
-    if (this.selectedObjectId) {
-        const selectedObj = this.engine.objectMap[this.selectedObjectId];
-        if (selectedObj && this.engine.isObjectVisible(selectedObj)) {
-            this.drawSelectedObjectHighlight(selectedObj);
+    // 4. 선택된 객체 — 표시 중일 때만 강조 (다중 선택 지원)
+    this.drawSelectionHighlights();
+
+    // 5. 그룹선택 마퀴 상자
+    if (this.marqueeRect) {
+        this.drawMarqueeRect(this.marqueeRect);
+    }
+};
+
+// 선택 집합 하이라이트 (selectionIds 우선, 없으면 selectedObjectId)
+AlgeoRenderer.prototype.drawSelectionHighlights = function () {
+    let ids = this.selectionIds;
+    let i;
+    let obj;
+
+    if (!ids || ids.length === 0) {
+        if (!this.selectedObjectId) {
+            return;
+        }
+        ids = [this.selectedObjectId];
+    }
+
+    for (i = 0; i < ids.length; i++) {
+        obj = this.engine.objectMap[ids[i]];
+        if (obj && this.engine.isObjectVisible(obj)) {
+            this.drawSelectedObjectHighlight(obj);
         }
     }
+};
+
+// 그룹선택 드래그 상자
+AlgeoRenderer.prototype.drawMarqueeRect = function (rect) {
+    const ctx = this.ctx;
+    const x = Math.min(rect.x1, rect.x2);
+    const y = Math.min(rect.y1, rect.y2);
+    const w = Math.abs(rect.x2 - rect.x1);
+    const h = Math.abs(rect.y2 - rect.y1);
+
+    ctx.save();
+    ctx.fillStyle = ALGEO_VIS.selectionFill;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = ALGEO_VIS.selectionStroke;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 4]);
+    ctx.strokeRect(x, y, w, h);
+    ctx.restore();
 };
 
 AlgeoRenderer.prototype.drawGrid = function () {
@@ -5463,7 +5528,10 @@ function AlgeoApp(engine, renderer) {
     this.dragTranslate = null;        // 객체·점 평행 이동 { pointIds, sliderId, lastMathX, lastMathY }
     this.selectedPoints = [];         // 선분/원 작도를 위해 선택된 점 배열
     this.selectedObjects = [];        // 교점 등 도형 2선택용 ID 배열
-    this.selectedObjectId = null;     // 대수창에서 선택된 객체 ID
+    this.selectedObjectId = null;     // 대수창·선택 도구의 주 선택 객체 ID
+    this.selectionIds = [];           // 캔버스 다중 선택 ID 목록
+    this.marqueeDrag = null;          // 그룹선택 마퀴 { startX, startY, additive }
+    this.pendingSelectClick = null;   // 마우스업에서 확정할 단건 선택 { id, additive, wasSelected }
     this.algebraCmdDictOpen = false;  // 명령어 사전 패널 표시 여부
     this.algebraPanelOpen = true;     // 대수창 표시 여부
     this.algebraSortMode = 'created'; // 대수창 정렬: created | type
@@ -5557,7 +5625,7 @@ AlgeoApp.prototype.init = function () {
     self.updateCanvasCursor();
 
     // Esc — 작도 취소·이동 복귀 / Enter — 다각형 닫기·이동 복귀 / Ctrl+Z·Y — Undo·Redo
-    // 문자 단축키 — ALGEO_TOOL_KEY_MAP (Shift+G = 그룹선택 stub)
+    // 문자 단축키 — ALGEO_TOOL_KEY_MAP (Shift+G = 그룹선택)
     $(document).on('keydown', function (e) {
         if (e.ctrlKey && !e.altKey) {
             if (e.keyCode === 90 && !e.shiftKey) {
@@ -5594,11 +5662,24 @@ AlgeoApp.prototype.init = function () {
             }
             return;
         }
+        // Delete — 선택 객체 삭제
+        if (e.keyCode === 46 && !e.ctrlKey && !e.altKey) {
+            if ($(e.target).closest('input, textarea').length) {
+                return;
+            }
+            if (self.selectionIds.length > 0) {
+                self.deleteSelectedObjects();
+                e.preventDefault();
+            }
+            return;
+        }
         if (e.keyCode === 72 && !e.ctrlKey && !e.altKey) {
             if ($(e.target).closest('input, textarea').length) {
                 return;
             }
-            if (self.selectedObjectId) {
+            if (self.selectionIds.length > 0) {
+                self.toggleSelectionVisibility();
+            } else if (self.selectedObjectId) {
                 self.toggleObjectVisibility(self.selectedObjectId);
             } else {
                 self.selectTool('HIDE_OBJECT');
@@ -5658,6 +5739,9 @@ AlgeoApp.prototype.init = function () {
         }
         if (self.constructionDraft || self.selectedPoints.length > 0 ||
             self.selectedObjects.length > 0 || self.currentTool !== 'MOVE') {
+            if (self.currentTool === 'SELECT' || self.currentTool === 'GROUP_SELECT') {
+                self.clearSelection();
+            }
             self.selectTool('MOVE');
             e.preventDefault();
         }
@@ -6457,35 +6541,125 @@ AlgeoApp.prototype.showViewGuide = function (viewId) {
 
 // 대수창 항목 선택 및 캔버스 하이라이트 연동
 AlgeoApp.prototype.selectAlgebraObject = function (objId) {
-    if (this.selectedObjectId === objId) {
-        this.selectedObjectId = null;
-    } else {
-        this.selectedObjectId = objId;
+    if (this.isIdSelected(objId) && this.selectionIds.length === 1) {
+        this.clearSelection();
+        return;
     }
+    this.setSelection([objId], objId);
+};
+
+// 선택 집합에 ID가 포함되는지
+AlgeoApp.prototype.isIdSelected = function (objId) {
+    let i;
+    for (i = 0; i < this.selectionIds.length; i++) {
+        if (this.selectionIds[i] === objId) {
+            return true;
+        }
+    }
+    return false;
+};
+
+// 선택 집합을 렌더러·대수창에 동기화
+AlgeoApp.prototype.syncSelectionToRenderer = function () {
+    this.renderer.selectionIds = this.selectionIds.slice();
     this.renderer.selectedObjectId = this.selectedObjectId;
     this.syncAlgebraItemActiveState();
     this.syncAlgebraPropsPanel();
+};
+
+// 선택 집합 교체 (primaryId: 대수 속성 패널용 주 선택)
+AlgeoApp.prototype.setSelection = function (ids, primaryId) {
+    const unique = [];
+    const seen = {};
+    let i;
+    let id;
+
+    for (i = 0; i < ids.length; i++) {
+        id = ids[i];
+        if (!id || seen[id] || !this.engine.objectMap[id]) {
+            continue;
+        }
+        seen[id] = true;
+        unique.push(id);
+    }
+
+    this.selectionIds = unique;
+    if (primaryId && seen[primaryId]) {
+        this.selectedObjectId = primaryId;
+    } else if (unique.length > 0) {
+        this.selectedObjectId = unique[unique.length - 1];
+    } else {
+        this.selectedObjectId = null;
+    }
+    this.syncSelectionToRenderer();
     this.renderer.draw();
 };
 
-// 대수창 리스트의 선택(active) 스타일 갱신
-AlgeoApp.prototype.syncAlgebraItemActiveState = function () {
-    $('#algebraList .algebra-item').removeClass('active');
-    if (this.selectedObjectId) {
-        $('#algebraList .algebra-item[data-id="' + this.selectedObjectId + '"]').addClass('active');
+// 선택에 ID 추가
+AlgeoApp.prototype.addToSelection = function (objId) {
+    if (!objId || !this.engine.objectMap[objId] || this.isIdSelected(objId)) {
+        return;
     }
+    this.selectionIds.push(objId);
+    this.selectedObjectId = objId;
+    this.syncSelectionToRenderer();
+    this.renderer.draw();
+};
+
+// 선택에서 ID 제거
+AlgeoApp.prototype.removeFromSelection = function (objId) {
+    const next = [];
+    let i;
+
+    for (i = 0; i < this.selectionIds.length; i++) {
+        if (this.selectionIds[i] !== objId) {
+            next.push(this.selectionIds[i]);
+        }
+    }
+    this.selectionIds = next;
+    if (this.selectedObjectId === objId) {
+        this.selectedObjectId = next.length > 0 ? next[next.length - 1] : null;
+    }
+    this.syncSelectionToRenderer();
+    this.renderer.draw();
+};
+
+// Shift 토글 선택
+AlgeoApp.prototype.toggleSelectionId = function (objId) {
+    if (this.isIdSelected(objId)) {
+        this.removeFromSelection(objId);
+    } else {
+        this.addToSelection(objId);
+    }
+};
+
+// 선택 전부 해제
+AlgeoApp.prototype.clearSelection = function () {
+    if (this.selectionIds.length === 0 && !this.selectedObjectId) {
+        return;
+    }
+    this.selectionIds = [];
+    this.selectedObjectId = null;
+    this.syncSelectionToRenderer();
+    this.renderer.draw();
 };
 
 // 대수창 선택 해제 (삭제·캔버스 빈 곳 클릭 시)
 AlgeoApp.prototype.clearAlgebraSelection = function () {
-    if (!this.selectedObjectId) {
-        return;
+    this.clearSelection();
+};
+
+// 대수창 리스트의 선택(active) 스타일 갱신
+AlgeoApp.prototype.syncAlgebraItemActiveState = function () {
+    let i;
+
+    $('#algebraList .algebra-item').removeClass('active');
+    for (i = 0; i < this.selectionIds.length; i++) {
+        $('#algebraList .algebra-item[data-id="' + this.selectionIds[i] + '"]').addClass('active');
     }
-    this.selectedObjectId = null;
-    this.renderer.selectedObjectId = null;
-    this.syncAlgebraItemActiveState();
-    this.syncAlgebraPropsPanel();
-    this.renderer.draw();
+    if (this.selectionIds.length === 0 && this.selectedObjectId) {
+        $('#algebraList .algebra-item[data-id="' + this.selectedObjectId + '"]').addClass('active');
+    }
 };
 
 // 캔버스 커서 직접 설정
@@ -6506,6 +6680,8 @@ AlgeoApp.prototype.updateCanvasCursor = function () {
         cursor = 'not-allowed';
     } else if (this.currentTool === 'MOVE') {
         cursor = 'grab';
+    } else if (this.currentTool === 'SELECT' || this.currentTool === 'GROUP_SELECT') {
+        cursor = 'default';
     } else if (this.currentTool === 'POINT') {
         cursor = 'crosshair';
     } else if (this.currentTool === 'SEGMENT' || this.currentTool === 'LINE' ||
@@ -7905,6 +8081,8 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
         this.origOffset.x = r.offsetX;
         this.origOffset.y = r.offsetY;
         this.setCanvasCursor('grabbing');
+    } else if (this.currentTool === 'SELECT' || this.currentTool === 'GROUP_SELECT') {
+        this.handleSelectToolMouseDown(e, mouseX, mouseY, hitPoint);
     } else if (this.currentTool === 'POINT') {
         // 빈 공간에 점 생성
         if (!hitPoint) {
@@ -8057,6 +8235,14 @@ AlgeoApp.prototype.handleMouseMove = function (e) {
         r.offsetX = this.origOffset.x + dx;
         r.offsetY = this.origOffset.y + dy;
         r.draw();
+    } else if (this.marqueeDrag) {
+        this.renderer.marqueeRect = {
+            x1: this.marqueeDrag.startX,
+            y1: this.marqueeDrag.startY,
+            x2: mouseX,
+            y2: mouseY
+        };
+        r.draw();
     } else if (this.activeSlider) {
         this.sliderDragMoved = true;
         const newVal = this.sliderValueFromScreenX(this.activeSlider, mouseX);
@@ -8065,15 +8251,25 @@ AlgeoApp.prototype.handleMouseMove = function (e) {
         r.draw();
     } else if (this.dragTranslate) {
         this.dragMoved = true;
+        this.pendingSelectClick = null;
         const math = this.screenToMath(mouseX, mouseY);
         const dx = math.x - this.dragTranslate.lastMathX;
         const dy = math.y - this.dragTranslate.lastMathY;
         let slider;
+        let si;
 
         if (this.dragTranslate.pointIds.length > 0) {
             this.engine.translateFreePoints(this.dragTranslate.pointIds, dx, dy);
         }
-        if (this.dragTranslate.sliderId) {
+        if (this.dragTranslate.sliderIds && this.dragTranslate.sliderIds.length > 0) {
+            for (si = 0; si < this.dragTranslate.sliderIds.length; si++) {
+                slider = this.engine.objectMap[this.dragTranslate.sliderIds[si]];
+                if (slider && slider.type === 'SLIDER') {
+                    slider.anchorX += dx;
+                    slider.anchorY += dy;
+                }
+            }
+        } else if (this.dragTranslate.sliderId) {
             slider = this.engine.objectMap[this.dragTranslate.sliderId];
             if (slider && slider.type === 'SLIDER') {
                 slider.anchorX += dx;
@@ -8196,6 +8392,21 @@ AlgeoApp.prototype.handlePointOnObjectMouseDown = function (mouseX, mouseY, hitP
 
 // 마우스 업 핸들러
 AlgeoApp.prototype.handleMouseUp = function (e) {
+    const pos = e ? this.getEventCanvasPos(e) : null;
+    let mouseX;
+    let mouseY;
+
+    if (this.marqueeDrag) {
+        mouseX = pos ? pos.x : this.marqueeDrag.startX;
+        mouseY = pos ? pos.y : this.marqueeDrag.startY;
+        this.finishMarqueeSelection(mouseX, mouseY);
+    }
+
+    if (this.pendingSelectClick && !this.dragMoved) {
+        this.applyPendingSelectClick();
+    }
+    this.pendingSelectClick = null;
+
     if (this.sliderDragSnapshot && this.sliderDragMoved) {
         this.pushUndoEntry(this.sliderDragSnapshot, '슬라이더 조절');
     }
@@ -8567,22 +8778,460 @@ AlgeoApp.prototype.createSliderAtMath = function (mathX, mathY, name) {
 };
 
 // 이동 도구 — 객체·점 평행 이동 드래그 시작
-AlgeoApp.prototype.beginTranslateDrag = function (pointIds, sliderId, mathX, mathY) {
+AlgeoApp.prototype.beginTranslateDrag = function (pointIds, sliderId, mathX, mathY, sliderIds) {
     const hasPoints = pointIds && pointIds.length > 0;
+    const ids = sliderIds && sliderIds.length > 0
+        ? sliderIds.slice()
+        : (sliderId ? [sliderId] : []);
 
-    if (!hasPoints && !sliderId) {
+    if (!hasPoints && ids.length === 0) {
         return;
     }
 
     this.dragTranslate = {
         pointIds: hasPoints ? pointIds.slice() : [],
-        sliderId: sliderId || null,
+        sliderId: ids.length === 1 ? ids[0] : null,
+        sliderIds: ids,
         lastMathX: mathX,
         lastMathY: mathY
     };
     this.dragSnapshot = this.captureEngineState();
     this.dragMoved = false;
     this.setCanvasCursor('grabbing');
+};
+
+// 선택·그룹선택 도구 마우스 다운
+AlgeoApp.prototype.handleSelectToolMouseDown = function (e, mouseX, mouseY, hitPoint) {
+    const math = this.screenToMath(mouseX, mouseY);
+    const additive = !!(e && e.shiftKey);
+    let target = null;
+    let hitSlider;
+
+    hitSlider = this.findSliderAt(mouseX, mouseY);
+    if (hitSlider) {
+        target = hitSlider;
+    } else if (hitPoint) {
+        target = hitPoint;
+    } else {
+        target = this.findObjectAt(mouseX, mouseY);
+    }
+
+    if (target) {
+        if (additive) {
+            this.toggleSelectionId(target.id);
+            this.pendingSelectClick = null;
+            this.syncToolGuide();
+            return;
+        }
+
+        if (this.isIdSelected(target.id)) {
+            // 이미 선택된 객체 — 드래그로 집단 이동, 클릭만이면 유지
+            this.pendingSelectClick = null;
+            this.beginSelectionTranslate(math.x, math.y);
+            this.syncToolGuide();
+            return;
+        }
+
+        this.setSelection([target.id], target.id);
+        this.pendingSelectClick = null;
+        this.beginSelectionTranslate(math.x, math.y);
+        this.syncToolGuide();
+        return;
+    }
+
+    // 빈 곳 — 그룹선택은 마퀴, 선택은 해제
+    if (this.currentTool === 'GROUP_SELECT') {
+        this.marqueeDrag = {
+            startX: mouseX,
+            startY: mouseY,
+            additive: additive
+        };
+        this.renderer.marqueeRect = {
+            x1: mouseX,
+            y1: mouseY,
+            x2: mouseX,
+            y2: mouseY
+        };
+        if (!additive) {
+            this.clearSelection();
+        }
+        this.renderer.draw();
+    } else if (!additive) {
+        this.clearSelection();
+    }
+    this.syncToolGuide();
+};
+
+// 선택 집합의 자유점·슬라이더를 한꺼번에 이동
+AlgeoApp.prototype.beginSelectionTranslate = function (mathX, mathY) {
+    const pointSeen = {};
+    const pointIds = [];
+    const sliderIds = [];
+    let i;
+    let obj;
+    let collected;
+    let j;
+
+    for (i = 0; i < this.selectionIds.length; i++) {
+        obj = this.engine.objectMap[this.selectionIds[i]];
+        if (!obj) {
+            continue;
+        }
+        if (obj.type === 'SLIDER') {
+            sliderIds.push(obj.id);
+            continue;
+        }
+        if (obj.type === 'FUNCTION') {
+            continue;
+        }
+        if (isAlgeoPointType(obj.type)) {
+            collected = this.engine.collectFreePointIdsForPointRef(obj.id);
+        } else {
+            collected = this.engine.collectFreePointIdsForObject(obj);
+        }
+        for (j = 0; j < collected.length; j++) {
+            if (!pointSeen[collected[j]]) {
+                pointSeen[collected[j]] = true;
+                pointIds.push(collected[j]);
+            }
+        }
+    }
+
+    this.beginTranslateDrag(pointIds, null, mathX, mathY, sliderIds);
+};
+
+// 마우스업 시 단건 선택 확정 (드래그 없이 클릭만 한 경우)
+AlgeoApp.prototype.applyPendingSelectClick = function () {
+    const pending = this.pendingSelectClick;
+    if (!pending) {
+        return;
+    }
+    if (pending.additive) {
+        this.toggleSelectionId(pending.id);
+    } else {
+        this.setSelection([pending.id], pending.id);
+    }
+};
+
+// 마퀴 상자 선택 확정
+AlgeoApp.prototype.finishMarqueeSelection = function (endX, endY) {
+    const drag = this.marqueeDrag;
+    let rect;
+    let ids;
+    let combined;
+    let i;
+    let dx;
+    let dy;
+
+    if (!drag) {
+        return;
+    }
+
+    dx = endX - drag.startX;
+    dy = endY - drag.startY;
+    this.marqueeDrag = null;
+    this.renderer.marqueeRect = null;
+
+    // 클릭에 가까운 드래그는 선택 상자로 취급하지 않음
+    if (Math.abs(dx) < 4 && Math.abs(dy) < 4) {
+        this.renderer.draw();
+        return;
+    }
+
+    rect = {
+        x1: Math.min(drag.startX, endX),
+        y1: Math.min(drag.startY, endY),
+        x2: Math.max(drag.startX, endX),
+        y2: Math.max(drag.startY, endY)
+    };
+    ids = this.findObjectsInScreenRect(rect);
+
+    if (drag.additive) {
+        combined = this.selectionIds.slice();
+        for (i = 0; i < ids.length; i++) {
+            if (!this.isIdSelected(ids[i])) {
+                combined.push(ids[i]);
+            }
+        }
+        this.setSelection(combined, ids.length > 0 ? ids[ids.length - 1] : this.selectedObjectId);
+    } else {
+        this.setSelection(ids, ids.length > 0 ? ids[ids.length - 1] : null);
+    }
+};
+
+// 화면 사각형과 교차하는 객체 ID 목록
+AlgeoApp.prototype.findObjectsInScreenRect = function (rect) {
+    const list = this.engine.objects;
+    const result = [];
+    let i;
+    let obj;
+    let bounds;
+
+    for (i = 0; i < list.length; i++) {
+        obj = list[i];
+        if (!this.engine.isObjectVisible(obj)) {
+            continue;
+        }
+        bounds = this.getObjectScreenBounds(obj);
+        if (bounds && this.rectsIntersect(rect, bounds)) {
+            result.push(obj.id);
+        }
+    }
+    return result;
+};
+
+// 두 축정렬 사각형 교차 여부
+AlgeoApp.prototype.rectsIntersect = function (a, b) {
+    return !(a.x2 < b.x1 || a.x1 > b.x2 || a.y2 < b.y1 || a.y1 > b.y2);
+};
+
+// 객체의 화면 좌표 경계 상자 (마퀴 교차용)
+AlgeoApp.prototype.getObjectScreenBounds = function (obj) {
+    const r = this.renderer;
+    const engine = this.engine;
+    let p1;
+    let p2;
+    let end;
+    let linePts;
+    let circ;
+    let pad = 6;
+    let minX;
+    let minY;
+    let maxX;
+    let maxY;
+    let sx;
+    let sy;
+    let i;
+    let vp;
+    let sweep;
+    let bounds;
+    let left;
+    let right;
+    let step;
+    let mathX;
+    let yVal;
+    let first;
+    let coeffs;
+
+    function expand(x, y) {
+        if (minX === undefined) {
+            minX = x;
+            minY = y;
+            maxX = x;
+            maxY = y;
+            return;
+        }
+        if (x < minX) { minX = x; }
+        if (y < minY) { minY = y; }
+        if (x > maxX) { maxX = x; }
+        if (y > maxY) { maxY = y; }
+    }
+
+    function expandSeg(x1, y1, x2, y2) {
+        expand(x1, y1);
+        expand(x2, y2);
+    }
+
+    if (isAlgeoPointType(obj.type)) {
+        sx = r.toScreenX(obj.x);
+        sy = r.toScreenY(obj.y);
+        return { x1: sx - 10, y1: sy - 10, x2: sx + 10, y2: sy + 10 };
+    }
+
+    if (obj.type === 'SEGMENT' || obj.type === 'VECTOR') {
+        p1 = engine.objectMap[obj.p1Id];
+        p2 = engine.objectMap[obj.p2Id];
+        if (!p1 || !p2) { return null; }
+        expandSeg(r.toScreenX(p1.x), r.toScreenY(p1.y), r.toScreenX(p2.x), r.toScreenY(p2.y));
+    } else if (obj.type === 'RAY') {
+        p1 = engine.objectMap[obj.p1Id];
+        p2 = engine.objectMap[obj.p2Id];
+        if (!p1 || !p2) { return null; }
+        end = r.getRayScreenEndpoints(p1, p2);
+        if (!end) { return null; }
+        expandSeg(end.x1, end.y1, end.x2, end.y2);
+    } else if (obj.type === 'LINE' || obj.type === 'PERP_BISECTOR' ||
+        obj.type === 'PARALLEL_LINE' || obj.type === 'PERP_LINE' ||
+        obj.type === 'ANGLE_BISECTOR' || obj.type === 'TANGENT') {
+        if (obj.type === 'LINE') {
+            p1 = engine.objectMap[obj.p1Id];
+            p2 = engine.objectMap[obj.p2Id];
+        } else if (obj.type === 'PERP_BISECTOR') {
+            linePts = engine.getPerpBisectorLinePoints(obj);
+            if (!linePts) { return null; }
+            p1 = linePts.p1;
+            p2 = linePts.p2;
+        } else if (obj.type === 'ANGLE_BISECTOR') {
+            linePts = engine.getAngleBisectorLinePoints(obj);
+            if (!linePts) { return null; }
+            end = r.getRayScreenEndpoints(linePts.p1, linePts.p2);
+            if (!end) { return null; }
+            expandSeg(end.x1, end.y1, end.x2, end.y2);
+            p1 = null;
+        } else if (obj.type === 'TANGENT') {
+            linePts = engine.getTangentLinePoints(obj);
+            if (!linePts) { return null; }
+            p1 = linePts.p1;
+            p2 = linePts.p2;
+        } else if (obj.type === 'PARALLEL_LINE') {
+            linePts = engine.getParallelLinePoints(obj);
+            if (!linePts) { return null; }
+            p1 = linePts.p1;
+            p2 = linePts.p2;
+        } else {
+            linePts = engine.getPerpLinePoints(obj);
+            if (!linePts) { return null; }
+            p1 = linePts.p1;
+            p2 = linePts.p2;
+        }
+        if (p1 && p2) {
+            end = r.getLineScreenEndpoints(p1, p2);
+            if (!end) { return null; }
+            expandSeg(end.x1, end.y1, end.x2, end.y2);
+        }
+    } else if (obj.type === 'CIRCLE' || obj.type === 'CIRCLE_3P') {
+        circ = engine.getCircleGeometry(obj);
+        if (!circ) { return null; }
+        sx = r.toScreenX(circ.center.x);
+        sy = r.toScreenY(circ.center.y);
+        pad = circ.radius * r.scale;
+        return { x1: sx - pad, y1: sy - pad, x2: sx + pad, y2: sy + pad };
+    } else if (obj.type === 'SECTOR') {
+        p1 = engine.objectMap[obj.centerId];
+        if (!p1) { return null; }
+        expand(r.toScreenX(p1.x), r.toScreenY(p1.y));
+        vp = engine.objectMap[obj.p1Id];
+        if (vp) { expand(r.toScreenX(vp.x), r.toScreenY(vp.y)); }
+        vp = engine.objectMap[obj.p2Id];
+        if (vp) { expand(r.toScreenX(vp.x), r.toScreenY(vp.y)); }
+    } else if (obj.type === 'ARC' || obj.type === 'CIRCULAR_SEGMENT') {
+        p1 = engine.objectMap[obj.p1Id];
+        p2 = engine.objectMap[obj.p2Id];
+        vp = engine.objectMap[obj.guideId];
+        if (!p1 || !p2 || !vp) { return null; }
+        sweep = r.getArcSweepThroughGuide(p1, p2, vp);
+        if (!sweep) { return null; }
+        return {
+            x1: sweep.cx - sweep.r,
+            y1: sweep.cy - sweep.r,
+            x2: sweep.cx + sweep.r,
+            y2: sweep.cy + sweep.r
+        };
+    } else if (obj.type === 'ANGLE') {
+        vp = engine.objectMap[obj.vertexId];
+        if (!vp) { return null; }
+        sx = r.toScreenX(vp.x);
+        sy = r.toScreenY(vp.y);
+        return { x1: sx - 40, y1: sy - 40, x2: sx + 40, y2: sy + 40 };
+    } else if (obj.type === 'POLYGON') {
+        for (i = 0; i < obj.vertexIds.length; i++) {
+            vp = engine.objectMap[obj.vertexIds[i]];
+            if (!vp) { return null; }
+            expand(r.toScreenX(vp.x), r.toScreenY(vp.y));
+        }
+    } else if (obj.type === 'SLIDER') {
+        bounds = r.getSliderScreenBounds(obj);
+        return {
+            x1: bounds.left - 4,
+            y1: bounds.top - 18,
+            x2: bounds.right + 4,
+            y2: bounds.thumbY + 12
+        };
+    } else if (obj.type === 'FUNCTION') {
+        left = Math.min(r.toMathX(0), r.toMathX(r.canvas.width));
+        right = Math.max(r.toMathX(0), r.toMathX(r.canvas.width));
+        step = (right - left) / 40;
+        first = true;
+        for (mathX = left; mathX <= right; mathX += step) {
+            coeffs = engine.getFunctionCoeffs(obj);
+            yVal = coeffs.slope * mathX + coeffs.intercept;
+            if (yVal === null || isNaN(yVal) || !isFinite(yVal)) {
+                continue;
+            }
+            sx = r.toScreenX(mathX);
+            sy = r.toScreenY(yVal);
+            if (first) {
+                minX = sx;
+                minY = sy;
+                maxX = sx;
+                maxY = sy;
+                first = false;
+            } else {
+                expand(sx, sy);
+            }
+        }
+        if (first) { return null; }
+    } else {
+        return null;
+    }
+
+    if (minX === undefined) {
+        return null;
+    }
+    return {
+        x1: minX - pad,
+        y1: minY - pad,
+        x2: maxX + pad,
+        y2: maxY + pad
+    };
+};
+
+// 선택된 객체 전부 삭제
+AlgeoApp.prototype.deleteSelectedObjects = function () {
+    const ids = this.selectionIds.slice();
+    let i;
+
+    if (ids.length === 0) {
+        return;
+    }
+
+    this.recordHistory(ids.length > 1 ? '선택 객체 삭제' : '객체 삭제');
+    for (i = 0; i < ids.length; i++) {
+        if (this.engine.objectMap[ids[i]]) {
+            this.engine.deleteObject(ids[i]);
+        }
+    }
+    this.clearSelection();
+    this.validateAlgebraSelection();
+    this.updateAlgebraView();
+    this.renderer.draw();
+};
+
+// 선택 집합 표시/숨김 토글 (주 선택 기준과 동일하게 일괄)
+AlgeoApp.prototype.toggleSelectionVisibility = function () {
+    const ids = this.selectionIds.slice();
+    const snapshot = this.captureEngineState();
+    let i;
+    let obj;
+    let makeVisible = false;
+
+    if (ids.length === 0) {
+        return;
+    }
+
+    // 하나라도 보이면 전부 숨김, 전부 숨김이면 표시
+    for (i = 0; i < ids.length; i++) {
+        obj = this.engine.objectMap[ids[i]];
+        if (obj && this.engine.isObjectVisible(obj)) {
+            makeVisible = false;
+            break;
+        }
+        makeVisible = true;
+    }
+
+    for (i = 0; i < ids.length; i++) {
+        if (this.engine.objectMap[ids[i]]) {
+            this.engine.setObjectVisible(ids[i], makeVisible);
+        }
+    }
+
+    if (!makeVisible) {
+        this.clearSelection();
+    }
+
+    this.pushUndoEntry(snapshot, makeVisible ? '선택 표시' : '선택 숨기기');
+    this.updateAlgebraView();
+    this.renderer.draw();
 };
 
 // 화면 좌표 기준 다각형 내부 포함 여부 (삭제 툴용)
@@ -9413,8 +10062,8 @@ AlgeoApp.prototype.toggleObjectVisibility = function (objId) {
     if (this.engine.isObjectVisible(obj)) {
         this.engine.setObjectVisible(objId, false);
         label = '객체 숨기기';
-        if (this.selectedObjectId === objId) {
-            this.clearAlgebraSelection();
+        if (this.isIdSelected(objId)) {
+            this.removeFromSelection(objId);
         }
     } else {
         this.engine.setObjectVisible(objId, true);
@@ -9442,8 +10091,8 @@ AlgeoApp.prototype.hideObjectAtClick = function (mouseX, mouseY, hitPoint) {
 
     this.recordHistory('객체 숨기기');
     this.engine.setObjectVisible(target.id, false);
-    if (this.selectedObjectId === target.id) {
-        this.clearAlgebraSelection();
+    if (this.isIdSelected(target.id)) {
+        this.removeFromSelection(target.id);
     }
     this.updateAlgebraView();
     this.renderer.draw();
@@ -9938,10 +10587,30 @@ AlgeoApp.prototype.updateAlgebraView = function () {
 
 // 삭제 등으로 선택 객체가 없어졌는지 확인
 AlgeoApp.prototype.validateAlgebraSelection = function () {
-    if (this.selectedObjectId && !this.engine.objectMap[this.selectedObjectId]) {
-        this.selectedObjectId = null;
-        this.renderer.selectedObjectId = null;
+    const next = [];
+    let i;
+    let id;
+
+    for (i = 0; i < this.selectionIds.length; i++) {
+        id = this.selectionIds[i];
+        if (this.engine.objectMap[id]) {
+            next.push(id);
+        }
     }
+    this.selectionIds = next;
+
+    if (this.selectedObjectId && !this.engine.objectMap[this.selectedObjectId]) {
+        this.selectedObjectId = next.length > 0 ? next[next.length - 1] : null;
+    }
+    if (this.selectedObjectId && next.indexOf(this.selectedObjectId) < 0 && next.length > 0) {
+        this.selectedObjectId = next[next.length - 1];
+    }
+    if (next.length === 0) {
+        this.selectedObjectId = null;
+    }
+
+    this.renderer.selectionIds = this.selectionIds.slice();
+    this.renderer.selectedObjectId = this.selectedObjectId;
 };
 
 // 대수창 입력 보조 UI 초기화 (명령어 사전만)
