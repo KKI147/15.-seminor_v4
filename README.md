@@ -106,7 +106,7 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 | UX-4 | 도구 가이드 패널 | ✅ |
 | **5단계** | 레일 9+1 · 플라이아웃 stub 맵 | ✅ [`tool_catalog.md`](tool_catalog.md) |
 
-**다음**: **8-1 측정** → 변환 → 저장  
+**다음**: **9 변환** → 저장  
 ([`editor_parity_plan.md`](editor_parity_plan.md) §5 권장 순서)
 
 - 레이아웃: [`ui_layout.md`](ui_layout.md)
@@ -185,11 +185,11 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 
 ### 8단계 — 측정·꾸미기·펜
 
-| # | 항목 | 도구 |
-|---|------|------|
-| 8-1 | 측정 | 길이, 각도(측정), 넓이 |
-| 8-2 | 꾸미기 | 설명선, 길이, 각도, 평행 표시 |
-| 8-3 | 펜 | 펜그림 (`점의 수: N`) |
+| # | 항목 | 도구 | 상태 |
+|---|------|------|------|
+| 8-1 | 측정 | 길이, 각도(측정), 넓이 | ✅ |
+| 8-2 | 꾸미기 | 설명선, 길이, 각도, 평행 표시 | ⬜ |
+| 8-3 | 펜 | 펜그림 (`점의 수: N`) | ⬜ |
 
 ---
 
@@ -236,15 +236,16 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 [6단계]   ████████████████████ 100%  ✅ (6-1~6-4)
 [7단계]   ██████████░░░░░░░░░░  50%   (7-1 ✅ / 7-2 ⬜)
 [깊이 M5·M6] ████████████████████ 100%  (스타일 패널 · Undo 스냅샷)
-[8~11단계]░░░░░░░░░░░░░░░░░░░░   0%   ← **다음: 8-1 측정**
+[8단계]   ██████░░░░░░░░░░░░░░  33%   (8-1 측정 ✅ / 8-2·8-3 ⬜)
+[9~11단계]░░░░░░░░░░░░░░░░░░░░   0%   ← **다음: 9 변환**
 [12단계]  ████████░░░░░░░░░░░░  40%   (테마·SVG ✅ / 터치·저장 ⬜)
 ```
 
-**다음 작업**: **8-1 측정** (`MEASURE_LENGTH` · `MEASURE_ANGLE` · `MEASURE_AREA`)
+**다음 작업**: **9 변환** (`REFLECT_POINT` · `REFLECT_LINE` · `ROTATE` · `TRANSLATE` · `DILATE`)
 
 **제품 목표**: 원본 **작도 에디터** 수준(2번). 포털·블록코딩 본편은 비목표 — [`editor_parity_plan.md`](editor_parity_plan.md)
 
-**도구 카탈로그**: 플라이아웃 **54종** (done 32 + stub 22) — [`tool_catalog.md`](tool_catalog.md)  
+**도구 카탈로그**: 플라이아웃 **54종** (done 35 + stub 19) — [`tool_catalog.md`](tool_catalog.md)  
 (2번 실무 완성선에서는 블록코딩·동영상·사용자 도구를 필수로 두지 않음)
 
 **UI**: 서비스 품질 원칙 — [`ux_guidelines.md`](ux_guidelines.md) §1
