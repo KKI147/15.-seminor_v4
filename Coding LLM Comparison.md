@@ -8,3 +8,6 @@
 | 6  | Sonnet 5      |  ⭐⭐⭐⭐ | 일반적인 개발 작업               |
 | 7  | Composer 2.5  |  ⭐⭐⭐⭐ | Cursor 에이전트 보조, 코드베이스 탐색 |
 | 8  | GLM 5.2       |   ⭐⭐⭐ | 저비용 개발                   |
+
+
+https://claude.com/blog/the-new-rules-of-context-engineering-for-claude-5-generation-models

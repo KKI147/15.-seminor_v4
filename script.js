@@ -130,8 +130,54 @@ function isAlgeoMeasureType(type) {
 // 점류 객체인지 여부 (자유점·종속점)
 function isAlgeoPointType(type) {
     return type === 'POINT' || type === 'MIDPOINT' || type === 'INTERSECTION' ||
-        type === 'POINT_ON' || type === 'REGULAR_VERTEX' || type === 'FIXED_ANGLE_POINT';
+        type === 'POINT_ON' || type === 'REGULAR_VERTEX' || type === 'FIXED_ANGLE_POINT' ||
+        type === 'TRANSFORM_POINT';
 }
+
+// 변환 도구인지 여부
+function isAlgeoTransformTool(type) {
+    return type === 'REFLECT_POINT' || type === 'REFLECT_LINE' ||
+        type === 'ROTATE' || type === 'TRANSLATE' || type === 'DILATE';
+}
+
+// 변환 도구가 다룰 수 있는 객체 타입
+const ALGEO_TRANSFORMABLE_OBJECT_TYPES = {
+    POINT: true,
+    MIDPOINT: true,
+    INTERSECTION: true,
+    POINT_ON: true,
+    REGULAR_VERTEX: true,
+    FIXED_ANGLE_POINT: true,
+    TRANSFORM_POINT: true,
+    SEGMENT: true,
+    LINE: true,
+    RAY: true,
+    VECTOR: true,
+    PERP_BISECTOR: true,
+    ANGLE_BISECTOR: true,
+    PARALLEL_LINE: true,
+    PERP_LINE: true,
+    CIRCLE: true,
+    CIRCLE_3P: true,
+    ARC: true,
+    SECTOR: true,
+    CIRCULAR_SEGMENT: true,
+    ANGLE: true,
+    POLYGON: true
+};
+
+// 꾸미기 대상이 될 수 있는 선형 객체
+const ALGEO_LINEAR_OBJECT_TYPES = {
+    SEGMENT: true,
+    VECTOR: true,
+    LINE: true,
+    RAY: true,
+    PERP_BISECTOR: true,
+    ANGLE_BISECTOR: true,
+    PARALLEL_LINE: true,
+    PERP_LINE: true,
+    TANGENT: true
+};
 
 // 교점·대상 위 점 작도에 쓸 수 있는 도형 타입
 const ALGEO_INTERSECTABLE_TYPES = {
@@ -271,11 +317,11 @@ const ALGEO_TOOL_CATEGORIES = [
             { tool: 'MEASURE_LENGTH', label: '길이', iconId: 'measure_length', status: 'done', hint: '점 2개 또는 선분·벡터' },
             { tool: 'MEASURE_ANGLE', label: '각도', iconId: 'measure_angle', status: 'done', hint: '점 3개 또는 각도 객체' },
             { tool: 'MEASURE_AREA', label: '넓이', iconId: 'measure_area', status: 'done', hint: '다각형·원·부채꼴·활꼴' },
-            { tool: 'REFLECT_POINT', label: '점대칭', iconId: 'reflect_point', status: 'stub', shortcut: 'R', hint: '점대칭 변환 (9-1)' },
-            { tool: 'REFLECT_LINE', label: '선대칭', iconId: 'reflect_line', status: 'stub', hint: '선대칭 변환 (9-1)' },
-            { tool: 'ROTATE', label: '회전', iconId: 'rotate', status: 'stub', hint: '회전 변환 (9-2)' },
-            { tool: 'TRANSLATE', label: '평행이동', iconId: 'translate', status: 'stub', hint: '평행이동 (9-2)' },
-            { tool: 'DILATE', label: '점을 중심으로 확대', iconId: 'dilate', status: 'stub', hint: '확대·축소 (9-2)' },
+            { tool: 'REFLECT_POINT', label: '점대칭', iconId: 'reflect_point', status: 'done', shortcut: 'R', hint: '선택 후 기준점 클릭' },
+            { tool: 'REFLECT_LINE', label: '선대칭', iconId: 'reflect_line', status: 'done', hint: '선택 후 기준선의 두 점 클릭' },
+            { tool: 'ROTATE', label: '회전', iconId: 'rotate', status: 'done', hint: '선택 후 중심점·각도 입력' },
+            { tool: 'TRANSLATE', label: '평행이동', iconId: 'translate', status: 'done', hint: '선택 후 시작점·끝점 클릭' },
+            { tool: 'DILATE', label: '점을 중심으로 확대', iconId: 'dilate', status: 'done', hint: '선택 후 중심점·배율 입력' },
             { tool: 'TILE', label: '타일', iconId: 'tile', status: 'stub', hint: '패턴 반복 (9-3)' }
         ]
     },
@@ -284,7 +330,7 @@ const ALGEO_TOOL_CATEGORIES = [
         iconId: 'cat-misc',
         title: '기타·객체',
         tools: [
-            { tool: 'TEXT', label: '텍스트', iconId: 'text', status: 'stub', shortcut: 'T', hint: '텍스트 상자 (7-2)' },
+            { tool: 'TEXT', label: '텍스트', iconId: 'text', status: 'done', shortcut: 'T', hint: '클릭 위치에 텍스트 배치' },
             { tool: 'SLIDER', label: '슬라이더', iconId: 'slider', status: 'done', hint: '캔버스 클릭 생성' },
             { tool: 'USER_TOOL', label: '사용자 도구', iconId: 'user_tool', status: 'stub', hint: '사용자 정의 (11-2)' },
             { tool: 'CHECKBOX', label: '체크박스', iconId: 'checkbox', status: 'stub', hint: '표시 토글 (7-2)' },
@@ -298,10 +344,10 @@ const ALGEO_TOOL_CATEGORIES = [
         iconId: 'cat-draw',
         title: '펜·꾸미기',
         tools: [
-            { tool: 'DECORATE_LEADER', label: '꾸미기: 설명선', iconId: 'decorate_leader', status: 'stub', shortcut: 'E', hint: '설명선 (8-2)' },
-            { tool: 'DECORATE_LENGTH', label: '꾸미기: 길이', iconId: 'decorate_length', status: 'stub', hint: '길이 표시 (8-2)' },
-            { tool: 'DECORATE_ANGLE', label: '꾸미기: 각도', iconId: 'decorate_angle', status: 'stub', hint: '각도 표시 (8-2)' },
-            { tool: 'DECORATE_PARALLEL', label: '꾸미기: 평행', iconId: 'decorate_parallel', status: 'stub', hint: '평행 표시 (8-2)' },
+            { tool: 'DECORATE_LEADER', label: '꾸미기: 설명선', iconId: 'decorate_leader', status: 'done', shortcut: 'E', hint: '시작점·끝점·문구 지정' },
+            { tool: 'DECORATE_LENGTH', label: '꾸미기: 길이', iconId: 'decorate_length', status: 'done', hint: '선형 객체 클릭' },
+            { tool: 'DECORATE_ANGLE', label: '꾸미기: 각도', iconId: 'decorate_angle', status: 'done', hint: '각 객체 또는 세 점 선택' },
+            { tool: 'DECORATE_PARALLEL', label: '꾸미기: 평행', iconId: 'decorate_parallel', status: 'done', hint: '선형 객체 두 개 선택' },
             { tool: 'PEN', label: '그리기', iconId: 'pen', status: 'stub', shortcut: 'B', hint: '펜그림 (8-3)' }
         ]
     },
@@ -639,29 +685,29 @@ const ALGEO_TOOL_GUIDES = {
         tips: ['측정값은 도형 중심에 표시되며 부모를 움직이면 갱신됩니다.']
     },
     REFLECT_POINT: {
-        summary: '점을 기준으로 대칭 이동합니다. (준비 중)',
-        steps: ['9단계에서 구현 예정입니다.'],
-        tips: ['단축키 R']
+        summary: '선택한 점·도형을 기준점에 대해 점대칭 복제합니다.',
+        steps: ['선택 또는 그룹선택으로 변환할 대상을 먼저 고릅니다.', '기준이 될 점을 클릭합니다.'],
+        tips: ['단축키 R', '결과는 종속 객체로 생성되어 원본을 움직이면 함께 갱신됩니다.']
     },
     REFLECT_LINE: {
-        summary: '직선을 기준으로 대칭 이동합니다. (준비 중)',
-        steps: ['9단계에서 구현 예정입니다.'],
-        tips: []
+        summary: '선택한 점·도형을 기준선에 대해 선대칭 복제합니다.',
+        steps: ['변환할 대상을 먼저 선택합니다.', '기준선의 첫 번째 점을 클릭합니다.', '기준선의 두 번째 점을 클릭합니다.'],
+        tips: ['기준선은 두 기존 점으로 지정합니다.']
     },
     ROTATE: {
-        summary: '점을 중심으로 회전합니다. (준비 중)',
-        steps: ['9단계에서 구현 예정입니다.'],
-        tips: []
+        summary: '선택한 점·도형을 중심점 기준으로 회전 복제합니다.',
+        steps: ['변환할 대상을 먼저 선택합니다.', '회전 중심이 될 점을 클릭합니다.', '회전 각도를 입력합니다.'],
+        tips: ['양수는 반시계 방향, 음수는 시계 방향입니다.']
     },
     TRANSLATE: {
-        summary: '평행이동합니다. (준비 중)',
-        steps: ['9단계에서 구현 예정입니다.'],
-        tips: []
+        summary: '선택한 점·도형을 기준 벡터만큼 평행이동 복제합니다.',
+        steps: ['변환할 대상을 먼저 선택합니다.', '이동 시작점을 클릭합니다.', '이동 끝점을 클릭합니다.'],
+        tips: ['두 점이 정하는 방향과 거리만큼 복제됩니다.']
     },
     DILATE: {
-        summary: '점을 중심으로 확대·축소합니다. (준비 중)',
-        steps: ['9단계에서 구현 예정입니다.'],
-        tips: []
+        summary: '선택한 점·도형을 중심점 기준으로 확대·축소 복제합니다.',
+        steps: ['변환할 대상을 먼저 선택합니다.', '확대 중심이 될 점을 클릭합니다.', '배율을 입력합니다.'],
+        tips: ['2는 2배 확대, 0.5는 절반 축소입니다.']
     },
     TILE: {
         summary: '도형을 타일처럼 반복합니다. (준비 중)',
@@ -669,8 +715,8 @@ const ALGEO_TOOL_GUIDES = {
         tips: []
     },
     TEXT: {
-        summary: '텍스트 상자를 넣습니다. (준비 중)',
-        steps: ['7-2단계에서 구현 예정입니다.'],
+        summary: '클릭한 위치에 자유 텍스트를 배치합니다.',
+        steps: ['텍스트를 둘 위치를 클릭합니다.', '표시할 문구를 입력합니다.'],
         tips: ['단축키 T']
     },
     USER_TOOL: {
@@ -689,24 +735,24 @@ const ALGEO_TOOL_GUIDES = {
         tips: []
     },
     DECORATE_LEADER: {
-        summary: '설명선을 그립니다. (준비 중)',
-        steps: ['8-2단계에서 구현 예정입니다.'],
+        summary: '설명선과 문구를 함께 배치합니다.',
+        steps: ['설명선 시작 위치를 클릭합니다.', '화살표가 향할 끝 위치를 클릭합니다.', '문구를 입력합니다.'],
         tips: ['단축키 E']
     },
     DECORATE_LENGTH: {
-        summary: '길이 꾸미기 표시를 넣습니다. (준비 중)',
-        steps: ['8-2단계에서 구현 예정입니다.'],
+        summary: '선형 객체 위에 길이 표시용 눈금을 추가합니다.',
+        steps: ['표시를 넣을 선분·벡터·직선류를 클릭합니다.'],
         tips: []
     },
     DECORATE_ANGLE: {
-        summary: '각도 꾸미기 표시를 넣습니다. (준비 중)',
-        steps: ['8-2단계에서 구현 예정입니다.'],
+        summary: '각 객체 또는 세 점에 각도 표시를 추가합니다.',
+        steps: ['기존 각도 객체를 클릭하거나, 첫 번째 점을 클릭합니다.', '꼭짓점을 클릭합니다.', '세 번째 점을 클릭합니다.'],
         tips: []
     },
     DECORATE_PARALLEL: {
-        summary: '평행 표시를 넣습니다. (준비 중)',
-        steps: ['8-2단계에서 구현 예정입니다.'],
-        tips: []
+        summary: '두 선형 객체에 같은 평행 표시를 붙입니다.',
+        steps: ['첫 번째 선형 객체를 클릭합니다.', '두 번째 선형 객체를 클릭합니다.'],
+        tips: ['두 객체에는 같은 눈금 수가 표시됩니다.']
     },
     PEN: {
         summary: '펜으로 자유롭게 그립니다. (준비 중)',
@@ -1135,6 +1181,7 @@ function getTypeStyleDefaults(type) {
         POINT_ON: { stroke: vis.midpoint, fill: vis.midpoint, lineWidth: 2, dash: [], fillOpacity: 1 },
         REGULAR_VERTEX: { stroke: vis.midpoint, fill: vis.midpoint, lineWidth: 2, dash: [], fillOpacity: 1 },
         FIXED_ANGLE_POINT: { stroke: vis.midpoint, fill: vis.midpoint, lineWidth: 2, dash: [], fillOpacity: 1 },
+        TRANSFORM_POINT: { stroke: vis.midpoint, fill: vis.midpoint, lineWidth: 2, dash: [], fillOpacity: 1 },
         SEGMENT: { stroke: vis.segment, fill: null, lineWidth: 3.5, dash: [], fillOpacity: 1 },
         VECTOR: { stroke: vis.vector, fill: null, lineWidth: 3.5, dash: [], fillOpacity: 1 },
         LINE: { stroke: vis.line, fill: null, lineWidth: 3, dash: [12, 6], fillOpacity: 1 },
@@ -1160,6 +1207,11 @@ function getTypeStyleDefaults(type) {
         MEASURE_LENGTH: { stroke: vis.measure, fill: vis.measureFill, lineWidth: 2, dash: [], fillOpacity: 1 },
         MEASURE_ANGLE: { stroke: vis.measure, fill: vis.measureFill, lineWidth: 2, dash: [], fillOpacity: 1 },
         MEASURE_AREA: { stroke: vis.measure, fill: vis.measureFill, lineWidth: 2, dash: [], fillOpacity: 1 },
+        TEXT: { stroke: vis.axis, fill: vis.axis, lineWidth: 1.5, dash: [], fillOpacity: 1 },
+        DECORATE_LEADER: { stroke: vis.segment, fill: null, lineWidth: 2, dash: [], fillOpacity: 1 },
+        DECORATE_LENGTH: { stroke: vis.segment, fill: null, lineWidth: 2, dash: [], fillOpacity: 1 },
+        DECORATE_ANGLE: { stroke: vis.angle, fill: vis.angleFill, lineWidth: 2, dash: [], fillOpacity: 1 },
+        DECORATE_PARALLEL: { stroke: vis.parallel, fill: null, lineWidth: 2, dash: [], fillOpacity: 1 },
         FUNCTION: { stroke: vis.function, fill: null, lineWidth: 3, dash: [], fillOpacity: 1 },
         SLIDER: { stroke: vis.slider, fill: vis.sliderThumb, lineWidth: 4, dash: [], fillOpacity: 1 }
     };
@@ -1527,6 +1579,11 @@ function createAlgeoUI($container) {
         '                <div class="algebra-history-panel" id="algebraHistoryPanel">' +
         '                    <div class="history-toolbar">' +
         '                        <span class="history-title">작업 기록</span>' +
+        '                        <div class="history-toolbar-actions">' +
+        '                            <button type="button" id="btnSaveScene" class="sidebar-undo-btn" title="JSON 저장" aria-label="JSON 저장">저장</button>' +
+        '                            <button type="button" id="btnLoadScene" class="sidebar-undo-btn" title="JSON 불러오기" aria-label="JSON 불러오기">불러오기</button>' +
+        '                            <input type="file" id="sceneFileInput" accept=".json,application/json" style="display:none;" />' +
+        '                        </div>' +
         '                    </div>' +
         '                    <ul id="algebraHistoryList" class="algebra-history-list">' +
         '                        <li class="history-empty">아직 기록이 없습니다.</li>' +
@@ -2721,6 +2778,169 @@ AlgeoEngine.prototype.getDistanceByPointIds = function (p1Id, p2Id) {
     return Math.sqrt(dx * dx + dy * dy);
 };
 
+// 점을 기준점에 대해 점대칭한 좌표
+AlgeoEngine.prototype.reflectPointCoords = function (source, center) {
+    if (!source || !center) {
+        return null;
+    }
+    return {
+        x: center.x * 2 - source.x,
+        y: center.y * 2 - source.y
+    };
+};
+
+// 점을 두 점이 정하는 직선에 대해 선대칭한 좌표
+AlgeoEngine.prototype.reflectLineCoords = function (source, lineP1, lineP2) {
+    let dx;
+    let dy;
+    let len2;
+    let t;
+    let px;
+    let py;
+
+    if (!source || !lineP1 || !lineP2) {
+        return null;
+    }
+    dx = lineP2.x - lineP1.x;
+    dy = lineP2.y - lineP1.y;
+    len2 = dx * dx + dy * dy;
+    if (len2 < 1e-12) {
+        return null;
+    }
+    t = ((source.x - lineP1.x) * dx + (source.y - lineP1.y) * dy) / len2;
+    px = lineP1.x + dx * t;
+    py = lineP1.y + dy * t;
+    return {
+        x: px * 2 - source.x,
+        y: py * 2 - source.y
+    };
+};
+
+// 점을 기준점 중심으로 회전한 좌표
+AlgeoEngine.prototype.rotatePointCoords = function (source, center, degrees) {
+    const rad = (degrees || 0) * Math.PI / 180;
+    const dx = source.x - center.x;
+    const dy = source.y - center.y;
+    const cosVal = Math.cos(rad);
+    const sinVal = Math.sin(rad);
+
+    if (!source || !center) {
+        return null;
+    }
+    return {
+        x: center.x + dx * cosVal - dy * sinVal,
+        y: center.y + dx * sinVal + dy * cosVal
+    };
+};
+
+// 점을 기준 벡터만큼 평행이동한 좌표
+AlgeoEngine.prototype.translatePointCoords = function (source, fromPoint, toPoint) {
+    if (!source || !fromPoint || !toPoint) {
+        return null;
+    }
+    return {
+        x: source.x + (toPoint.x - fromPoint.x),
+        y: source.y + (toPoint.y - fromPoint.y)
+    };
+};
+
+// 점을 기준점 중심으로 확대/축소한 좌표
+AlgeoEngine.prototype.dilatePointCoords = function (source, center, scale) {
+    if (!source || !center || scale === null || scale === undefined || isNaN(scale)) {
+        return null;
+    }
+    return {
+        x: center.x + (source.x - center.x) * scale,
+        y: center.y + (source.y - center.y) * scale
+    };
+};
+
+// 변환 종속점 좌표 재계산
+AlgeoEngine.prototype.getTransformedPointCoords = function (obj) {
+    const source = this.objectMap[obj.sourceId];
+    const ref1 = this.objectMap[obj.ref1Id];
+    const ref2 = this.objectMap[obj.ref2Id];
+
+    if (!source) {
+        return null;
+    }
+    if (obj.transformType === 'REFLECT_POINT') {
+        return this.reflectPointCoords(source, ref1);
+    }
+    if (obj.transformType === 'REFLECT_LINE') {
+        return this.reflectLineCoords(source, ref1, ref2);
+    }
+    if (obj.transformType === 'ROTATE') {
+        return this.rotatePointCoords(source, ref1, obj.degrees || 0);
+    }
+    if (obj.transformType === 'TRANSLATE') {
+        return this.translatePointCoords(source, ref1, ref2);
+    }
+    if (obj.transformType === 'DILATE') {
+        return this.dilatePointCoords(source, ref1, obj.scale || 1);
+    }
+    return null;
+};
+
+// 변환 종속점 추가
+AlgeoEngine.prototype.addTransformPoint = function (name, sourceId, config) {
+    const source = this.objectMap[sourceId];
+    const ref1 = config && config.ref1Id ? this.objectMap[config.ref1Id] : null;
+    const ref2 = config && config.ref2Id ? this.objectMap[config.ref2Id] : null;
+    let coords;
+    let parents;
+    let id;
+    let obj;
+
+    if (!source || !config || !isAlgeoTransformTool(config.transformType)) {
+        return null;
+    }
+    coords = this.getTransformedPointCoords({
+        sourceId: sourceId,
+        ref1Id: config.ref1Id || null,
+        ref2Id: config.ref2Id || null,
+        transformType: config.transformType,
+        degrees: config.degrees || 0,
+        scale: config.scale !== undefined ? config.scale : 1
+    });
+    if (!coords) {
+        return null;
+    }
+    parents = [sourceId];
+    if (config.ref1Id) {
+        parents.push(config.ref1Id);
+    }
+    if (config.ref2Id) {
+        parents.push(config.ref2Id);
+    }
+    id = this.generateId();
+    obj = {
+        id: id,
+        type: 'TRANSFORM_POINT',
+        name: name,
+        sourceId: sourceId,
+        ref1Id: config.ref1Id || null,
+        ref2Id: config.ref2Id || null,
+        transformType: config.transformType,
+        degrees: config.degrees || 0,
+        scale: config.scale !== undefined ? config.scale : 1,
+        x: coords.x,
+        y: coords.y,
+        parents: parents,
+        children: []
+    };
+    source.children.push(id);
+    if (ref1) {
+        ref1.children.push(id);
+    }
+    if (ref2) {
+        ref2.children.push(id);
+    }
+    this.objects.push(obj);
+    this.objectMap[id] = obj;
+    return obj;
+};
+
 // 세 점 각도(도) — ray1–vertex–ray2
 AlgeoEngine.prototype.getDegreesByPointIds = function (ray1Id, vertexId, ray2Id) {
     return this.getAngleDegrees({
@@ -3180,6 +3400,120 @@ AlgeoEngine.prototype.addMeasureArea = function (name, targetId) {
     return obj;
 };
 
+// 자유 텍스트 객체 추가
+AlgeoEngine.prototype.addText = function (text, x, y) {
+    const id = this.generateId();
+    const obj = {
+        id: id,
+        type: 'TEXT',
+        name: '텍스트',
+        text: text,
+        x: x,
+        y: y,
+        parents: [],
+        children: []
+    };
+    this.objects.push(obj);
+    this.objectMap[id] = obj;
+    return obj;
+};
+
+// 설명선 꾸미기 추가
+AlgeoEngine.prototype.addDecorateLeader = function (text, x1, y1, x2, y2) {
+    const id = this.generateId();
+    const obj = {
+        id: id,
+        type: 'DECORATE_LEADER',
+        name: '설명선',
+        text: text || '',
+        x1: x1,
+        y1: y1,
+        x2: x2,
+        y2: y2,
+        parents: [],
+        children: []
+    };
+    this.objects.push(obj);
+    this.objectMap[id] = obj;
+    return obj;
+};
+
+// 길이 꾸미기 추가
+AlgeoEngine.prototype.addDecorateLength = function (targetId) {
+    const target = this.objectMap[targetId];
+    const id = this.generateId();
+    const obj = {
+        id: id,
+        type: 'DECORATE_LENGTH',
+        name: '길이표시',
+        targetId: targetId,
+        style: { showLabel: false },
+        parents: [targetId],
+        children: []
+    };
+
+    if (!target || !ALGEO_LINEAR_OBJECT_TYPES[target.type]) {
+        return null;
+    }
+    target.children.push(id);
+    this.objects.push(obj);
+    this.objectMap[id] = obj;
+    return obj;
+};
+
+// 각도 꾸미기 추가
+AlgeoEngine.prototype.addDecorateAngle = function (ray1Id, vertexId, ray2Id) {
+    const ray1 = this.objectMap[ray1Id];
+    const vertex = this.objectMap[vertexId];
+    const ray2 = this.objectMap[ray2Id];
+    const id = this.generateId();
+    const obj = {
+        id: id,
+        type: 'DECORATE_ANGLE',
+        name: '각도표시',
+        ray1Id: ray1Id,
+        vertexId: vertexId,
+        ray2Id: ray2Id,
+        style: { showLabel: false },
+        parents: [ray1Id, vertexId, ray2Id],
+        children: []
+    };
+
+    if (!ray1 || !vertex || !ray2) {
+        return null;
+    }
+    ray1.children.push(id);
+    vertex.children.push(id);
+    ray2.children.push(id);
+    this.objects.push(obj);
+    this.objectMap[id] = obj;
+    return obj;
+};
+
+// 평행 표시 꾸미기 추가
+AlgeoEngine.prototype.addDecorateParallel = function (targetId, groupId) {
+    const target = this.objectMap[targetId];
+    const id = this.generateId();
+    const obj = {
+        id: id,
+        type: 'DECORATE_PARALLEL',
+        name: '평행표시',
+        targetId: targetId,
+        groupId: groupId,
+        style: { showLabel: false },
+        parents: [targetId],
+        children: []
+    };
+
+    if (!target || !ALGEO_LINEAR_OBJECT_TYPES[target.type]) {
+        return null;
+    }
+    target.children.push(id);
+    this.objects.push(obj);
+    this.objectMap[id] = obj;
+    return obj;
+};
+
 // 호 객체 추가 (끝점 A,B + 호 위의 조절점 C)
 AlgeoEngine.prototype.addArc = function (name, p1Id, p2Id, guideId) {
     const p1 = this.objectMap[p1Id];
@@ -3269,6 +3603,12 @@ AlgeoEngine.prototype.recalculateObject = function (obj) {
         }
     } else if (obj.type === 'FIXED_ANGLE_POINT') {
         coords = this.getFixedAnglePointCoords(obj);
+        if (coords) {
+            obj.x = coords.x;
+            obj.y = coords.y;
+        }
+    } else if (obj.type === 'TRANSFORM_POINT') {
+        coords = this.getTransformedPointCoords(obj);
         if (coords) {
             obj.x = coords.x;
             obj.y = coords.y;
@@ -4741,6 +5081,16 @@ AlgeoRenderer.prototype.drawObjects = function () {
             if (ray1 && vertex && ray2) {
                 this.drawAngleShape(ray1, vertex, ray2, obj);
             }
+        } else if (obj.type === 'TEXT') {
+            this.drawTextObject(obj);
+        } else if (obj.type === 'DECORATE_LEADER') {
+            this.drawDecorateLeader(obj);
+        } else if (obj.type === 'DECORATE_LENGTH') {
+            this.drawDecorateLength(obj);
+        } else if (obj.type === 'DECORATE_ANGLE') {
+            this.drawDecorateAngle(obj);
+        } else if (obj.type === 'DECORATE_PARALLEL') {
+            this.drawDecorateParallel(obj);
         }
     }
 
@@ -4809,6 +5159,156 @@ AlgeoRenderer.prototype.drawPointShape = function (obj) {
             color: ALGEO_VIS.axis
         });
     }
+};
+
+// 자유 텍스트 렌더
+AlgeoRenderer.prototype.drawTextObject = function (obj) {
+    const style = resolveObjectStyle(obj);
+    const sx = this.toScreenX(obj.x);
+    const sy = this.toScreenY(obj.y);
+
+    this.drawCanvasLabel(obj.text || '', sx, sy, {
+        font: 'bold 16px Outfit, sans-serif',
+        color: style.stroke,
+        align: 'left'
+    });
+};
+
+// 설명선 렌더
+AlgeoRenderer.prototype.drawDecorateLeader = function (obj) {
+    const ctx = this.ctx;
+    const style = resolveObjectStyle(obj);
+    const x1 = this.toScreenX(obj.x1);
+    const y1 = this.toScreenY(obj.y1);
+    const x2 = this.toScreenX(obj.x2);
+    const y2 = this.toScreenY(obj.y2);
+    const ang = Math.atan2(y2 - y1, x2 - x1);
+    const head = 10;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = style.stroke;
+    ctx.lineWidth = style.lineWidth;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - Math.cos(ang - Math.PI / 6) * head, y2 - Math.sin(ang - Math.PI / 6) * head);
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - Math.cos(ang + Math.PI / 6) * head, y2 - Math.sin(ang + Math.PI / 6) * head);
+    ctx.stroke();
+    ctx.restore();
+
+    if (obj.text) {
+        this.drawCanvasLabel(obj.text, x1 + 10, y1 - 10, {
+            font: 'bold 13px Outfit, sans-serif',
+            color: style.stroke
+        });
+    }
+};
+
+// 길이 꾸미기 렌더
+AlgeoRenderer.prototype.drawDecorateLength = function (obj) {
+    const style = resolveObjectStyle(obj);
+    const pair = this.engine.getObjectLineAB(this.engine.objectMap[obj.targetId]);
+    let midX;
+    let midY;
+    let dx;
+    let dy;
+    let len;
+    let nx;
+    let ny;
+    const ctx = this.ctx;
+
+    if (!pair) {
+        return;
+    }
+    midX = (pair.a.x + pair.b.x) / 2;
+    midY = (pair.a.y + pair.b.y) / 2;
+    dx = pair.b.x - pair.a.x;
+    dy = pair.b.y - pair.a.y;
+    len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 1e-10) {
+        return;
+    }
+    nx = -dy / len;
+    ny = dx / len;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(this.toScreenX(midX - nx * 0.18), this.toScreenY(midY - ny * 0.18));
+    ctx.lineTo(this.toScreenX(midX + nx * 0.18), this.toScreenY(midY + ny * 0.18));
+    ctx.moveTo(this.toScreenX(midX - dx / len * 0.2 - nx * 0.18), this.toScreenY(midY - dy / len * 0.2 - ny * 0.18));
+    ctx.lineTo(this.toScreenX(midX - dx / len * 0.2 + nx * 0.18), this.toScreenY(midY - dy / len * 0.2 + ny * 0.18));
+    ctx.moveTo(this.toScreenX(midX + dx / len * 0.2 - nx * 0.18), this.toScreenY(midY + dy / len * 0.2 - ny * 0.18));
+    ctx.lineTo(this.toScreenX(midX + dx / len * 0.2 + nx * 0.18), this.toScreenY(midY + dy / len * 0.2 + ny * 0.18));
+    ctx.strokeStyle = style.stroke;
+    ctx.lineWidth = style.lineWidth;
+    ctx.stroke();
+    ctx.restore();
+};
+
+// 각도 꾸미기 렌더
+AlgeoRenderer.prototype.drawDecorateAngle = function (obj) {
+    const ray1 = this.engine.objectMap[obj.ray1Id];
+    const vertex = this.engine.objectMap[obj.vertexId];
+    const ray2 = this.engine.objectMap[obj.ray2Id];
+
+    if (!ray1 || !vertex || !ray2) {
+        return;
+    }
+    this.drawAngleShape(ray1, vertex, ray2, obj);
+};
+
+// 평행 꾸미기 렌더
+AlgeoRenderer.prototype.drawDecorateParallel = function (obj) {
+    const ctx = this.ctx;
+    const style = resolveObjectStyle(obj);
+    const target = this.engine.objectMap[obj.targetId];
+    const line = this.engine.getObjectLineAB(target);
+    let mx;
+    let my;
+    let dx;
+    let dy;
+    let len;
+    let nx;
+    let ny;
+    let count;
+    let i;
+    let offset;
+
+    if (!line) {
+        return;
+    }
+    mx = (line.a.x + line.b.x) / 2;
+    my = (line.a.y + line.b.y) / 2;
+    dx = line.b.x - line.a.x;
+    dy = line.b.y - line.a.y;
+    len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 1e-10) {
+        return;
+    }
+    nx = -dy / len;
+    ny = dx / len;
+    count = ((obj.groupId - 1) % 3) + 1;
+    ctx.save();
+    ctx.strokeStyle = style.stroke;
+    ctx.lineWidth = style.lineWidth;
+    for (i = 0; i < count; i++) {
+        offset = (i - (count - 1) / 2) * 0.32;
+        ctx.beginPath();
+        ctx.moveTo(
+            this.toScreenX(mx + dx / len * offset - nx * 0.22),
+            this.toScreenY(my + dy / len * offset - ny * 0.22)
+        );
+        ctx.lineTo(
+            this.toScreenX(mx + dx / len * offset + nx * 0.22),
+            this.toScreenY(my + dy / len * offset + ny * 0.22)
+        );
+        ctx.stroke();
+    }
+    ctx.restore();
 };
 
 // 캔버스 라벨 (흰색 외곽선으로 격자 위 가독성 확보)
@@ -5215,6 +5715,19 @@ AlgeoRenderer.prototype.drawToolPreview = function (preview) {
         ctx.strokeStyle = ALGEO_VIS.arc;
         ctx.lineWidth = 3.5;
         ctx.lineCap = 'round';
+        ctx.stroke();
+        ctx.restore();
+        return;
+    }
+
+    if (preview.type === 'DECORATE_LEADER') {
+        ctx.save();
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.moveTo(this.toScreenX(preview.x1), this.toScreenY(preview.y1));
+        ctx.lineTo(this.toScreenX(preview.mathX), this.toScreenY(preview.mathY));
+        ctx.strokeStyle = ALGEO_VIS.previewSegment;
+        ctx.lineWidth = 2;
         ctx.stroke();
         ctx.restore();
         return;
@@ -6428,6 +6941,7 @@ AlgeoApp.prototype.init = function () {
     self.initAlgebraPanelToggle();
     self.initToolGuide();
     self.initShortcutHelp();
+    self.initSaveLoad();
 
     // 2. 뷰포트 조작 버튼 이벤트 바인딩
     $('#btnZoomIn').on('click', function () {
@@ -6872,6 +7386,9 @@ AlgeoApp.prototype.updateToolPreviewFromMouse = function (mouseX, mouseY) {
         preview.ray1Id = draft.ray1Id;
         preview.vertexId = draft.vertexId;
         preview.degrees = draft.degrees;
+    } else if (draft.type === 'DECORATE_LEADER') {
+        preview.x1 = draft.x1;
+        preview.y1 = draft.y1;
     }
 
     r.toolPreview = preview;
@@ -7311,6 +7828,30 @@ AlgeoApp.prototype.getGuideActiveStepIndex = function () {
         }
         return 0;
     }
+    if (tool === 'REFLECT_POINT' || tool === 'ROTATE' || tool === 'DILATE') {
+        return 0;
+    }
+    if (tool === 'REFLECT_LINE' || tool === 'TRANSLATE') {
+        return Math.min(n, 1);
+    }
+    if (tool === 'TEXT') {
+        return 0;
+    }
+    if (tool === 'DECORATE_LEADER') {
+        if (draft && draft.type === 'DECORATE_LEADER') {
+            return 1;
+        }
+        return 0;
+    }
+    if (tool === 'DECORATE_LENGTH' || tool === 'DECORATE_PARALLEL') {
+        return Math.min(this.selectedObjects.length, tool === 'DECORATE_PARALLEL' ? 1 : 0);
+    }
+    if (tool === 'DECORATE_ANGLE') {
+        if (n >= 1) {
+            return Math.min(n, 2);
+        }
+        return 0;
+    }
     if (tool === 'MEASURE_LENGTH') {
         if (n >= 1) {
             return 1;
@@ -7579,9 +8120,19 @@ AlgeoApp.prototype.updateCanvasCursor = function () {
         this.currentTool === 'REGULAR_POLYGON_CENTER' || this.currentTool === 'ANGLE_GIVEN' ||
         this.currentTool === 'INTERSECTION' ||
         this.currentTool === 'POINT_ON_OBJECT' ||
+        this.currentTool === 'REFLECT_POINT' ||
+        this.currentTool === 'REFLECT_LINE' ||
+        this.currentTool === 'ROTATE' ||
+        this.currentTool === 'TRANSLATE' ||
+        this.currentTool === 'DILATE' ||
         this.currentTool === 'MEASURE_LENGTH' ||
         this.currentTool === 'MEASURE_ANGLE' ||
-        this.currentTool === 'MEASURE_AREA') {
+        this.currentTool === 'MEASURE_AREA' ||
+        this.currentTool === 'TEXT' ||
+        this.currentTool === 'DECORATE_LEADER' ||
+        this.currentTool === 'DECORATE_LENGTH' ||
+        this.currentTool === 'DECORATE_ANGLE' ||
+        this.currentTool === 'DECORATE_PARALLEL') {
         cursor = 'pointer';
     } else if (this.currentTool === 'SLIDER') {
         cursor = 'crosshair';
@@ -9013,12 +9564,32 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
         this.handleRegularPolygonCenterMouseDown(e, hitPoint);
     } else if (this.currentTool === 'ANGLE_GIVEN') {
         this.handleAngleGivenMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'REFLECT_POINT') {
+        this.handleReflectPointMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'REFLECT_LINE') {
+        this.handleReflectLineMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'ROTATE') {
+        this.handleRotateMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'TRANSLATE') {
+        this.handleTranslateMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'DILATE') {
+        this.handleDilateMouseDown(e, hitPoint);
     } else if (this.currentTool === 'MEASURE_LENGTH') {
         this.handleMeasureLengthMouseDown(e, hitPoint);
     } else if (this.currentTool === 'MEASURE_ANGLE') {
         this.handleMeasureAngleMouseDown(e, hitPoint);
     } else if (this.currentTool === 'MEASURE_AREA') {
         this.handleMeasureAreaMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'TEXT') {
+        this.handleTextMouseDown(e);
+    } else if (this.currentTool === 'DECORATE_LEADER') {
+        this.handleDecorateLeaderMouseDown(e);
+    } else if (this.currentTool === 'DECORATE_LENGTH') {
+        this.handleDecorateLengthMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'DECORATE_ANGLE') {
+        this.handleDecorateAngleMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'DECORATE_PARALLEL') {
+        this.handleDecorateParallelMouseDown(e);
     } else if (this.currentTool === 'SLIDER') {
         const hitSlider = this.findSliderAt(mouseX, mouseY);
         if (hitSlider) {
@@ -9557,6 +10128,49 @@ AlgeoApp.prototype.findObjectAt = function (screenX, screenY) {
                     return obj;
                 }
             }
+        } else if (obj.type === 'TEXT') {
+            if (Math.abs(this.renderer.toScreenX(obj.x) - screenX) <= 80 &&
+                Math.abs(this.renderer.toScreenY(obj.y) - screenY) <= 20) {
+                return obj;
+            }
+        } else if (obj.type === 'DECORATE_LEADER') {
+            if (this.distToSegment(
+                screenX, screenY,
+                r.toScreenX(obj.x1), r.toScreenY(obj.y1),
+                r.toScreenX(obj.x2), r.toScreenY(obj.y2)
+            ) <= 6) {
+                return obj;
+            }
+        } else if (obj.type === 'DECORATE_LENGTH') {
+            const lenBounds = this.getObjectScreenBounds(obj);
+            if (lenBounds &&
+                screenX >= lenBounds.x1 && screenX <= lenBounds.x2 &&
+                screenY >= lenBounds.y1 && screenY <= lenBounds.y2) {
+                return obj;
+            }
+        } else if (obj.type === 'DECORATE_ANGLE') {
+            const ray1 = this.engine.objectMap[obj.ray1Id];
+            const vertex = this.engine.objectMap[obj.vertexId];
+            const ray2 = this.engine.objectMap[obj.ray2Id];
+            if (ray1 && vertex && ray2) {
+                const bx = r.toScreenX(vertex.x);
+                const by = r.toScreenY(vertex.y);
+                const sweep = r.getArcScreenSweep(
+                    bx, by,
+                    r.toScreenX(ray1.x), r.toScreenY(ray1.y),
+                    r.toScreenX(ray2.x), r.toScreenY(ray2.y)
+                );
+                if (this.distToArcCurve(screenX, screenY, bx, by, 34, sweep.startA, sweep.endA, sweep.ccw) <= 8) {
+                    return obj;
+                }
+            }
+        } else if (obj.type === 'DECORATE_PARALLEL') {
+            const parallelBounds = this.getObjectScreenBounds(obj);
+            if (parallelBounds &&
+                screenX >= parallelBounds.x1 && screenX <= parallelBounds.x2 &&
+                screenY >= parallelBounds.y1 && screenY <= parallelBounds.y2) {
+                return obj;
+            }
         } else if (obj.type === 'SLIDER') {
             if (this.isNearSlider(screenX, screenY, obj)) {
                 return obj;
@@ -9922,6 +10536,344 @@ AlgeoApp.prototype.isAngleBetween = function (ang, a1, a2) {
         return t >= 0 && t <= diff;
     }
     return t <= 0 && t >= diff;
+};
+
+// 변환 도구에 사용할 선택 대상이 있는지 확인
+AlgeoApp.prototype.ensureTransformSelection = function (mouseX, mouseY, hitPoint) {
+    let hitObj;
+
+    if (this.getTransformSelectionInfo().pointIds.length > 0 ||
+        this.getTransformSelectionInfo().objectIds.length > 0) {
+        return true;
+    }
+    if (hitPoint) {
+        this.setSelection([hitPoint.id], hitPoint.id);
+        this.syncToolGuide();
+        this.renderer.draw();
+        return false;
+    }
+    hitObj = this.findObjectAt(mouseX, mouseY);
+    if (hitObj && ALGEO_TRANSFORMABLE_OBJECT_TYPES[hitObj.type]) {
+        this.setSelection([hitObj.id], hitObj.id);
+        this.syncToolGuide();
+        this.renderer.draw();
+        return false;
+    }
+    window.alert('먼저 변환할 점 또는 도형을 선택하세요.');
+    return false;
+};
+
+// 현재 선택에 변환 적용
+AlgeoApp.prototype.applyTransformToSelection = function (historyLabel, config) {
+    const result = this.cloneSelectionWithTransform(config);
+
+    if (!result.createdIds || result.createdIds.length === 0) {
+        window.alert('변환할 수 있는 선택 대상이 없습니다.');
+        return false;
+    }
+    this.setSelection(result.createdIds, result.createdIds[result.createdIds.length - 1]);
+    this.clearToolDraft();
+    this.updateAlgebraView();
+    this.renderer.draw();
+    return true;
+};
+
+// 점대칭: 선택 대상 + 기준점
+AlgeoApp.prototype.handleReflectPointMouseDown = function (e, hitPoint) {
+    const pos = this.getEventCanvasPos(e);
+    const center = hitPoint;
+
+    if (!this.ensureTransformSelection(pos.x, pos.y, hitPoint)) {
+        return;
+    }
+    if (!center) {
+        this.renderer.draw();
+        return;
+    }
+    this.recordHistory('점대칭');
+    this.applyTransformToSelection('점대칭', {
+        transformType: 'REFLECT_POINT',
+        ref1Id: center.id
+    });
+};
+
+// 선대칭: 선택 대상 + 기준선의 두 점
+AlgeoApp.prototype.handleReflectLineMouseDown = function (e, hitPoint) {
+    const r = this.renderer;
+    const pos = this.getEventCanvasPos(e);
+
+    if (!this.ensureTransformSelection(pos.x, pos.y, hitPoint)) {
+        return;
+    }
+    if (!hitPoint) {
+        r.draw();
+        return;
+    }
+    this.selectedPoints.push(hitPoint.id);
+    this.syncHighlightToRenderer();
+    if (this.selectedPoints.length < 2) {
+        r.draw();
+        return;
+    }
+    if (this.selectedPoints[0] === this.selectedPoints[1]) {
+        this.selectedPoints = [];
+        this.syncHighlightToRenderer();
+        r.draw();
+        return;
+    }
+    this.recordHistory('선대칭');
+    this.applyTransformToSelection('선대칭', {
+        transformType: 'REFLECT_LINE',
+        ref1Id: this.selectedPoints[0],
+        ref2Id: this.selectedPoints[1]
+    });
+};
+
+// 회전: 선택 대상 + 중심점 + 각도 입력
+AlgeoApp.prototype.handleRotateMouseDown = function (e, hitPoint) {
+    const pos = this.getEventCanvasPos(e);
+    let degreesStr;
+    let degrees;
+
+    if (!this.ensureTransformSelection(pos.x, pos.y, hitPoint)) {
+        return;
+    }
+    if (!hitPoint) {
+        this.renderer.draw();
+        return;
+    }
+    degreesStr = window.prompt('회전 각도를 입력하세요. (도 단위)', '90');
+    if (degreesStr === null) {
+        return;
+    }
+    degrees = parseFloat(degreesStr);
+    if (isNaN(degrees)) {
+        window.alert('회전 각도는 숫자로 입력해 주세요.');
+        return;
+    }
+    this.recordHistory('회전');
+    this.applyTransformToSelection('회전', {
+        transformType: 'ROTATE',
+        ref1Id: hitPoint.id,
+        degrees: degrees
+    });
+};
+
+// 평행이동: 기준 시작점 + 끝점
+AlgeoApp.prototype.handleTranslateMouseDown = function (e, hitPoint) {
+    const r = this.renderer;
+    const pos = this.getEventCanvasPos(e);
+
+    if (!this.ensureTransformSelection(pos.x, pos.y, hitPoint)) {
+        return;
+    }
+    if (!hitPoint) {
+        r.draw();
+        return;
+    }
+    this.selectedPoints.push(hitPoint.id);
+    this.syncHighlightToRenderer();
+    if (this.selectedPoints.length < 2) {
+        r.draw();
+        return;
+    }
+    if (this.selectedPoints[0] === this.selectedPoints[1]) {
+        this.selectedPoints = [];
+        this.syncHighlightToRenderer();
+        r.draw();
+        return;
+    }
+    this.recordHistory('평행이동');
+    this.applyTransformToSelection('평행이동', {
+        transformType: 'TRANSLATE',
+        ref1Id: this.selectedPoints[0],
+        ref2Id: this.selectedPoints[1]
+    });
+};
+
+// 확대: 중심점 + 배율 입력
+AlgeoApp.prototype.handleDilateMouseDown = function (e, hitPoint) {
+    const pos = this.getEventCanvasPos(e);
+    let scaleStr;
+    let scale;
+
+    if (!this.ensureTransformSelection(pos.x, pos.y, hitPoint)) {
+        return;
+    }
+    if (!hitPoint) {
+        this.renderer.draw();
+        return;
+    }
+    scaleStr = window.prompt('확대 배율을 입력하세요. (예: 2, 0.5)', '2');
+    if (scaleStr === null) {
+        return;
+    }
+    scale = parseFloat(scaleStr);
+    if (isNaN(scale) || Math.abs(scale) < 1e-8) {
+        window.alert('확대 배율은 0이 아닌 숫자로 입력해 주세요.');
+        return;
+    }
+    this.recordHistory('확대');
+    this.applyTransformToSelection('확대', {
+        transformType: 'DILATE',
+        ref1Id: hitPoint.id,
+        scale: scale
+    });
+};
+
+// 텍스트 추가
+AlgeoApp.prototype.handleTextMouseDown = function (e) {
+    const pos = this.getEventCanvasPos(e);
+    const math = this.screenToMath(pos.x, pos.y);
+    const text = window.prompt('텍스트 내용을 입력하세요.', '설명');
+
+    if (text === null) {
+        return;
+    }
+    if (!text.replace(/^\s+|\s+$/g, '')) {
+        return;
+    }
+    this.recordHistory('텍스트 추가');
+    this.engine.addText(text, math.x, math.y);
+    this.updateAlgebraView();
+    this.renderer.draw();
+};
+
+// 설명선 꾸미기: 시작점 → 끝점 → 텍스트
+AlgeoApp.prototype.handleDecorateLeaderMouseDown = function (e) {
+    const r = this.renderer;
+    const pos = this.getEventCanvasPos(e);
+    const math = this.screenToMath(pos.x, pos.y);
+    let draft;
+    let text;
+
+    if (this.constructionDraft && this.constructionDraft.type === 'DECORATE_LEADER') {
+        draft = this.constructionDraft;
+        text = window.prompt('설명선 문구를 입력하세요.', '설명');
+        if (text === null) {
+            this.clearToolDraft();
+            r.draw();
+            return;
+        }
+        this.recordHistory('설명선 추가');
+        this.engine.addDecorateLeader(text, draft.x1, draft.y1, math.x, math.y);
+        this.clearToolDraft();
+        this.updateAlgebraView();
+        r.draw();
+        return;
+    }
+    this.constructionDraft = {
+        type: 'DECORATE_LEADER',
+        x1: math.x,
+        y1: math.y
+    };
+    this.renderer.toolPreview = {
+        type: 'DECORATE_LEADER',
+        x1: math.x,
+        y1: math.y,
+        mathX: math.x,
+        mathY: math.y
+    };
+    r.draw();
+};
+
+// 길이 꾸미기: 선형 객체 선택
+AlgeoApp.prototype.handleDecorateLengthMouseDown = function (e, hitPoint) {
+    const pos = this.getEventCanvasPos(e);
+    let hitObj = null;
+
+    if (hitPoint) {
+        hitObj = this.findObjectAt(pos.x, pos.y);
+    } else {
+        hitObj = this.findObjectAt(pos.x, pos.y);
+    }
+    if (!hitObj || !ALGEO_LINEAR_OBJECT_TYPES[hitObj.type]) {
+        this.renderer.draw();
+        return;
+    }
+    this.recordHistory('길이 꾸미기');
+    this.engine.addDecorateLength(hitObj.id);
+    this.updateAlgebraView();
+    this.renderer.draw();
+};
+
+// 각도 꾸미기: 각 객체 또는 세 점
+AlgeoApp.prototype.handleDecorateAngleMouseDown = function (e, hitPoint) {
+    const r = this.renderer;
+    const pos = this.getEventCanvasPos(e);
+    let hitObj;
+
+    hitObj = this.findObjectAt(pos.x, pos.y);
+    if (this.selectedPoints.length === 0 && hitObj && hitObj.type === 'ANGLE') {
+        this.recordHistory('각도 꾸미기');
+        this.engine.addDecorateAngle(hitObj.ray1Id, hitObj.vertexId, hitObj.ray2Id);
+        this.updateAlgebraView();
+        r.draw();
+        return;
+    }
+    if (!hitPoint) {
+        r.draw();
+        return;
+    }
+    this.selectedPoints.push(hitPoint.id);
+    this.syncHighlightToRenderer();
+    if (this.selectedPoints.length < 3) {
+        r.draw();
+        return;
+    }
+    if (this.selectedPoints[0] === this.selectedPoints[1] ||
+        this.selectedPoints[1] === this.selectedPoints[2] ||
+        this.selectedPoints[0] === this.selectedPoints[2]) {
+        this.selectedPoints = [];
+        this.syncHighlightToRenderer();
+        r.draw();
+        return;
+    }
+    this.recordHistory('각도 꾸미기');
+    this.engine.addDecorateAngle(
+        this.selectedPoints[0],
+        this.selectedPoints[1],
+        this.selectedPoints[2]
+    );
+    this.selectedPoints = [];
+    this.syncHighlightToRenderer();
+    this.updateAlgebraView();
+    r.draw();
+};
+
+// 평행 꾸미기: 선형 객체 두 개를 같은 그룹으로 표시
+AlgeoApp.prototype.handleDecorateParallelMouseDown = function (e) {
+    const r = this.renderer;
+    const pos = this.getEventCanvasPos(e);
+    let hitObj;
+    let groupId;
+
+    hitObj = this.findObjectAt(pos.x, pos.y);
+    if (!hitObj || !ALGEO_LINEAR_OBJECT_TYPES[hitObj.type]) {
+        r.draw();
+        return;
+    }
+    this.selectedObjects.push(hitObj.id);
+    this.selectedObjects = this.selectedObjects.slice(-2);
+    this.syncHighlightToRenderer();
+    if (this.selectedObjects.length < 2) {
+        r.draw();
+        return;
+    }
+    if (this.selectedObjects[0] === this.selectedObjects[1]) {
+        this.selectedObjects = [];
+        this.syncHighlightToRenderer();
+        r.draw();
+        return;
+    }
+    groupId = this.getNextParallelDecorationGroupId();
+    this.recordHistory('평행 꾸미기');
+    this.engine.addDecorateParallel(this.selectedObjects[0], groupId);
+    this.engine.addDecorateParallel(this.selectedObjects[1], groupId);
+    this.selectedObjects = [];
+    this.syncHighlightToRenderer();
+    this.updateAlgebraView();
+    r.draw();
 };
 
 // 수학 좌표에 슬라이더 배치
@@ -10291,6 +11243,26 @@ AlgeoApp.prototype.getObjectScreenBounds = function (obj) {
             if (!vp) { return null; }
             expand(r.toScreenX(vp.x), r.toScreenY(vp.y));
         }
+    } else if (obj.type === 'TEXT') {
+        sx = r.toScreenX(obj.x);
+        sy = r.toScreenY(obj.y);
+        return { x1: sx - 4, y1: sy - 18, x2: sx + 110, y2: sy + 8 };
+    } else if (obj.type === 'DECORATE_LEADER') {
+        expandSeg(r.toScreenX(obj.x1), r.toScreenY(obj.y1), r.toScreenX(obj.x2), r.toScreenY(obj.y2));
+    } else if (obj.type === 'DECORATE_LENGTH') {
+        bounds = this.getObjectScreenBounds(engine.objectMap[obj.targetId]);
+        if (!bounds) { return null; }
+        return bounds;
+    } else if (obj.type === 'DECORATE_ANGLE') {
+        vp = engine.objectMap[obj.vertexId];
+        if (!vp) { return null; }
+        sx = r.toScreenX(vp.x);
+        sy = r.toScreenY(vp.y);
+        return { x1: sx - 44, y1: sy - 44, x2: sx + 44, y2: sy + 44 };
+    } else if (obj.type === 'DECORATE_PARALLEL') {
+        bounds = this.getObjectScreenBounds(engine.objectMap[obj.targetId]);
+        if (!bounds) { return null; }
+        return bounds;
     } else if (obj.type === 'SLIDER') {
         bounds = r.getSliderScreenBounds(obj);
         return {
@@ -10535,6 +11507,348 @@ AlgeoApp.prototype.getNextFunctionName = function () {
     } while (this.engine.findFunctionByName(name) !== null);
 
     return name;
+};
+
+// 객체가 참조하는 점 ID 목록 반환
+AlgeoApp.prototype.getObjectPointRefs = function (obj) {
+    if (!obj) {
+        return [];
+    }
+    if (isAlgeoPointType(obj.type)) {
+        return [obj.id];
+    }
+    if (obj.type === 'SEGMENT' || obj.type === 'LINE' || obj.type === 'RAY' ||
+        obj.type === 'VECTOR' || obj.type === 'PERP_BISECTOR') {
+        return [obj.p1Id, obj.p2Id];
+    }
+    if (obj.type === 'ANGLE_BISECTOR' || obj.type === 'ANGLE' || obj.type === 'DECORATE_ANGLE') {
+        return [obj.ray1Id, obj.vertexId, obj.ray2Id];
+    }
+    if (obj.type === 'PARALLEL_LINE' || obj.type === 'PERP_LINE') {
+        return [obj.refP1Id, obj.refP2Id, obj.throughId];
+    }
+    if (obj.type === 'TANGENT') {
+        return [obj.pointId];
+    }
+    if (obj.type === 'CIRCLE') {
+        return [obj.centerId, obj.pointId];
+    }
+    if (obj.type === 'CIRCLE_3P') {
+        return [obj.p1Id, obj.p2Id, obj.p3Id];
+    }
+    if (obj.type === 'ARC' || obj.type === 'CIRCULAR_SEGMENT') {
+        return [obj.p1Id, obj.p2Id, obj.guideId];
+    }
+    if (obj.type === 'SECTOR') {
+        return [obj.centerId, obj.p1Id, obj.p2Id];
+    }
+    if (obj.type === 'POLYGON') {
+        return obj.vertexIds ? obj.vertexIds.slice() : [];
+    }
+    return [];
+};
+
+// 새 객체에 시각 스타일을 복사
+AlgeoApp.prototype.copyObjectStyle = function (srcObj, dstObj) {
+    if (!srcObj || !dstObj || !srcObj.style) {
+        return;
+    }
+    dstObj.style = JSON.parse(JSON.stringify(srcObj.style));
+};
+
+// 현재 선택에서 변환 가능한 대상 수집
+AlgeoApp.prototype.getTransformSelectionInfo = function () {
+    const ids = this.selectionIds.slice();
+    const pointIds = [];
+    const objectIds = [];
+    const pointSeen = {};
+    const objectSeen = {};
+    let i;
+    let obj;
+    let refs;
+    let j;
+    let id;
+
+    for (i = 0; i < ids.length; i++) {
+        obj = this.engine.objectMap[ids[i]];
+        if (!obj || !ALGEO_TRANSFORMABLE_OBJECT_TYPES[obj.type]) {
+            continue;
+        }
+        if (isAlgeoPointType(obj.type)) {
+            if (!pointSeen[obj.id]) {
+                pointSeen[obj.id] = true;
+                pointIds.push(obj.id);
+            }
+            continue;
+        }
+        if (!objectSeen[obj.id]) {
+            objectSeen[obj.id] = true;
+            objectIds.push(obj.id);
+        }
+        refs = this.getObjectPointRefs(obj);
+        for (j = 0; j < refs.length; j++) {
+            id = refs[j];
+            if (id && !pointSeen[id]) {
+                pointSeen[id] = true;
+                pointIds.push(id);
+            }
+        }
+    }
+    return {
+        pointIds: pointIds,
+        objectIds: objectIds
+    };
+};
+
+// 선형 객체의 두 점 참조 반환
+AlgeoApp.prototype.getLinearObjectPointPair = function (obj) {
+    if (!obj) {
+        return null;
+    }
+    if (obj.type === 'SEGMENT' || obj.type === 'VECTOR' || obj.type === 'LINE' || obj.type === 'RAY') {
+        return {
+            p1: this.engine.objectMap[obj.p1Id],
+            p2: this.engine.objectMap[obj.p2Id]
+        };
+    }
+    if (obj.type === 'PERP_BISECTOR') {
+        return {
+            p1: this.engine.objectMap[obj.p1Id],
+            p2: this.engine.objectMap[obj.p2Id]
+        };
+    }
+    if (obj.type === 'ANGLE_BISECTOR') {
+        return {
+            p1: this.engine.objectMap[obj.vertexId],
+            p2: this.engine.objectMap[obj.ray1Id]
+        };
+    }
+    if (obj.type === 'PARALLEL_LINE' || obj.type === 'PERP_LINE') {
+        return {
+            p1: this.engine.objectMap[obj.refP1Id],
+            p2: this.engine.objectMap[obj.refP2Id]
+        };
+    }
+    if (obj.type === 'TANGENT') {
+        return this.engine.getTangentLinePoints(obj);
+    }
+    return null;
+};
+
+// 선택한 변환 대상을 복제해 새 객체로 생성
+AlgeoApp.prototype.cloneSelectionWithTransform = function (transformConfig) {
+    const info = this.getTransformSelectionInfo();
+    const pointMap = {};
+    const createdIds = [];
+    let i;
+    let pointId;
+    let name;
+    let pointObj;
+    let obj;
+    let newObj;
+
+    if (info.pointIds.length === 0 && info.objectIds.length === 0) {
+        return { createdIds: [], skipped: 0 };
+    }
+    for (i = 0; i < info.pointIds.length; i++) {
+        pointId = info.pointIds[i];
+        name = this.getNextPointName();
+        pointObj = this.engine.addTransformPoint(name, pointId, transformConfig);
+        if (pointObj) {
+            pointMap[pointId] = pointObj.id;
+            createdIds.push(pointObj.id);
+        }
+    }
+    for (i = 0; i < info.objectIds.length; i++) {
+        obj = this.engine.objectMap[info.objectIds[i]];
+        newObj = this.cloneObjectFromPointMap(obj, pointMap);
+        if (newObj) {
+            createdIds.push(newObj.id);
+        }
+    }
+    return {
+        createdIds: createdIds,
+        skipped: (info.pointIds.length + info.objectIds.length) - createdIds.length
+    };
+};
+
+// 점 매핑을 이용해 객체 복제
+AlgeoApp.prototype.cloneObjectFromPointMap = function (obj, pointMap) {
+    let clone = null;
+    let pointNames = [];
+    let p1;
+    let p2;
+    let p3;
+    let center;
+    let through;
+    let ray1;
+    let vertex;
+    let ray2;
+    let i;
+    let groupId;
+
+    function mapId(oldId) {
+        return pointMap[oldId] || null;
+    }
+
+    if (!obj) {
+        return null;
+    }
+    if (obj.type === 'SEGMENT') {
+        clone = this.engine.addSegment('tmp', mapId(obj.p1Id), mapId(obj.p2Id));
+        if (clone) {
+            p1 = this.engine.objectMap[clone.p1Id];
+            p2 = this.engine.objectMap[clone.p2Id];
+            clone.name = p1.name + p2.name;
+        }
+    } else if (obj.type === 'LINE') {
+        clone = this.engine.addLine('tmp', mapId(obj.p1Id), mapId(obj.p2Id));
+        if (clone) {
+            p1 = this.engine.objectMap[clone.p1Id];
+            p2 = this.engine.objectMap[clone.p2Id];
+            clone.name = 'd' + p1.name + p2.name;
+        }
+    } else if (obj.type === 'RAY') {
+        clone = this.engine.addRay('tmp', mapId(obj.p1Id), mapId(obj.p2Id));
+        if (clone) {
+            p1 = this.engine.objectMap[clone.p1Id];
+            p2 = this.engine.objectMap[clone.p2Id];
+            clone.name = 'ray' + p1.name + p2.name;
+        }
+    } else if (obj.type === 'VECTOR') {
+        clone = this.engine.addVector('tmp', mapId(obj.p1Id), mapId(obj.p2Id));
+        if (clone) {
+            p1 = this.engine.objectMap[clone.p1Id];
+            p2 = this.engine.objectMap[clone.p2Id];
+            clone.name = 'vec' + p1.name + p2.name;
+        }
+    } else if (obj.type === 'PERP_BISECTOR') {
+        clone = this.engine.addPerpBisector('tmp', mapId(obj.p1Id), mapId(obj.p2Id));
+        if (clone) {
+            p1 = this.engine.objectMap[clone.p1Id];
+            p2 = this.engine.objectMap[clone.p2Id];
+            clone.name = 'pb' + p1.name + p2.name;
+        }
+    } else if (obj.type === 'ANGLE_BISECTOR') {
+        clone = this.engine.addAngleBisector('tmp', mapId(obj.ray1Id), mapId(obj.vertexId), mapId(obj.ray2Id));
+        if (clone) {
+            ray1 = this.engine.objectMap[clone.ray1Id];
+            vertex = this.engine.objectMap[clone.vertexId];
+            ray2 = this.engine.objectMap[clone.ray2Id];
+            clone.name = 'bis' + ray1.name + vertex.name + ray2.name;
+        }
+    } else if (obj.type === 'PARALLEL_LINE') {
+        clone = this.engine.addParallelLine('tmp', mapId(obj.refP1Id), mapId(obj.refP2Id), mapId(obj.throughId));
+        if (clone) {
+            p1 = this.engine.objectMap[clone.refP1Id];
+            p2 = this.engine.objectMap[clone.refP2Id];
+            through = this.engine.objectMap[clone.throughId];
+            clone.name = 'pl' + through.name + p1.name + p2.name;
+        }
+    } else if (obj.type === 'PERP_LINE') {
+        clone = this.engine.addPerpLine('tmp', mapId(obj.refP1Id), mapId(obj.refP2Id), mapId(obj.throughId));
+        if (clone) {
+            p1 = this.engine.objectMap[clone.refP1Id];
+            p2 = this.engine.objectMap[clone.refP2Id];
+            through = this.engine.objectMap[clone.throughId];
+            clone.name = 'pp' + through.name + p1.name + p2.name;
+        }
+    } else if (obj.type === 'TANGENT') {
+        clone = this.engine.addTangent('tmp', obj.circleId, mapId(obj.pointId), obj.index);
+        if (clone) {
+            p1 = this.engine.objectMap[clone.pointId];
+            clone.name = 'tg' + (obj.circleId || '') + p1.name;
+        }
+    } else if (obj.type === 'CIRCLE') {
+        clone = this.engine.addCircle('tmp', mapId(obj.centerId), mapId(obj.pointId));
+        if (clone) {
+            center = this.engine.objectMap[clone.centerId];
+            clone.name = '\u2299' + center.name;
+        }
+    } else if (obj.type === 'CIRCLE_3P') {
+        clone = this.engine.addCircle3P('tmp', mapId(obj.p1Id), mapId(obj.p2Id), mapId(obj.p3Id));
+        if (clone) {
+            p1 = this.engine.objectMap[clone.p1Id];
+            p2 = this.engine.objectMap[clone.p2Id];
+            p3 = this.engine.objectMap[clone.p3Id];
+            clone.name = '\u2299' + p1.name + p2.name + p3.name;
+        }
+    } else if (obj.type === 'ARC') {
+        clone = this.engine.addArc('tmp', mapId(obj.p1Id), mapId(obj.p2Id), mapId(obj.guideId));
+        if (clone) {
+            p1 = this.engine.objectMap[clone.p1Id];
+            p2 = this.engine.objectMap[clone.p2Id];
+            p3 = this.engine.objectMap[clone.guideId];
+            clone.name = 'arc' + p1.name + p2.name + p3.name;
+        }
+    } else if (obj.type === 'SECTOR') {
+        clone = this.engine.addSector('tmp', mapId(obj.centerId), mapId(obj.p1Id), mapId(obj.p2Id));
+        if (clone) {
+            center = this.engine.objectMap[clone.centerId];
+            p1 = this.engine.objectMap[clone.p1Id];
+            p2 = this.engine.objectMap[clone.p2Id];
+            clone.name = 'sec' + center.name + p1.name + p2.name;
+        }
+    } else if (obj.type === 'CIRCULAR_SEGMENT') {
+        clone = this.engine.addCircularSegment('tmp', mapId(obj.p1Id), mapId(obj.p2Id), mapId(obj.guideId));
+        if (clone) {
+            p1 = this.engine.objectMap[clone.p1Id];
+            p2 = this.engine.objectMap[clone.p2Id];
+            p3 = this.engine.objectMap[clone.guideId];
+            clone.name = 'sg' + p1.name + p2.name + p3.name;
+        }
+    } else if (obj.type === 'ANGLE') {
+        clone = this.engine.addAngle('tmp', mapId(obj.ray1Id), mapId(obj.vertexId), mapId(obj.ray2Id));
+        if (clone) {
+            ray1 = this.engine.objectMap[clone.ray1Id];
+            vertex = this.engine.objectMap[clone.vertexId];
+            ray2 = this.engine.objectMap[clone.ray2Id];
+            clone.name = '\u2220' + ray1.name + vertex.name + ray2.name;
+        }
+    } else if (obj.type === 'POLYGON') {
+        for (i = 0; i < obj.vertexIds.length; i++) {
+            if (!mapId(obj.vertexIds[i])) {
+                return null;
+            }
+            pointNames.push(mapId(obj.vertexIds[i]));
+        }
+        clone = this.engine.addPolygon('tmp', pointNames);
+        if (clone) {
+            pointNames = [];
+            for (i = 0; i < clone.vertexIds.length; i++) {
+                p1 = this.engine.objectMap[clone.vertexIds[i]];
+                if (p1) {
+                    pointNames.push(p1.name);
+                }
+            }
+            clone.name = 'poly' + pointNames.join('');
+        }
+    } else if (obj.type === 'DECORATE_LENGTH') {
+        clone = this.engine.addDecorateLength(obj.targetId);
+    } else if (obj.type === 'DECORATE_ANGLE') {
+        clone = this.engine.addDecorateAngle(mapId(obj.ray1Id), mapId(obj.vertexId), mapId(obj.ray2Id));
+    } else if (obj.type === 'DECORATE_PARALLEL') {
+        groupId = obj.groupId;
+        clone = this.engine.addDecorateParallel(obj.targetId, groupId);
+    }
+    if (clone) {
+        this.copyObjectStyle(obj, clone);
+    }
+    return clone;
+};
+
+// 평행 표시용 다음 그룹 번호
+AlgeoApp.prototype.getNextParallelDecorationGroupId = function () {
+    const list = this.engine.objects;
+    let maxGroup = 0;
+    let i;
+
+    for (i = 0; i < list.length; i++) {
+        if (list[i].type === 'DECORATE_PARALLEL' && list[i].groupId > maxGroup) {
+            maxGroup = list[i].groupId;
+        }
+    }
+    return maxGroup + 1;
 };
 
 // 함수식 비교용 정규화 (공백·곱셈기호 제거, 소문자 통일)
@@ -11215,6 +12529,80 @@ AlgeoApp.prototype.initHistory = function () {
     });
 
     this.syncHistoryUI();
+};
+
+// 장면 저장/불러오기 버튼 초기화
+AlgeoApp.prototype.initSaveLoad = function () {
+    const self = this;
+
+    $('#btnSaveScene').on('click', function (e) {
+        e.stopPropagation();
+        self.saveSceneToFile();
+    });
+
+    $('#btnLoadScene').on('click', function (e) {
+        e.stopPropagation();
+        $('#sceneFileInput').val('');
+        $('#sceneFileInput').trigger('click');
+    });
+
+    $('#sceneFileInput').on('change', function (e) {
+        const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+        if (file) {
+            self.loadSceneFromFile(file);
+        }
+    });
+};
+
+// 현재 장면을 JSON 파일로 저장
+AlgeoApp.prototype.saveSceneToFile = function () {
+    const payload = {
+        version: 1,
+        savedAt: new Date().toISOString(),
+        state: this.captureEngineState()
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = 'algeomath-scene.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.setTimeout(function () {
+        URL.revokeObjectURL(url);
+    }, 0);
+};
+
+// JSON 파일에서 장면 복원
+AlgeoApp.prototype.loadSceneFromFile = function (file) {
+    const self = this;
+    const reader = new FileReader();
+
+    reader.onload = function () {
+        let parsed;
+        let state;
+        try {
+            parsed = JSON.parse(reader.result);
+            state = parsed && parsed.state ? parsed.state : parsed;
+            if (!state || !state.objects || state.nextId === undefined) {
+                throw new Error('invalid-state');
+            }
+            self.recordHistory('JSON 불러오기');
+            self.restoreEngineState(state);
+            self.clearToolDraft();
+            self.clearSelection();
+            self.updateAlgebraView();
+            self.syncAlgebraPropsPanel();
+            self.renderer.draw();
+            self.syncHistoryUI();
+        } catch (err) {
+            window.alert('올바른 JSON 장면 파일이 아닙니다.');
+        }
+    };
+    reader.readAsText(file, 'utf-8');
 };
 
 // 객체 표시/숨김 토글 (대수창 눈 아이콘·단축키 H)
@@ -11967,6 +13355,27 @@ AlgeoApp.prototype.updateAlgebraView = function () {
             if (mt) {
                 desc = 'Area(' + mt.name + ') = ' +
                     (obj.value !== null && obj.value !== undefined ? obj.value.toFixed(2) : '?');
+            }
+        } else if (obj.type === 'TEXT') {
+            desc = obj.text || '';
+        } else if (obj.type === 'DECORATE_LEADER') {
+            desc = '설명선' + (obj.text ? ' - ' + obj.text : '');
+        } else if (obj.type === 'DECORATE_LENGTH') {
+            const lenTarget = this.engine.objectMap[obj.targetId];
+            if (lenTarget) {
+                desc = '길이 표시 (' + lenTarget.name + ')';
+            }
+        } else if (obj.type === 'DECORATE_ANGLE') {
+            const da1 = this.engine.objectMap[obj.ray1Id];
+            const dav = this.engine.objectMap[obj.vertexId];
+            const da2 = this.engine.objectMap[obj.ray2Id];
+            if (da1 && dav && da2) {
+                desc = '각도 표시 ' + da1.name + dav.name + da2.name;
+            }
+        } else if (obj.type === 'DECORATE_PARALLEL') {
+            const dpTarget = this.engine.objectMap[obj.targetId];
+            if (dpTarget) {
+                desc = '평행 표시 (' + dpTarget.name + ', 그룹 ' + obj.groupId + ')';
             }
         }
 

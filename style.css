@@ -901,6 +901,22 @@
     color: var(--text-secondary);
 }
 
+.history-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.history-toolbar-actions .sidebar-undo-btn {
+    width: auto;
+    min-width: 44px;
+    padding: 0 8px;
+    font-size: 11px;
+    writing-mode: horizontal-tb;
+    white-space: nowrap;
+}
+
 .algebra-history-list {
     list-style: none;
     margin: 0;
