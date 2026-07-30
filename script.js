@@ -144,9 +144,17 @@ function createAlgeoUI($container) {
         '                </div>' +
         '                <button type="button" id="btnToggleAlgebra" class="sidebar-toggle-btn" title="대수창 숨기기" aria-label="대수창 숨기기">◀</button>' +
         '            </div>' +
-        '            <div class="algebra-list-tabs">' +
-        '                <button type="button" class="algebra-tab-btn active" data-sort="created">생성순</button>' +
-        '                <button type="button" class="algebra-tab-btn" data-sort="type">종류순</button>' +
+            '            <div class="algebra-list-toolbar">' +
+        '                <div class="algebra-list-tabs">' +
+        '                    <button type="button" class="algebra-tab-btn active" data-sort="created">생성순</button>' +
+        '                    <button type="button" class="algebra-tab-btn" data-sort="type">종류순</button>' +
+        '                </div>' +
+        '                <div class="algebra-type-filter-wrap" id="algebraTypeFilterWrap" hidden>' +
+        '                    <label class="algebra-type-filter-label" for="algebraTypeFilter">종류</label>' +
+        '                    <select id="algebraTypeFilter" class="algebra-type-filter" title="종류별 필터">' +
+        '                        <option value="all">전체</option>' +
+        '                    </select>' +
+        '                </div>' +
         '            </div>' +
         '            <div class="algebra-props-panel" id="algebraPropsPanel">' +
         '                <p class="algebra-props-placeholder">객체를 선택하면 속성을 편집할 수 있습니다.</p>' +

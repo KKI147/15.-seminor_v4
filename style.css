@@ -560,13 +560,18 @@
     cursor: not-allowed;
 }
 
-/* 대수창 정렬 탭 (UI-2) */
+/* 대수창 정렬 탭 + 종류 필터 (UI-2) */
+.algebra-list-toolbar {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
 .algebra-list-tabs {
     display: flex;
     gap: 4px;
     padding: 8px 12px 0;
-    flex-shrink: 0;
-    border-bottom: 1px solid var(--border-color);
 }
 
 .algebra-tab-btn {
@@ -590,6 +595,44 @@
 .algebra-tab-btn.active {
     color: var(--accent-color);
     border-bottom-color: var(--accent-color);
+}
+
+.algebra-type-filter-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px 10px;
+}
+
+.algebra-type-filter-wrap[hidden] {
+    display: none;
+}
+
+.algebra-type-filter-label {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.algebra-type-filter {
+    flex: 1;
+    min-width: 0;
+    height: 28px;
+    padding: 0 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--surface-input);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.algebra-type-filter:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px var(--accent-focus-ring);
 }
 
 /* 대수창 속성 편집 패널 (4-1) + 스타일 (M5) */
@@ -1882,6 +1925,8 @@
 .algeo-wrapper .algebra-tab-btn { color: var(--text-secondary); }
 .algeo-wrapper .algebra-tab-btn:hover { color: var(--text-primary); }
 .algeo-wrapper .algebra-tab-btn.active { color: var(--accent-color); }
+.algeo-wrapper .algebra-type-filter-label { color: var(--text-secondary); }
+.algeo-wrapper .algebra-type-filter { color: var(--text-primary); background-color: var(--surface-input); }
 .algeo-wrapper .algebra-props-placeholder { color: var(--text-secondary); }
 .algeo-wrapper .algebra-props-title { color: var(--text-primary); }
 .algeo-wrapper .algebra-props-title .props-type { color: var(--text-secondary); }

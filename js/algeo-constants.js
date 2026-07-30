@@ -90,6 +90,7 @@ const ALGEBRA_TYPE_ORDER = {
     POINT_ON: 3,
     REGULAR_VERTEX: 4,
     FIXED_ANGLE_POINT: 5,
+    TRANSFORM_POINT: 5.5,
     SEGMENT: 6,
     VECTOR: 7,
     LINE: 8,
@@ -114,8 +115,70 @@ const ALGEBRA_TYPE_ORDER = {
     TEXT: 27,
     IMAGE: 28,
     PEN: 29,
-    CHECKBOX: 30
+    CHECKBOX: 30,
+    DECORATE_LEADER: 31,
+    DECORATE_LENGTH: 32,
+    DECORATE_ANGLE: 33,
+    DECORATE_PARALLEL: 34
 };
+
+// 대수창 종류순 필터 그룹 (전체 + 항목별)
+const ALGEBRA_TYPE_FILTERS = [
+    { id: 'all', label: '전체', types: null },
+    { id: 'point', label: '점', types: ['POINT', 'TRANSFORM_POINT', 'POINT_ON', 'REGULAR_VERTEX', 'FIXED_ANGLE_POINT'] },
+    { id: 'midpoint', label: '중점', types: ['MIDPOINT'] },
+    { id: 'intersection', label: '교점', types: ['INTERSECTION'] },
+    { id: 'segment', label: '선분', types: ['SEGMENT'] },
+    { id: 'vector', label: '벡터', types: ['VECTOR'] },
+    { id: 'line', label: '직선', types: ['LINE', 'RAY', 'PERP_BISECTOR', 'ANGLE_BISECTOR', 'PARALLEL_LINE', 'PERP_LINE', 'TANGENT'] },
+    { id: 'circle', label: '원', types: ['CIRCLE', 'CIRCLE_3P'] },
+    { id: 'arc', label: '호·부채꼴·활꼴', types: ['ARC', 'SECTOR', 'CIRCULAR_SEGMENT'] },
+    { id: 'angle', label: '각도', types: ['ANGLE', 'MEASURE_ANGLE'] },
+    { id: 'polygon', label: '다각형', types: ['POLYGON'] },
+    { id: 'measure', label: '측정', types: ['MEASURE_LENGTH', 'MEASURE_AREA'] },
+    { id: 'slider', label: '슬라이더', types: ['SLIDER'] },
+    { id: 'function', label: '함수', types: ['FUNCTION'] },
+    { id: 'text', label: '텍스트', types: ['TEXT'] },
+    { id: 'image', label: '그림', types: ['IMAGE'] },
+    { id: 'pen', label: '펜', types: ['PEN'] },
+    { id: 'checkbox', label: '체크박스', types: ['CHECKBOX'] },
+    { id: 'decorate', label: '꾸미기', types: ['DECORATE_LEADER', 'DECORATE_LENGTH', 'DECORATE_ANGLE', 'DECORATE_PARALLEL'] }
+];
+
+// 객체 타입이 종류 필터에 맞는지
+function matchesAlgebraTypeFilter(objType, filterId) {
+    let i;
+    let group;
+
+    if (!filterId || filterId === 'all') {
+        return true;
+    }
+    for (i = 0; i < ALGEBRA_TYPE_FILTERS.length; i++) {
+        group = ALGEBRA_TYPE_FILTERS[i];
+        if (group.id !== filterId) {
+            continue;
+        }
+        if (!group.types) {
+            return true;
+        }
+        return group.types.indexOf(objType) !== -1;
+    }
+    return true;
+}
+
+// 객체 타입 → 필터 그룹 id
+function getAlgebraTypeFilterId(objType) {
+    let i;
+    let group;
+
+    for (i = 0; i < ALGEBRA_TYPE_FILTERS.length; i++) {
+        group = ALGEBRA_TYPE_FILTERS[i];
+        if (group.types && group.types.indexOf(objType) !== -1) {
+            return group.id;
+        }
+    }
+    return null;
+}
 
 // 자유 배치 객체(좌표만 이동)인지
 function isAlgeoFreePlaceType(type) {

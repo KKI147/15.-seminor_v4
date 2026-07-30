@@ -26,6 +26,7 @@ function AlgeoApp(engine, renderer) {
     this.algebraCmdDictOpen = false;  // 명령어 사전 패널 표시 여부
     this.algebraPanelOpen = true;     // 대수창 표시 여부
     this.algebraSortMode = 'created'; // 대수창 정렬: created | type
+    this.algebraTypeFilter = 'all';  // 종류순 필터 그룹 id (all | point | …)
     this.openToolCategoryId = null;   // 열린 도구 플라이아웃 카테고리 ID
     this.constructionDraft = null;    // 인터랙티브 작도: type별 임시 상태 + 마우스 미리보기
     this.guideCollapsed = false;      // 가이드 패널 내용 접힘
@@ -6414,6 +6415,11 @@ AlgeoApp.prototype.initAlgebraSidebar = function () {
         self.updateAlgebraView();
     });
 
+    $('#algebraTypeFilter').on('change', function () {
+        self.algebraTypeFilter = $(this).val() || 'all';
+        self.updateAlgebraView();
+    });
+
     $('#algebraPropsPanel').on('click', '.prop-apply-btn', function (e) {
         e.stopPropagation();
         self.applyAlgebraProps();
@@ -6494,9 +6500,11 @@ AlgeoApp.prototype.initAlgebraSidebar = function () {
     });
 };
 
-// 대수창 정렬된 객체 목록 반환
+// 대수창 정렬·필터된 객체 목록 반환
 AlgeoApp.prototype.getSortedAlgebraObjects = function () {
     const list = this.engine.objects.slice();
+    const filterId = this.algebraTypeFilter || 'all';
+    let filtered;
     let i;
 
     if (this.algebraSortMode === 'type') {
@@ -6510,9 +6518,68 @@ AlgeoApp.prototype.getSortedAlgebraObjects = function () {
             }
             return a.name.localeCompare(b.name);
         });
+        if (filterId !== 'all') {
+            filtered = [];
+            for (i = 0; i < list.length; i++) {
+                if (matchesAlgebraTypeFilter(list[i].type, filterId)) {
+                    filtered.push(list[i]);
+                }
+            }
+            return filtered;
+        }
     }
 
     return list;
+};
+
+// 종류순 필터 드롭다운 옵션·표시 동기화
+AlgeoApp.prototype.syncAlgebraTypeFilterUI = function () {
+    const $wrap = $('#algebraTypeFilterWrap');
+    const $select = $('#algebraTypeFilter');
+    const present = {};
+    let i;
+    let obj;
+    let groupId;
+    let group;
+    let html;
+    let current;
+    let hasCurrent;
+
+    if (this.algebraSortMode !== 'type') {
+        $wrap.attr('hidden', 'hidden');
+        return;
+    }
+
+    $wrap.removeAttr('hidden');
+
+    for (i = 0; i < this.engine.objects.length; i++) {
+        obj = this.engine.objects[i];
+        groupId = getAlgebraTypeFilterId(obj.type);
+        if (groupId) {
+            present[groupId] = true;
+        }
+    }
+
+    current = this.algebraTypeFilter || 'all';
+    hasCurrent = current === 'all' || !!present[current];
+    if (!hasCurrent) {
+        current = 'all';
+        this.algebraTypeFilter = 'all';
+    }
+
+    html = '<option value="all">전체</option>';
+    for (i = 0; i < ALGEBRA_TYPE_FILTERS.length; i++) {
+        group = ALGEBRA_TYPE_FILTERS[i];
+        if (group.id === 'all') {
+            continue;
+        }
+        if (!present[group.id]) {
+            continue;
+        }
+        html += '<option value="' + group.id + '">' + group.label + '</option>';
+    }
+    $select.html(html);
+    $select.val(current);
 };
 
 // 선택 객체 속성 패널 HTML 생성
@@ -7070,9 +7137,15 @@ AlgeoApp.prototype.updateAlgebraView = function () {
     const $list = $('#algebraList');
     $list.empty();
 
+    this.syncAlgebraTypeFilterUI();
+
     const objects = this.getSortedAlgebraObjects();
     if (objects.length === 0) {
-        $list.append('<div class="empty-msg">오브젝트가 없습니다.</div>');
+        if (this.algebraSortMode === 'type' && this.algebraTypeFilter && this.algebraTypeFilter !== 'all') {
+            $list.append('<div class="empty-msg">해당 종류의 오브젝트가 없습니다.</div>');
+        } else {
+            $list.append('<div class="empty-msg">오브젝트가 없습니다.</div>');
+        }
         return;
     }
 
