@@ -89,7 +89,7 @@ const ALGEO_TOOL_CATEGORIES = [
             { tool: 'ROTATE', label: '회전', iconId: 'rotate', status: 'done', hint: '선택 후 중심점·각도 입력' },
             { tool: 'TRANSLATE', label: '평행이동', iconId: 'translate', status: 'done', hint: '선택 후 시작점·끝점 클릭' },
             { tool: 'DILATE', label: '점을 중심으로 확대', iconId: 'dilate', status: 'done', hint: '선택 후 중심점·배율 입력' },
-            { tool: 'TILE', label: '타일', iconId: 'tile', status: 'stub', hint: '패턴 반복 (9-3)' }
+            { tool: 'TILE', label: '타일', iconId: 'tile', status: 'done', hint: '선택 후 벡터·반복 횟수' }
         ]
     },
     {
@@ -100,7 +100,7 @@ const ALGEO_TOOL_CATEGORIES = [
             { tool: 'TEXT', label: '텍스트', iconId: 'text', status: 'done', shortcut: 'T', hint: '클릭 위치에 텍스트 배치' },
             { tool: 'SLIDER', label: '슬라이더', iconId: 'slider', status: 'done', hint: '캔버스 클릭 생성' },
             { tool: 'USER_TOOL', label: '사용자 도구', iconId: 'user_tool', status: 'stub', hint: '사용자 정의 (11-2)' },
-            { tool: 'CHECKBOX', label: '체크박스', iconId: 'checkbox', status: 'stub', hint: '표시 토글 (7-2)' },
+            { tool: 'CHECKBOX', label: '체크박스', iconId: 'checkbox', status: 'done', hint: '클릭 배치 · 선택 시 토글' },
             { tool: 'BLOCK_EVENT_BTN', label: '블록코딩 이벤트 버튼', iconId: 'block_event_btn', status: 'stub', hint: '이벤트 버튼 (11-1)' },
             { tool: 'HIDE_OBJECT', label: '대상 숨기기', iconId: 'hide_object', status: 'done', shortcut: 'H', hint: '객체 클릭' },
             { tool: 'DELETE', label: '삭제', iconId: 'delete', status: 'done', hint: '객체 클릭' }
@@ -480,9 +480,14 @@ const ALGEO_TOOL_GUIDES = {
         tips: ['2는 2배 확대, 0.5는 절반 축소입니다.']
     },
     TILE: {
-        summary: '도형을 타일처럼 반복합니다. (준비 중)',
-        steps: ['9단계에서 구현 예정입니다.'],
-        tips: []
+        summary: '선택한 도형을 기준 벡터 방향으로 여러 번 복제합니다.',
+        steps: [
+            '타일링할 점·도형을 먼저 선택합니다.',
+            '이동 벡터의 시작점을 클릭합니다.',
+            '이동 벡터의 끝점을 클릭합니다.',
+            '반복 횟수를 입력합니다.'
+        ],
+        tips: ['1회는 평행이동과 같고, 3이면 벡터의 1·2·3배 위치에 복제됩니다.']
     },
     TEXT: {
         summary: '클릭한 위치에 자유 텍스트를 배치합니다.',
@@ -495,9 +500,9 @@ const ALGEO_TOOL_GUIDES = {
         tips: []
     },
     CHECKBOX: {
-        summary: '표시를 켜고 끄는 체크박스를 만듭니다. (준비 중)',
-        steps: ['7-2단계에서 구현 예정입니다.'],
-        tips: []
+        summary: '클릭한 위치에 체크박스를 둡니다. 선택 도구로 켜고 끌 수 있습니다.',
+        steps: ['체크박스를 둘 위치를 클릭합니다.', '표시할 문구를 입력합니다.'],
+        tips: ['선택 도구로 체크박스를 클릭하면 체크가 토글됩니다.']
     },
     BLOCK_EVENT_BTN: {
         summary: '블록코딩 이벤트 버튼을 만듭니다. (준비 중)',

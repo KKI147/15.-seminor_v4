@@ -443,6 +443,8 @@ AlgeoRenderer.prototype.drawObjects = function () {
             this.drawTextObject(obj);
         } else if (obj.type === 'IMAGE') {
             this.drawImageObject(obj);
+        } else if (obj.type === 'CHECKBOX') {
+            this.drawCheckboxObject(obj);
         } else if (obj.type === 'PEN') {
             this.drawPenStroke(obj);
         } else if (obj.type === 'DECORATE_LEADER') {
@@ -534,6 +536,65 @@ AlgeoRenderer.prototype.drawTextObject = function (obj) {
         color: style.stroke,
         align: 'left'
     });
+};
+
+// 체크박스 화면 사각 (픽셀) — 박스+라벨
+AlgeoRenderer.prototype.getCheckboxScreenRect = function (obj) {
+    const sx = this.toScreenX(obj.x);
+    const sy = this.toScreenY(obj.y);
+    const box = 16;
+    const label = obj.text || '';
+    let labelW = 0;
+
+    this.ctx.save();
+    this.ctx.font = 'bold 14px Outfit, sans-serif';
+    labelW = label ? this.ctx.measureText(label).width : 0;
+    this.ctx.restore();
+
+    return {
+        x: sx,
+        y: sy - box / 2,
+        w: box + (labelW > 0 ? 8 + labelW : 0),
+        h: Math.max(box, 18),
+        box: box,
+        sx: sx,
+        sy: sy
+    };
+};
+
+// 체크박스 렌더
+AlgeoRenderer.prototype.drawCheckboxObject = function (obj) {
+    const ctx = this.ctx;
+    const style = resolveObjectStyle(obj);
+    const rect = this.getCheckboxScreenRect(obj);
+    const box = rect.box;
+    const bx = rect.sx;
+    const by = rect.sy - box / 2;
+
+    ctx.save();
+    ctx.strokeStyle = style.stroke;
+    ctx.fillStyle = style.stroke;
+    ctx.lineWidth = 1.75;
+    ctx.lineJoin = 'round';
+    ctx.strokeRect(bx, by, box, box);
+
+    if (obj.checked) {
+        ctx.beginPath();
+        ctx.moveTo(bx + 3.5, by + box * 0.55);
+        ctx.lineTo(bx + box * 0.42, by + box - 3.5);
+        ctx.lineTo(bx + box - 3, by + 4);
+        ctx.stroke();
+    }
+
+    if (obj.text) {
+        this.drawCanvasLabel(obj.text, bx + box + 8, rect.sy, {
+            font: 'bold 14px Outfit, sans-serif',
+            color: style.stroke,
+            align: 'left',
+            baseline: 'middle'
+        });
+    }
+    ctx.restore();
 };
 
 // 그림 객체 화면 사각 (픽셀)
@@ -789,10 +850,11 @@ AlgeoRenderer.prototype.drawCanvasLabel = function (text, x, y, options) {
     const font = opts.font || 'bold 12px Outfit, sans-serif';
     const color = opts.color || ALGEO_VIS.axis;
     const useHalo = opts.halo !== false;
+    const baseline = opts.baseline || 'alphabetic';
 
     ctx.font = font;
     ctx.textAlign = align;
-    ctx.textBaseline = 'alphabetic';
+    ctx.textBaseline = baseline;
 
     if (useHalo) {
         ctx.strokeStyle = ALGEO_VIS.labelHalo;
@@ -803,6 +865,7 @@ AlgeoRenderer.prototype.drawCanvasLabel = function (text, x, y, options) {
     ctx.fillStyle = color;
     ctx.fillText(text, x, y);
     ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
 };
 
 // 다각형 렌더 (채움 + 테두리 + 이름 라벨)
@@ -2378,6 +2441,14 @@ AlgeoRenderer.prototype.drawSelectedObjectHighlight = function (obj) {
         sy = this.toScreenY(obj.y);
         ctx.beginPath();
         ctx.rect(sx - 4, sy - 18, 110, 26);
+        this.strokeSelectionPath();
+        return;
+    }
+
+    if (obj.type === 'CHECKBOX') {
+        bounds = this.getCheckboxScreenRect(obj);
+        ctx.beginPath();
+        ctx.rect(bounds.x - 3, bounds.y - 3, bounds.w + 6, bounds.h + 6);
         this.strokeSelectionPath();
         return;
     }

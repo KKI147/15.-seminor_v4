@@ -1188,6 +1188,23 @@ AlgeoEngine.prototype.translatePointCoords = function (source, fromPoint, toPoin
     };
 };
 
+// 타일: 기준 벡터의 tileIndex배만큼 이동한 좌표
+AlgeoEngine.prototype.tilePointCoords = function (source, fromPoint, toPoint, tileIndex) {
+    let k;
+
+    if (!source || !fromPoint || !toPoint) {
+        return null;
+    }
+    k = tileIndex !== undefined && tileIndex !== null ? tileIndex : 1;
+    if (isNaN(k) || k === 0) {
+        return null;
+    }
+    return {
+        x: source.x + k * (toPoint.x - fromPoint.x),
+        y: source.y + k * (toPoint.y - fromPoint.y)
+    };
+};
+
 // 점을 기준점 중심으로 확대/축소한 좌표
 AlgeoEngine.prototype.dilatePointCoords = function (source, center, scale) {
     if (!source || !center || scale === null || scale === undefined || isNaN(scale)) {
@@ -1220,6 +1237,9 @@ AlgeoEngine.prototype.getTransformedPointCoords = function (obj) {
     if (obj.transformType === 'TRANSLATE') {
         return this.translatePointCoords(source, ref1, ref2);
     }
+    if (obj.transformType === 'TILE') {
+        return this.tilePointCoords(source, ref1, ref2, obj.tileIndex);
+    }
     if (obj.transformType === 'DILATE') {
         return this.dilatePointCoords(source, ref1, obj.scale || 1);
     }
@@ -1245,7 +1265,8 @@ AlgeoEngine.prototype.addTransformPoint = function (name, sourceId, config) {
         ref2Id: config.ref2Id || null,
         transformType: config.transformType,
         degrees: config.degrees || 0,
-        scale: config.scale !== undefined ? config.scale : 1
+        scale: config.scale !== undefined ? config.scale : 1,
+        tileIndex: config.tileIndex !== undefined ? config.tileIndex : 1
     });
     if (!coords) {
         return null;
@@ -1268,6 +1289,7 @@ AlgeoEngine.prototype.addTransformPoint = function (name, sourceId, config) {
         transformType: config.transformType,
         degrees: config.degrees || 0,
         scale: config.scale !== undefined ? config.scale : 1,
+        tileIndex: config.tileIndex !== undefined ? config.tileIndex : 1,
         x: coords.x,
         y: coords.y,
         parents: parents,
@@ -1759,6 +1781,36 @@ AlgeoEngine.prototype.addText = function (text, x, y) {
     };
     this.objects.push(obj);
     this.objectMap[id] = obj;
+    return obj;
+};
+
+// 체크박스 객체 추가
+AlgeoEngine.prototype.addCheckbox = function (text, x, y, checked) {
+    const id = this.generateId();
+    const obj = {
+        id: id,
+        type: 'CHECKBOX',
+        name: '체크박스',
+        text: text || '',
+        x: x,
+        y: y,
+        checked: !!checked,
+        parents: [],
+        children: []
+    };
+    this.objects.push(obj);
+    this.objectMap[id] = obj;
+    return obj;
+};
+
+// 체크박스 체크 상태 토글
+AlgeoEngine.prototype.toggleCheckbox = function (id) {
+    const obj = this.objectMap[id];
+
+    if (!obj || obj.type !== 'CHECKBOX') {
+        return null;
+    }
+    obj.checked = !obj.checked;
     return obj;
 };
 

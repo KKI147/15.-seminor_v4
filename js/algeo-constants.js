@@ -113,12 +113,13 @@ const ALGEBRA_TYPE_ORDER = {
     FUNCTION: 26,
     TEXT: 27,
     IMAGE: 28,
-    PEN: 29
+    PEN: 29,
+    CHECKBOX: 30
 };
 
 // 자유 배치 객체(좌표만 이동)인지
 function isAlgeoFreePlaceType(type) {
-    return type === 'TEXT' || type === 'IMAGE';
+    return type === 'TEXT' || type === 'IMAGE' || type === 'CHECKBOX';
 }
 
 // 펜 획(폴리라인) 객체인지
@@ -157,7 +158,8 @@ function isAlgeoPointType(type) {
 // 변환 도구인지 여부
 function isAlgeoTransformTool(type) {
     return type === 'REFLECT_POINT' || type === 'REFLECT_LINE' ||
-        type === 'ROTATE' || type === 'TRANSLATE' || type === 'DILATE';
+        type === 'ROTATE' || type === 'TRANSLATE' || type === 'DILATE' ||
+        type === 'TILE';
 }
 
 // 변환 도구가 다룰 수 있는 객체 타입
@@ -438,6 +440,7 @@ function getTypeStyleDefaults(type) {
         MEASURE_AREA: { stroke: vis.measure, fill: vis.measureFill, lineWidth: 2, dash: [], fillOpacity: 1 },
         TEXT: { stroke: vis.axis, fill: vis.axis, lineWidth: 1.5, dash: [], fillOpacity: 1 },
         IMAGE: { stroke: vis.axis, fill: null, lineWidth: 1.5, dash: [], fillOpacity: 1 },
+        CHECKBOX: { stroke: vis.axis, fill: vis.axis, lineWidth: 1.5, dash: [], fillOpacity: 1 },
         DECORATE_LEADER: { stroke: vis.segment, fill: null, lineWidth: 2, dash: [], fillOpacity: 1 },
         DECORATE_LENGTH: { stroke: vis.segment, fill: null, lineWidth: 2, dash: [], fillOpacity: 1 },
         DECORATE_ANGLE: { stroke: vis.angle, fill: vis.angleFill, lineWidth: 2, dash: [], fillOpacity: 1 },

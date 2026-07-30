@@ -1112,10 +1112,10 @@ AlgeoApp.prototype.getGuideActiveStepIndex = function () {
     if (tool === 'REFLECT_POINT' || tool === 'ROTATE' || tool === 'DILATE') {
         return 0;
     }
-    if (tool === 'REFLECT_LINE' || tool === 'TRANSLATE') {
+    if (tool === 'REFLECT_LINE' || tool === 'TRANSLATE' || tool === 'TILE') {
         return Math.min(n, 1);
     }
-    if (tool === 'TEXT' || tool === 'INSERT_IMAGE') {
+    if (tool === 'TEXT' || tool === 'INSERT_IMAGE' || tool === 'CHECKBOX') {
         return 0;
     }
     if (tool === 'PEN') {
@@ -1411,11 +1411,13 @@ AlgeoApp.prototype.updateCanvasCursor = function () {
         this.currentTool === 'REFLECT_LINE' ||
         this.currentTool === 'ROTATE' ||
         this.currentTool === 'TRANSLATE' ||
+        this.currentTool === 'TILE' ||
         this.currentTool === 'DILATE' ||
         this.currentTool === 'MEASURE_LENGTH' ||
         this.currentTool === 'MEASURE_ANGLE' ||
         this.currentTool === 'MEASURE_AREA' ||
         this.currentTool === 'TEXT' ||
+        this.currentTool === 'CHECKBOX' ||
         this.currentTool === 'INSERT_IMAGE' ||
         this.currentTool === 'PEN' ||
         this.currentTool === 'DECORATE_LEADER' ||
@@ -2867,6 +2869,8 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
         this.handleRotateMouseDown(e, hitPoint);
     } else if (this.currentTool === 'TRANSLATE') {
         this.handleTranslateMouseDown(e, hitPoint);
+    } else if (this.currentTool === 'TILE') {
+        this.handleTileMouseDown(e, hitPoint);
     } else if (this.currentTool === 'DILATE') {
         this.handleDilateMouseDown(e, hitPoint);
     } else if (this.currentTool === 'MEASURE_LENGTH') {
@@ -2877,6 +2881,8 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
         this.handleMeasureAreaMouseDown(e, hitPoint);
     } else if (this.currentTool === 'TEXT') {
         this.handleTextMouseDown(e);
+    } else if (this.currentTool === 'CHECKBOX') {
+        this.handleCheckboxMouseDown(e);
     } else if (this.currentTool === 'INSERT_IMAGE') {
         this.handleInsertImageMouseDown(e);
     } else if (this.currentTool === 'PEN') {
@@ -3450,6 +3456,12 @@ AlgeoApp.prototype.findObjectAt = function (screenX, screenY) {
                 Math.abs(this.renderer.toScreenY(obj.y) - screenY) <= 20) {
                 return obj;
             }
+        } else if (obj.type === 'CHECKBOX') {
+            const cbRect = this.renderer.getCheckboxScreenRect(obj);
+            if (screenX >= cbRect.x - 2 && screenX <= cbRect.x + cbRect.w + 2 &&
+                screenY >= cbRect.y - 2 && screenY <= cbRect.y + cbRect.h + 2) {
+                return obj;
+            }
         } else if (obj.type === 'IMAGE') {
             const imgRect = this.renderer.getImageScreenRect(obj);
             if (screenX >= imgRect.x && screenX <= imgRect.x + imgRect.w &&
@@ -4018,6 +4030,82 @@ AlgeoApp.prototype.handleTranslateMouseDown = function (e, hitPoint) {
     });
 };
 
+// 타일: 기준 벡터 + 반복 횟수 → 1..n배 위치에 복제
+AlgeoApp.prototype.handleTileMouseDown = function (e, hitPoint) {
+    const r = this.renderer;
+    const pos = this.getEventCanvasPos(e);
+    let countStr;
+    let count;
+    let k;
+    let result;
+    let allCreated;
+    let ref1Id;
+    let ref2Id;
+
+    if (!this.ensureTransformSelection(pos.x, pos.y, hitPoint)) {
+        return;
+    }
+    if (!hitPoint) {
+        r.draw();
+        return;
+    }
+    this.selectedPoints.push(hitPoint.id);
+    this.syncHighlightToRenderer();
+    if (this.selectedPoints.length < 2) {
+        r.draw();
+        return;
+    }
+    if (this.selectedPoints[0] === this.selectedPoints[1]) {
+        this.selectedPoints = [];
+        this.syncHighlightToRenderer();
+        r.draw();
+        return;
+    }
+
+    countStr = window.prompt('반복 횟수를 입력하세요. (예: 3)', '3');
+    if (countStr === null) {
+        this.selectedPoints = [];
+        this.syncHighlightToRenderer();
+        r.draw();
+        return;
+    }
+    count = parseInt(countStr, 10);
+    if (isNaN(count) || count < 1) {
+        window.alert('반복 횟수는 1 이상의 정수로 입력해 주세요.');
+        this.selectedPoints = [];
+        this.syncHighlightToRenderer();
+        r.draw();
+        return;
+    }
+
+    ref1Id = this.selectedPoints[0];
+    ref2Id = this.selectedPoints[1];
+    this.recordHistory('타일');
+    allCreated = [];
+    for (k = 1; k <= count; k++) {
+        result = this.cloneSelectionWithTransform({
+            transformType: 'TILE',
+            ref1Id: ref1Id,
+            ref2Id: ref2Id,
+            tileIndex: k
+        });
+        if (result.createdIds && result.createdIds.length > 0) {
+            allCreated = allCreated.concat(result.createdIds);
+        }
+    }
+    if (allCreated.length === 0) {
+        window.alert('변환할 수 있는 선택 대상이 없습니다.');
+        this.selectedPoints = [];
+        this.syncHighlightToRenderer();
+        r.draw();
+        return;
+    }
+    this.setSelection(allCreated, allCreated[allCreated.length - 1]);
+    this.clearToolDraft();
+    this.updateAlgebraView();
+    this.renderer.draw();
+};
+
 // 확대: 중심점 + 배율 입력
 AlgeoApp.prototype.handleDilateMouseDown = function (e, hitPoint) {
     const pos = this.getEventCanvasPos(e);
@@ -4062,6 +4150,21 @@ AlgeoApp.prototype.handleTextMouseDown = function (e) {
     }
     this.recordHistory('텍스트 추가');
     this.engine.addText(text, math.x, math.y);
+    this.updateAlgebraView();
+    this.renderer.draw();
+};
+
+// 체크박스 추가
+AlgeoApp.prototype.handleCheckboxMouseDown = function (e) {
+    const pos = this.getEventCanvasPos(e);
+    const math = this.screenToMath(pos.x, pos.y);
+    const text = window.prompt('체크박스 문구를 입력하세요.', '항목');
+
+    if (text === null) {
+        return;
+    }
+    this.recordHistory('체크박스 추가');
+    this.engine.addCheckbox(text.replace(/^\s+|\s+$/g, ''), math.x, math.y, false);
     this.updateAlgebraView();
     this.renderer.draw();
 };
@@ -4510,15 +4613,19 @@ AlgeoApp.prototype.handleSelectToolMouseDown = function (e, mouseX, mouseY, hitP
         }
 
         if (this.isIdSelected(target.id)) {
-            // 이미 선택된 객체 — 드래그로 집단 이동, 클릭만이면 유지
-            this.pendingSelectClick = null;
+            // 이미 선택된 객체 — 드래그로 집단 이동, 클릭만이면 유지(체크박스는 토글)
+            this.pendingSelectClick = target.type === 'CHECKBOX'
+                ? { id: target.id, toggleCheckbox: true }
+                : null;
             this.beginSelectionTranslate(math.x, math.y);
             this.syncToolGuide();
             return;
         }
 
         this.setSelection([target.id], target.id);
-        this.pendingSelectClick = null;
+        this.pendingSelectClick = target.type === 'CHECKBOX'
+            ? { id: target.id, toggleCheckbox: true }
+            : null;
         this.beginSelectionTranslate(math.x, math.y);
         this.syncToolGuide();
         return;
@@ -4594,6 +4701,13 @@ AlgeoApp.prototype.beginSelectionTranslate = function (mathX, mathY) {
 AlgeoApp.prototype.applyPendingSelectClick = function () {
     const pending = this.pendingSelectClick;
     if (!pending) {
+        return;
+    }
+    if (pending.toggleCheckbox) {
+        this.recordHistory('체크박스 토글');
+        this.engine.toggleCheckbox(pending.id);
+        this.updateAlgebraView();
+        this.renderer.draw();
         return;
     }
     if (pending.additive) {
@@ -4823,6 +4937,14 @@ AlgeoApp.prototype.getObjectScreenBounds = function (obj) {
         sx = r.toScreenX(obj.x);
         sy = r.toScreenY(obj.y);
         return { x1: sx - 4, y1: sy - 18, x2: sx + 110, y2: sy + 8 };
+    } else if (obj.type === 'CHECKBOX') {
+        bounds = r.getCheckboxScreenRect(obj);
+        return {
+            x1: bounds.x - 2,
+            y1: bounds.y - 2,
+            x2: bounds.x + bounds.w + 2,
+            y2: bounds.y + bounds.h + 2
+        };
     } else if (obj.type === 'IMAGE') {
         bounds = r.getImageScreenRect(obj);
         return {
@@ -6460,6 +6582,15 @@ AlgeoApp.prototype.buildAlgebraPropsHtml = function (obj) {
         if (obj.fileName) {
             html += '<p class="props-note">파일: ' + escapeHtmlText(obj.fileName) + '</p>';
         }
+    } else if (obj.type === 'CHECKBOX') {
+        html += '<div class="algebra-props-form">';
+        html += '<label class="prop-field">x <input type="text" class="prop-input" data-prop="x" value="' + obj.x.toFixed(2) + '" /></label>';
+        html += '<label class="prop-field">y <input type="text" class="prop-input" data-prop="y" value="' + obj.y.toFixed(2) + '" /></label>';
+        html += '<label class="prop-field">문구 <input type="text" class="prop-input" data-prop="text" value="' + escapeHtmlText(obj.text || '') + '" /></label>';
+        html += '<label class="prop-field prop-check-field"><input type="checkbox" class="prop-input" data-prop="checked"' +
+            (obj.checked ? ' checked' : '') + ' /> 체크됨</label>';
+        html += '<button type="button" class="prop-apply-btn">적용</button>';
+        html += '</div>';
     } else if (obj.type === 'FUNCTION') {
         html += '<div class="algebra-props-form">';
         html += '<label class="prop-field">기울기 a <input type="text" class="prop-input" data-prop="slope" value="' + obj.slope + '" /></label>';
@@ -6902,6 +7033,17 @@ AlgeoApp.prototype.applyAlgebraProps = function () {
         obj.y = yVal;
         obj.height = numVal * (obj.height / obj.width);
         obj.width = numVal;
+    } else if (obj.type === 'CHECKBOX') {
+        xVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="x"]').val());
+        yVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="y"]').val());
+        if (isNaN(xVal) || isNaN(yVal)) {
+            $('#algebraError').text('좌표는 숫자여야 합니다.');
+            return;
+        }
+        obj.x = xVal;
+        obj.y = yVal;
+        obj.text = String($('#algebraPropsPanel .prop-input[data-prop="text"]').val() || '');
+        obj.checked = $('#algebraPropsPanel .prop-input[data-prop="checked"]').is(':checked');
     } else if (obj.type === 'FUNCTION') {
         slopeVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="slope"]').val());
         interceptVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="intercept"]').val());
@@ -7105,6 +7247,8 @@ AlgeoApp.prototype.updateAlgebraView = function () {
             }
         } else if (obj.type === 'TEXT') {
             desc = obj.text || '';
+        } else if (obj.type === 'CHECKBOX') {
+            desc = (obj.checked ? '체크됨 · ' : '미체크 · ') + (obj.text || '');
         } else if (obj.type === 'IMAGE') {
             desc = '그림' + (obj.fileName ? ' (' + obj.fileName + ')' : '') +
                 ' ' + Number(obj.width).toFixed(1) + '\u00D7' + Number(obj.height).toFixed(1);
