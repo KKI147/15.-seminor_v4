@@ -112,7 +112,8 @@ const ALGEBRA_TYPE_ORDER = {
     SLIDER: 25,
     FUNCTION: 26,
     TEXT: 27,
-    IMAGE: 28
+    IMAGE: 28,
+    PEN: 29
 };
 
 // 자유 배치 객체(좌표만 이동)인지
@@ -120,8 +121,17 @@ function isAlgeoFreePlaceType(type) {
     return type === 'TEXT' || type === 'IMAGE';
 }
 
+// 펜 획(폴리라인) 객체인지
+function isAlgeoPenType(type) {
+    return type === 'PEN';
+}
+
 // 그림 기본 너비(수학 단위)
 const ALGEO_IMAGE_DEFAULT_WIDTH = 4;
+// 펜 샘플링 — 이전 점과 화면 거리(px)가 이 값 이상일 때만 추가
+const ALGEO_PEN_MIN_SAMPLE_PX = 2;
+// 펜 획으로 인정할 최소 점 개수
+const ALGEO_PEN_MIN_POINTS = 2;
 
 // 넓이 측정 가능한 도형 타입
 const ALGEO_AREA_MEASURABLE_TYPES = {
@@ -358,7 +368,7 @@ const ALGEO_TOOL_CATEGORIES = [
             { tool: 'DECORATE_LENGTH', label: '꾸미기: 길이', iconId: 'decorate_length', status: 'done', hint: '선형 객체 클릭' },
             { tool: 'DECORATE_ANGLE', label: '꾸미기: 각도', iconId: 'decorate_angle', status: 'done', hint: '각 객체 또는 세 점 선택' },
             { tool: 'DECORATE_PARALLEL', label: '꾸미기: 평행', iconId: 'decorate_parallel', status: 'done', hint: '선형 객체 두 개 선택' },
-            { tool: 'PEN', label: '그리기', iconId: 'pen', status: 'stub', shortcut: 'B', hint: '펜그림 (8-3)' }
+            { tool: 'PEN', label: '그리기', iconId: 'pen', status: 'done', shortcut: 'B', hint: '드래그로 자유곡선' }
         ]
     },
     {
@@ -768,9 +778,17 @@ const ALGEO_TOOL_GUIDES = {
         tips: ['두 객체에는 같은 눈금 수가 표시됩니다.']
     },
     PEN: {
-        summary: '펜으로 자유롭게 그립니다. (준비 중)',
-        steps: ['8-3단계에서 구현 예정입니다.'],
-        tips: ['단축키 B']
+        summary: '마우스를 드래그해 자유곡선을 그립니다.',
+        steps: [
+            '캔버스에서 누른 채로 드래그합니다.',
+            '손을 떼면 한 획이 확정됩니다.'
+        ],
+        tips: [
+            '단축키 B',
+            '작도 전 대수창에서 색·굵기·선 스타일을 고를 수 있습니다.',
+            '이동·선택으로 획 전체를 옮길 수 있습니다.',
+            'Esc — 그리는 중 취소'
+        ]
     }
 };
 
@@ -966,7 +984,7 @@ const ALGEO_SHORTCUTS = [
         label: '펜 그리기',
         category: 'tool',
         active: true,
-        desc: '펜그림 도구 (준비 중)'
+        desc: '펜으로 자유곡선을 그립니다.'
     },
     {
         id: 'tool_group_select',
@@ -1227,6 +1245,7 @@ function getTypeStyleDefaults(type) {
         DECORATE_LENGTH: { stroke: vis.segment, fill: null, lineWidth: 2, dash: [], fillOpacity: 1 },
         DECORATE_ANGLE: { stroke: vis.angle, fill: vis.angleFill, lineWidth: 2, dash: [], fillOpacity: 1 },
         DECORATE_PARALLEL: { stroke: vis.parallel, fill: null, lineWidth: 2, dash: [], fillOpacity: 1 },
+        PEN: { stroke: vis.segment, fill: null, lineWidth: 2.5, dash: [], fillOpacity: 1 },
         FUNCTION: { stroke: vis.function, fill: null, lineWidth: 3, dash: [], fillOpacity: 1 },
         SLIDER: { stroke: vis.slider, fill: vis.sliderThumb, lineWidth: 4, dash: [], fillOpacity: 1 }
     };
@@ -3463,6 +3482,62 @@ AlgeoEngine.prototype.addImage = function (name, x, y, width, height, src, fileN
     return obj;
 };
 
+// 펜 획(자유곡선) 추가
+AlgeoEngine.prototype.addPenStroke = function (name, points, style) {
+    const id = this.generateId();
+    const pts = [];
+    let i;
+    let styleCopy;
+
+    if (!points || points.length < ALGEO_PEN_MIN_POINTS) {
+        return null;
+    }
+    for (i = 0; i < points.length; i++) {
+        pts.push({ x: points[i].x, y: points[i].y });
+    }
+    styleCopy = { showLabel: false };
+    if (style) {
+        if (style.stroke) {
+            styleCopy.stroke = style.stroke;
+        }
+        if (style.lineWidth !== undefined && style.lineWidth !== null) {
+            styleCopy.lineWidth = style.lineWidth;
+        }
+        if (style.dashMode) {
+            styleCopy.dashMode = style.dashMode;
+        }
+        if (style.showLabel !== undefined) {
+            styleCopy.showLabel = !!style.showLabel;
+        }
+    }
+    const obj = {
+        id: id,
+        type: 'PEN',
+        name: name || '펜',
+        points: pts,
+        style: styleCopy,
+        parents: [],
+        children: []
+    };
+    this.objects.push(obj);
+    this.objectMap[id] = obj;
+    return obj;
+};
+
+// 펜 획을 Δ만큼 평행 이동
+AlgeoEngine.prototype.translatePenStroke = function (id, dx, dy) {
+    const obj = this.objectMap[id];
+    let i;
+
+    if (!obj || obj.type !== 'PEN' || !obj.points) {
+        return;
+    }
+    for (i = 0; i < obj.points.length; i++) {
+        obj.points[i].x += dx;
+        obj.points[i].y += dy;
+    }
+};
+
 // 설명선 꾸미기 추가
 AlgeoEngine.prototype.addDecorateLeader = function (text, x1, y1, x2, y2) {
     const id = this.generateId();
@@ -5130,6 +5205,8 @@ AlgeoRenderer.prototype.drawObjects = function () {
             this.drawTextObject(obj);
         } else if (obj.type === 'IMAGE') {
             this.drawImageObject(obj);
+        } else if (obj.type === 'PEN') {
+            this.drawPenStroke(obj);
         } else if (obj.type === 'DECORATE_LEADER') {
             this.drawDecorateLeader(obj);
         } else if (obj.type === 'DECORATE_LENGTH') {
@@ -5284,6 +5361,44 @@ AlgeoRenderer.prototype.drawImageObject = function (obj) {
 
     if (style.showLabel && obj.name) {
         this.drawCanvasLabel(obj.name, rect.x, rect.y - 6, {
+            font: '600 12px Outfit, sans-serif',
+            color: style.stroke,
+            align: 'left'
+        });
+    }
+};
+
+// 펜 획 렌더
+AlgeoRenderer.prototype.drawPenStroke = function (obj) {
+    const ctx = this.ctx;
+    const style = resolveObjectStyle(obj);
+    const pts = obj.points;
+    let i;
+    let sx;
+    let sy;
+
+    if (!pts || pts.length < 1) {
+        return;
+    }
+
+    ctx.save();
+    ctx.beginPath();
+    sx = this.toScreenX(pts[0].x);
+    sy = this.toScreenY(pts[0].y);
+    ctx.moveTo(sx, sy);
+    for (i = 1; i < pts.length; i++) {
+        ctx.lineTo(this.toScreenX(pts[i].x), this.toScreenY(pts[i].y));
+    }
+    ctx.strokeStyle = style.stroke;
+    ctx.lineWidth = style.lineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.setLineDash(style.dash || []);
+    ctx.stroke();
+    ctx.restore();
+
+    if (style.showLabel && obj.name) {
+        this.drawCanvasLabel(obj.name, sx + 6, sy - 6, {
             font: '600 12px Outfit, sans-serif',
             color: style.stroke,
             align: 'left'
@@ -5845,6 +5960,29 @@ AlgeoRenderer.prototype.drawToolPreview = function (preview) {
         ctx.lineTo(this.toScreenX(preview.mathX), this.toScreenY(preview.mathY));
         ctx.strokeStyle = ALGEO_VIS.previewSegment;
         ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+        return;
+    }
+
+    if (preview.type === 'PEN') {
+        if (!preview.points || preview.points.length < 1) {
+            return;
+        }
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(this.toScreenX(preview.points[0].x), this.toScreenY(preview.points[0].y));
+        for (let pi = 1; pi < preview.points.length; pi++) {
+            ctx.lineTo(
+                this.toScreenX(preview.points[pi].x),
+                this.toScreenY(preview.points[pi].y)
+            );
+        }
+        ctx.strokeStyle = preview.stroke || ALGEO_VIS.previewSegment;
+        ctx.lineWidth = preview.lineWidth || 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.setLineDash(preview.dash || []);
         ctx.stroke();
         ctx.restore();
         return;
@@ -7013,6 +7151,19 @@ AlgeoRenderer.prototype.drawSelectedObjectHighlight = function (obj) {
         this.strokeSelectionPath();
         return;
     }
+
+    if (obj.type === 'PEN') {
+        if (!obj.points || obj.points.length < 1) {
+            return;
+        }
+        ctx.beginPath();
+        ctx.moveTo(this.toScreenX(obj.points[0].x), this.toScreenY(obj.points[0].y));
+        for (i = 1; i < obj.points.length; i++) {
+            ctx.lineTo(this.toScreenX(obj.points[i].x), this.toScreenY(obj.points[i].y));
+        }
+        this.strokeSelectionPath();
+        return;
+    }
 };
 
 
@@ -7059,6 +7210,13 @@ function AlgeoApp(engine, renderer) {
     this.shortcutPanelOpen = false;   // 단축키 안내 패널 표시 여부
     this.settingsPanelOpen = false;   // 설정 패널 표시 여부
     this.pendingImagePlace = null;    // 그림 넣기 대기 좌표 { x, y }
+    // 펜 작도 전 기본 스타일 (새 획에 적용)
+    this.penDraftStyle = {
+        stroke: null,
+        lineWidth: 2.5,
+        dashMode: 'solid',
+        showLabel: false
+    };
     this.guideOverride = null;        // 뷰 옵션 가이드 (grid | snap) — 도구 가이드 대신 표시
 }
 
@@ -7437,9 +7595,14 @@ AlgeoApp.prototype.selectTool = function (toolId) {
         $('#btnOpenGuide').removeClass('visible');
     }
     this.clearToolDraft();
+    // 펜 도구 — 작도 전 스타일 패널이 보이도록 선택 해제
+    if (toolId === 'PEN') {
+        this.clearSelection();
+    }
     this.syncToolRailUI();
     this.updateCanvasCursor();
     this.syncToolGuide();
+    this.syncAlgebraPropsPanel();
     this.renderer.draw();
 };
 
@@ -8121,6 +8284,12 @@ AlgeoApp.prototype.getGuideActiveStepIndex = function () {
     if (tool === 'TEXT' || tool === 'INSERT_IMAGE') {
         return 0;
     }
+    if (tool === 'PEN') {
+        if (draft && draft.type === 'PEN' && draft.points && draft.points.length > 1) {
+            return 1;
+        }
+        return 0;
+    }
     if (tool === 'DECORATE_LEADER') {
         if (draft && draft.type === 'DECORATE_LEADER') {
             return 1;
@@ -8414,6 +8583,7 @@ AlgeoApp.prototype.updateCanvasCursor = function () {
         this.currentTool === 'MEASURE_AREA' ||
         this.currentTool === 'TEXT' ||
         this.currentTool === 'INSERT_IMAGE' ||
+        this.currentTool === 'PEN' ||
         this.currentTool === 'DECORATE_LEADER' ||
         this.currentTool === 'DECORATE_LENGTH' ||
         this.currentTool === 'DECORATE_ANGLE' ||
@@ -9785,7 +9955,7 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
                 this.syncToolGuide();
                 return;
             }
-            if (isAlgeoFreePlaceType(hitObj.type)) {
+            if (isAlgeoFreePlaceType(hitObj.type) || isAlgeoPenType(hitObj.type)) {
                 this.selectAlgebraObject(hitObj.id);
                 this.beginTranslateDrag([], null, math.x, math.y, null, [hitObj.id]);
                 this.syncToolGuide();
@@ -9875,6 +10045,8 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
         this.handleTextMouseDown(e);
     } else if (this.currentTool === 'INSERT_IMAGE') {
         this.handleInsertImageMouseDown(e);
+    } else if (this.currentTool === 'PEN') {
+        this.handlePenMouseDown(e);
     } else if (this.currentTool === 'DECORATE_LEADER') {
         this.handleDecorateLeaderMouseDown(e);
     } else if (this.currentTool === 'DECORATE_LENGTH') {
@@ -10036,6 +10208,8 @@ AlgeoApp.prototype.handleMouseMove = function (e) {
                 if (slider && isAlgeoFreePlaceType(slider.type)) {
                     slider.x += dx;
                     slider.y += dy;
+                } else if (slider && isAlgeoPenType(slider.type)) {
+                    this.engine.translatePenStroke(slider.id, dx, dy);
                 }
             }
         }
@@ -10043,6 +10217,8 @@ AlgeoApp.prototype.handleMouseMove = function (e) {
         this.dragTranslate.lastMathY = math.y;
         this.updateAlgebraView();
         r.draw();
+    } else if (this.constructionDraft && this.constructionDraft.type === 'PEN') {
+        this.handlePenMouseMove(mouseX, mouseY);
     } else if (this.constructionDraft) {
         this.updateToolPreviewFromMouse(mouseX, mouseY);
     }
@@ -10184,6 +10360,11 @@ AlgeoApp.prototype.handleMouseUp = function (e) {
     this.dragTranslate = null;
     this.activePoint = null;
     this.isDraggingCanvas = false;
+
+    if (this.constructionDraft && this.constructionDraft.type === 'PEN') {
+        this.finishPenStroke();
+    }
+
     this.updateCanvasCursor();
 };
 
@@ -10439,6 +10620,10 @@ AlgeoApp.prototype.findObjectAt = function (screenX, screenY) {
             const imgRect = this.renderer.getImageScreenRect(obj);
             if (screenX >= imgRect.x && screenX <= imgRect.x + imgRect.w &&
                 screenY >= imgRect.y && screenY <= imgRect.y + imgRect.h) {
+                return obj;
+            }
+        } else if (obj.type === 'PEN') {
+            if (this.isNearPenStroke(screenX, screenY, obj)) {
                 return obj;
             }
         } else if (obj.type === 'DECORATE_LEADER') {
@@ -11139,6 +11324,156 @@ AlgeoApp.prototype.getNextImageName = function () {
     return name;
 };
 
+// 펜 획 그리기 시작
+AlgeoApp.prototype.handlePenMouseDown = function (e) {
+    const r = this.renderer;
+    const pos = this.getEventCanvasPos(e);
+    const math = {
+        x: r.toMathX(pos.x),
+        y: r.toMathY(pos.y)
+    };
+    const previewStyle = this.getPenDraftPreviewStyle();
+
+    this.constructionDraft = {
+        type: 'PEN',
+        points: [{ x: math.x, y: math.y }],
+        lastScreenX: pos.x,
+        lastScreenY: pos.y
+    };
+    r.toolPreview = {
+        type: 'PEN',
+        points: this.constructionDraft.points,
+        stroke: previewStyle.stroke,
+        lineWidth: previewStyle.lineWidth,
+        dash: previewStyle.dash
+    };
+    this.syncToolGuide();
+    r.draw();
+};
+
+// 펜 드래그 중 점 샘플링
+AlgeoApp.prototype.handlePenMouseMove = function (mouseX, mouseY) {
+    const r = this.renderer;
+    const draft = this.constructionDraft;
+    let dx;
+    let dy;
+    let math;
+    let previewStyle;
+
+    if (!draft || draft.type !== 'PEN') {
+        return;
+    }
+
+    dx = mouseX - draft.lastScreenX;
+    dy = mouseY - draft.lastScreenY;
+    if (Math.sqrt(dx * dx + dy * dy) < ALGEO_PEN_MIN_SAMPLE_PX) {
+        return;
+    }
+
+    math = {
+        x: r.toMathX(mouseX),
+        y: r.toMathY(mouseY)
+    };
+    draft.points.push({ x: math.x, y: math.y });
+    draft.lastScreenX = mouseX;
+    draft.lastScreenY = mouseY;
+    previewStyle = this.getPenDraftPreviewStyle();
+    r.toolPreview = {
+        type: 'PEN',
+        points: draft.points,
+        stroke: previewStyle.stroke,
+        lineWidth: previewStyle.lineWidth,
+        dash: previewStyle.dash
+    };
+    this.syncToolGuide();
+    r.draw();
+};
+
+// 펜 획 확정 (또는 너무 짧으면 취소)
+AlgeoApp.prototype.finishPenStroke = function () {
+    const draft = this.constructionDraft;
+    let name;
+    let obj;
+
+    if (!draft || draft.type !== 'PEN') {
+        return;
+    }
+
+    if (!draft.points || draft.points.length < ALGEO_PEN_MIN_POINTS) {
+        this.clearToolDraft();
+        this.renderer.draw();
+        return;
+    }
+
+    name = this.getNextPenName();
+    this.recordHistory('펜 그리기');
+    obj = this.engine.addPenStroke(name, draft.points, this.getPenDraftStyleForObject());
+    this.clearToolDraft();
+    if (obj) {
+        this.updateAlgebraView();
+    }
+    this.renderer.draw();
+};
+
+// 펜 이름 자동 생성 (펜1, 펜2 …)
+AlgeoApp.prototype.getNextPenName = function () {
+    let n = 1;
+    let name = '';
+    let i;
+    let obj;
+    let used;
+
+    do {
+        name = '펜' + n;
+        used = false;
+        for (i = 0; i < this.engine.objects.length; i++) {
+            obj = this.engine.objects[i];
+            if (obj.type === 'PEN' && obj.name === name) {
+                used = true;
+                break;
+            }
+        }
+        n += 1;
+    } while (used);
+
+    return name;
+};
+
+// 펜 획 히트 테스트 (화면 좌표)
+AlgeoApp.prototype.isNearPenStroke = function (screenX, screenY, obj) {
+    const r = this.renderer;
+    const pts = obj.points;
+    let i;
+    let p1;
+    let p2;
+    let d;
+
+    if (!pts || pts.length < 1) {
+        return false;
+    }
+    if (pts.length === 1) {
+        p1 = pts[0];
+        d = Math.sqrt(
+            Math.pow(r.toScreenX(p1.x) - screenX, 2) +
+            Math.pow(r.toScreenY(p1.y) - screenY, 2)
+        );
+        return d <= 8;
+    }
+    for (i = 0; i < pts.length - 1; i++) {
+        p1 = pts[i];
+        p2 = pts[i + 1];
+        d = this.distToSegment(
+            screenX, screenY,
+            r.toScreenX(p1.x), r.toScreenY(p1.y),
+            r.toScreenX(p2.x), r.toScreenY(p2.y)
+        );
+        if (d <= 7) {
+            return true;
+        }
+    }
+    return false;
+};
+
 // 설명선 꾸미기: 시작점 → 끝점 → 텍스트
 AlgeoApp.prototype.handleDecorateLeaderMouseDown = function (e) {
     const r = this.renderer;
@@ -11398,7 +11733,7 @@ AlgeoApp.prototype.beginSelectionTranslate = function (mathX, mathY) {
             sliderIds.push(obj.id);
             continue;
         }
-        if (isAlgeoFreePlaceType(obj.type)) {
+        if (isAlgeoFreePlaceType(obj.type) || isAlgeoPenType(obj.type)) {
             freeIds.push(obj.id);
             continue;
         }
@@ -11661,6 +11996,19 @@ AlgeoApp.prototype.getObjectScreenBounds = function (obj) {
             y1: bounds.y,
             x2: bounds.x + bounds.w,
             y2: bounds.y + bounds.h
+        };
+    } else if (obj.type === 'PEN') {
+        if (!obj.points || obj.points.length < 1) {
+            return null;
+        }
+        for (i = 0; i < obj.points.length; i++) {
+            expand(r.toScreenX(obj.points[i].x), r.toScreenY(obj.points[i].y));
+        }
+        return {
+            x1: minX - 4,
+            y1: minY - 4,
+            x2: maxX + 4,
+            y2: maxY + 4
         };
     } else if (obj.type === 'DECORATE_LEADER') {
         expandSeg(r.toScreenX(obj.x1), r.toScreenY(obj.y1), r.toScreenX(obj.x2), r.toScreenY(obj.y2));
@@ -13331,16 +13679,18 @@ AlgeoApp.prototype.objectSupportsFillOpacity = function (type) {
         isAlgeoPointType(type);
 };
 
-// 스타일 편집 UI HTML
-AlgeoApp.prototype.buildStylePropsHtml = function (obj) {
+// 스타일 편집 UI HTML (options.penDraft면 작도 전 펜 패널 표시)
+AlgeoApp.prototype.buildStylePropsHtml = function (obj, options) {
     const style = resolveObjectStyle(obj);
     let html = '';
     let i;
     let w;
     let activeClass;
     let supportsFill = this.objectSupportsFillOpacity(obj.type);
+    let penDraft = options && options.penDraft;
 
-    html += '<div class="algebra-style-section" data-style-root="1">';
+    html += '<div class="algebra-style-section" data-style-root="1"' +
+        (penDraft ? ' data-pen-draft="1"' : '') + '>';
     html += '<div class="algebra-style-heading">스타일</div>';
     html += '<div class="style-swatch-row">';
     for (i = 0; i < ALGEO_STYLE_PRESETS.length; i++) {
@@ -13440,6 +13790,26 @@ AlgeoApp.prototype.applyStylePatchToSelection = function (patch, label) {
     let i;
     let obj;
     let snapshot;
+    let key;
+
+    // 펜 작도 전 기본 스타일 (Undo 없음)
+    if (this.isEditingPenDraftStyle() ||
+        $('#algebraPropsPanel [data-pen-draft="1"]').length > 0) {
+        if (!this.penDraftStyle) {
+            this.penDraftStyle = {};
+        }
+        for (key in patch) {
+            if (Object.prototype.hasOwnProperty.call(patch, key)) {
+                if (patch[key] === null || patch[key] === '') {
+                    delete this.penDraftStyle[key];
+                } else {
+                    this.penDraftStyle[key] = patch[key];
+                }
+            }
+        }
+        this.syncAlgebraPropsPanel();
+        return;
+    }
 
     if (ids.length === 0) {
         return;
@@ -13466,6 +13836,18 @@ AlgeoApp.prototype.resetStyleOfSelection = function () {
     let i;
     let obj;
     let snapshot;
+
+    if (this.isEditingPenDraftStyle() ||
+        $('#algebraPropsPanel [data-pen-draft="1"]').length > 0) {
+        this.penDraftStyle = {
+            stroke: null,
+            lineWidth: 2.5,
+            dashMode: 'solid',
+            showLabel: false
+        };
+        this.syncAlgebraPropsPanel();
+        return;
+    }
 
     if (ids.length === 0) {
         return;
@@ -13496,17 +13878,77 @@ AlgeoApp.prototype.syncAlgebraPropsPanel = function () {
     }
 
     if (!objId) {
+        // 펜 도구 + 무선택 → 작도 전 기본 스타일
+        if (this.currentTool === 'PEN') {
+            $panel.html(this.buildPenDraftStyleHtml());
+            return;
+        }
         $panel.html('<p class="algebra-props-placeholder">객체를 선택하면 속성·스타일을 편집할 수 있습니다.</p>');
         return;
     }
 
     obj = this.engine.objectMap[objId];
     if (!obj) {
+        if (this.currentTool === 'PEN') {
+            $panel.html(this.buildPenDraftStyleHtml());
+            return;
+        }
         $panel.html('<p class="algebra-props-placeholder">객체를 선택하면 속성·스타일을 편집할 수 있습니다.</p>');
         return;
     }
 
     $panel.html(this.buildAlgebraPropsHtml(obj));
+};
+
+// 펜 작도 전 스타일 편집 중인지
+AlgeoApp.prototype.isEditingPenDraftStyle = function () {
+    return this.currentTool === 'PEN' &&
+        this.selectionIds.length === 0 &&
+        !this.selectedObjectId;
+};
+
+// 펜 기본 스타일을 resolveObjectStyle 형태로
+AlgeoApp.prototype.resolvePenDraftStyle = function () {
+    return resolveObjectStyle({
+        type: 'PEN',
+        style: this.penDraftStyle || {}
+    });
+};
+
+// 미리보기용 획 스타일
+AlgeoApp.prototype.getPenDraftPreviewStyle = function () {
+    const style = this.resolvePenDraftStyle();
+    return {
+        stroke: style.stroke,
+        lineWidth: style.lineWidth,
+        dash: style.dash || []
+    };
+};
+
+// 새 PEN 객체에 넣을 style 패치
+AlgeoApp.prototype.getPenDraftStyleForObject = function () {
+    const draft = this.penDraftStyle || {};
+    const resolved = this.resolvePenDraftStyle();
+    const out = {
+        stroke: resolved.stroke,
+        lineWidth: resolved.lineWidth,
+        dashMode: resolved.dashMode,
+        showLabel: draft.showLabel === true
+    };
+    return out;
+};
+
+// 펜 작도 전 스타일 패널 HTML
+AlgeoApp.prototype.buildPenDraftStyleHtml = function () {
+    let html = '';
+
+    html += '<div class="algebra-props-title">펜 기본 스타일 <span class="props-type">작도 전</span></div>';
+    html += '<p class="props-note">아래에서 고른 색·굵기·선 스타일이 다음에 그리는 획에 적용됩니다.</p>';
+    html += this.buildStylePropsHtml({
+        type: 'PEN',
+        style: this.penDraftStyle || {}
+    }, { penDraft: true });
+    return html;
 };
 
 // 속성 패널 입력값 적용
@@ -13832,6 +14274,8 @@ AlgeoApp.prototype.updateAlgebraView = function () {
         } else if (obj.type === 'IMAGE') {
             desc = '그림' + (obj.fileName ? ' (' + obj.fileName + ')' : '') +
                 ' ' + Number(obj.width).toFixed(1) + '\u00D7' + Number(obj.height).toFixed(1);
+        } else if (obj.type === 'PEN') {
+            desc = '점의 수: ' + (obj.points ? obj.points.length : 0);
         } else if (obj.type === 'DECORATE_LEADER') {
             desc = '설명선' + (obj.text ? ' - ' + obj.text : '');
         } else if (obj.type === 'DECORATE_LENGTH') {
