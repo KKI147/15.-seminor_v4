@@ -110,8 +110,18 @@ const ALGEBRA_TYPE_ORDER = {
     MEASURE_ANGLE: 23,
     MEASURE_AREA: 24,
     SLIDER: 25,
-    FUNCTION: 26
+    FUNCTION: 26,
+    TEXT: 27,
+    IMAGE: 28
 };
+
+// 자유 배치 객체(좌표만 이동)인지
+function isAlgeoFreePlaceType(type) {
+    return type === 'TEXT' || type === 'IMAGE';
+}
+
+// 그림 기본 너비(수학 단위)
+const ALGEO_IMAGE_DEFAULT_WIDTH = 4;
 
 // 넓이 측정 가능한 도형 타입
 const ALGEO_AREA_MEASURABLE_TYPES = {
@@ -261,7 +271,7 @@ const ALGEO_TOOL_CATEGORIES = [
             { tool: 'POINT_ON_OBJECT', label: '대상 위의 점', iconId: 'point_on_object', status: 'done', shortcut: 'O', hint: '선·원 위 클릭' },
             { tool: 'LINE_TRACER', label: '라인 트레이서', iconId: 'line_tracer', status: 'stub', hint: '경로 따라 이동 (6-1)' },
             { tool: 'MIDPOINT', label: '중점', iconId: 'midpoint', status: 'done', shortcut: 'M', hint: '점 2개 선택' },
-            { tool: 'INSERT_IMAGE', label: '그림 넣기', iconId: 'insert_image', status: 'stub', hint: '이미지 삽입 (10-1)' },
+            { tool: 'INSERT_IMAGE', label: '그림 넣기', iconId: 'insert_image', status: 'done', hint: '위치 클릭 → 이미지 파일 선택' },
             { tool: 'INSERT_VIDEO', label: '동영상 넣기', iconId: 'insert_video', status: 'stub', hint: '동영상 삽입 (10-1)' },
             { tool: 'TABLE', label: '표', iconId: 'table', status: 'stub', hint: '표 삽입 (10-2)' }
         ]
@@ -356,7 +366,7 @@ const ALGEO_TOOL_CATEGORIES = [
         iconId: 'cat-settings',
         title: '설정',
         railOnly: true,
-        railHint: '11단계에서 설정 패널 예정 (격자·스냅은 우측 바)'
+        railHint: '테마 · 격자 · 스냅 · 축 표시를 한곳에서 조절합니다.'
     }
 ];
 
@@ -531,9 +541,12 @@ const ALGEO_TOOL_GUIDES = {
         tips: []
     },
     INSERT_IMAGE: {
-        summary: '그림을 캔버스에 넣습니다. (준비 중)',
-        steps: ['10단계에서 구현 예정입니다.'],
-        tips: []
+        summary: '클릭한 위치에 그림(이미지)을 넣습니다.',
+        steps: [
+            '그림을 둘 위치를 클릭합니다.',
+            '이미지 파일을 선택합니다.'
+        ],
+        tips: ['이동·선택 도구로 위치 이동', '대수창에서 너비 조절', 'JSON 저장 시 이미지도 포함']
     },
     INSERT_VIDEO: {
         summary: '동영상을 캔버스에 넣습니다. (준비 중)',
@@ -1026,6 +1039,7 @@ const ALGEO_TOOL_KEY_MAP = {
 const ALGEO_THEME_STORAGE_KEY = 'algeo_theme';
 const ALGEO_GRID_VISIBLE_KEY = 'algeo_grid_visible';
 const ALGEO_SNAP_ENABLED_KEY = 'algeo_snap_enabled';
+const ALGEO_AXES_VISIBLE_KEY = 'algeo_axes_visible';
 
 // 라이트 모드 캔버스 팔레트
 const ALGEO_VIS_LIGHT = {
@@ -1208,6 +1222,7 @@ function getTypeStyleDefaults(type) {
         MEASURE_ANGLE: { stroke: vis.measure, fill: vis.measureFill, lineWidth: 2, dash: [], fillOpacity: 1 },
         MEASURE_AREA: { stroke: vis.measure, fill: vis.measureFill, lineWidth: 2, dash: [], fillOpacity: 1 },
         TEXT: { stroke: vis.axis, fill: vis.axis, lineWidth: 1.5, dash: [], fillOpacity: 1 },
+        IMAGE: { stroke: vis.axis, fill: null, lineWidth: 1.5, dash: [], fillOpacity: 1 },
         DECORATE_LEADER: { stroke: vis.segment, fill: null, lineWidth: 2, dash: [], fillOpacity: 1 },
         DECORATE_LENGTH: { stroke: vis.segment, fill: null, lineWidth: 2, dash: [], fillOpacity: 1 },
         DECORATE_ANGLE: { stroke: vis.angle, fill: vis.angleFill, lineWidth: 2, dash: [], fillOpacity: 1 },
@@ -1582,7 +1597,8 @@ function createAlgeoUI($container) {
         '                        <div class="history-toolbar-actions">' +
         '                            <button type="button" id="btnSaveScene" class="sidebar-undo-btn" title="JSON 저장" aria-label="JSON 저장">저장</button>' +
         '                            <button type="button" id="btnLoadScene" class="sidebar-undo-btn" title="JSON 불러오기" aria-label="JSON 불러오기">불러오기</button>' +
-        '                            <input type="file" id="sceneFileInput" accept=".json,application/json" style="display:none;" />' +
+            '                            <input type="file" id="sceneFileInput" accept=".json,application/json" style="display:none;" />' +
+            '                            <input type="file" id="imageFileInput" accept="image/*" style="display:none;" />' +
         '                        </div>' +
         '                    </div>' +
         '                    <ul id="algebraHistoryList" class="algebra-history-list">' +
@@ -1641,13 +1657,20 @@ function createAlgeoUI($container) {
             renderAlgeoIcon('reset-view', 'bar-icon', true) +
             '                    </button>' +
             '                </div>' +
-            '                <div class="algeo-shortcut-panel" id="shortcutPanel" aria-hidden="true">' +
-            '                    <div class="shortcut-panel-head">' +
-            '                        <strong>단축키</strong>' +
-            '                        <button type="button" id="btnCloseShortcutPanel" class="shortcut-panel-close" title="닫기" aria-label="단축키 안내 닫기">✕</button>' +
-            '                    </div>' +
-            '                    <div class="shortcut-panel-body" id="shortcutPanelBody"></div>' +
-            '                </div>' +
+                '                <div class="algeo-shortcut-panel" id="shortcutPanel" aria-hidden="true">' +
+                '                    <div class="shortcut-panel-head">' +
+                '                        <strong>단축키</strong>' +
+                '                        <button type="button" id="btnCloseShortcutPanel" class="shortcut-panel-close" title="닫기" aria-label="단축키 안내 닫기">✕</button>' +
+                '                    </div>' +
+                '                    <div class="shortcut-panel-body" id="shortcutPanelBody"></div>' +
+                '                </div>' +
+                '                <div class="algeo-settings-panel" id="settingsPanel" aria-hidden="true">' +
+                '                    <div class="settings-panel-head">' +
+                '                        <strong>설정</strong>' +
+                '                        <button type="button" id="btnCloseSettingsPanel" class="settings-panel-close" title="닫기" aria-label="설정 닫기">✕</button>' +
+                '                    </div>' +
+                '                    <div class="settings-panel-body" id="settingsPanelBody"></div>' +
+                '                </div>' +
             '            </div>' +
         '        </div>' +
         '    </div>' +
@@ -3418,6 +3441,28 @@ AlgeoEngine.prototype.addText = function (text, x, y) {
     return obj;
 };
 
+// 그림(이미지) 객체 추가 — src는 data URL (저장·Undo용)
+AlgeoEngine.prototype.addImage = function (name, x, y, width, height, src, fileName) {
+    const id = this.generateId();
+    const obj = {
+        id: id,
+        type: 'IMAGE',
+        name: name || '그림',
+        x: x,
+        y: y,
+        width: width,
+        height: height,
+        src: src || '',
+        fileName: fileName || '',
+        style: { showLabel: false },
+        parents: [],
+        children: []
+    };
+    this.objects.push(obj);
+    this.objectMap[id] = obj;
+    return obj;
+};
+
 // 설명선 꾸미기 추가
 AlgeoEngine.prototype.addDecorateLeader = function (text, x1, y1, x2, y2) {
     const id = this.generateId();
@@ -4663,6 +4708,8 @@ function AlgeoRenderer(engine, canvas) {
     this.toolPreview = null;    // 호·원 작도 중 실시간 미리보기
     this.showGrid = true;       // 격자·눈금 표시
     this.snapEnabled = false;   // 격자 스냅(자석)
+    this.showAxes = true;       // X·Y 축 표시
+    this.imageCache = {};       // dataURL → HTMLImageElement 캐시
 
     this.initViewport();
 }
@@ -4754,10 +4801,11 @@ AlgeoRenderer.prototype.draw = function () {
     ctx.fillStyle = ALGEO_VIS.canvasBg;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // 1. 배경 격자(Grid) 또는 축만
+    // 1. 배경 격자(Grid) · 축
     if (this.showGrid) {
         this.drawGrid();
-    } else {
+    }
+    if (this.showAxes) {
         this.drawAxes(ctx, this.canvas.width, this.canvas.height);
     }
 
@@ -4862,9 +4910,6 @@ AlgeoRenderer.prototype.drawGrid = function () {
             ctx.fillText(String(mathY), this.offsetX + 10, y + 4);
         }
     }
-
-    // X-Y 축 그리기
-    this.drawAxes(ctx, width, height);
 };
 
 // X축·Y축 선, 원점, 축 이름(x·y) 및 양의 방향 화살표
@@ -5083,6 +5128,8 @@ AlgeoRenderer.prototype.drawObjects = function () {
             }
         } else if (obj.type === 'TEXT') {
             this.drawTextObject(obj);
+        } else if (obj.type === 'IMAGE') {
+            this.drawImageObject(obj);
         } else if (obj.type === 'DECORATE_LEADER') {
             this.drawDecorateLeader(obj);
         } else if (obj.type === 'DECORATE_LENGTH') {
@@ -5172,6 +5219,76 @@ AlgeoRenderer.prototype.drawTextObject = function (obj) {
         color: style.stroke,
         align: 'left'
     });
+};
+
+// 그림 객체 화면 사각 (픽셀)
+AlgeoRenderer.prototype.getImageScreenRect = function (obj) {
+    const halfW = (obj.width || 0) * this.scale / 2;
+    const halfH = (obj.height || 0) * this.scale / 2;
+    const cx = this.toScreenX(obj.x);
+    const cy = this.toScreenY(obj.y);
+
+    return {
+        x: cx - halfW,
+        y: cy - halfH,
+        w: halfW * 2,
+        h: halfH * 2,
+        cx: cx,
+        cy: cy
+    };
+};
+
+// dataURL 이미지 로드·캐시 (로드 완료 시 재그리기)
+AlgeoRenderer.prototype.getCachedImage = function (src) {
+    const self = this;
+    let img;
+
+    if (!src) {
+        return null;
+    }
+    img = this.imageCache[src];
+    if (img) {
+        return img;
+    }
+    img = new Image();
+    img.onload = function () {
+        self.draw();
+    };
+    img.src = src;
+    this.imageCache[src] = img;
+    return img;
+};
+
+// 그림 객체 렌더
+AlgeoRenderer.prototype.drawImageObject = function (obj) {
+    const ctx = this.ctx;
+    const rect = this.getImageScreenRect(obj);
+    const img = this.getCachedImage(obj.src);
+    const style = resolveObjectStyle(obj);
+
+    if (img && img.complete && img.naturalWidth > 0) {
+        ctx.save();
+        ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h);
+        ctx.restore();
+    } else {
+        ctx.save();
+        ctx.strokeStyle = style.stroke;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+        ctx.fillStyle = ALGEO_VIS.gridLabel;
+        ctx.font = '12px Outfit, sans-serif';
+        ctx.fillText('그림…', rect.cx - 16, rect.cy + 4);
+        ctx.restore();
+    }
+
+    if (style.showLabel && obj.name) {
+        this.drawCanvasLabel(obj.name, rect.x, rect.y - 6, {
+            font: '600 12px Outfit, sans-serif',
+            color: style.stroke,
+            align: 'left'
+        });
+    }
 };
 
 // 설명선 렌더
@@ -6879,6 +6996,23 @@ AlgeoRenderer.prototype.drawSelectedObjectHighlight = function (obj) {
         this.strokeSelectionPath();
         return;
     }
+
+    if (obj.type === 'TEXT') {
+        sx = this.toScreenX(obj.x);
+        sy = this.toScreenY(obj.y);
+        ctx.beginPath();
+        ctx.rect(sx - 4, sy - 18, 110, 26);
+        this.strokeSelectionPath();
+        return;
+    }
+
+    if (obj.type === 'IMAGE') {
+        bounds = this.getImageScreenRect(obj);
+        ctx.beginPath();
+        ctx.rect(bounds.x - 2, bounds.y - 2, bounds.w + 4, bounds.h + 4);
+        this.strokeSelectionPath();
+        return;
+    }
 };
 
 
@@ -6923,6 +7057,8 @@ function AlgeoApp(engine, renderer) {
     this.sliderDragMoved = false;
     this.theme = 'light';             // UI·캔버스 테마: light | dark
     this.shortcutPanelOpen = false;   // 단축키 안내 패널 표시 여부
+    this.settingsPanelOpen = false;   // 설정 패널 표시 여부
+    this.pendingImagePlace = null;    // 그림 넣기 대기 좌표 { x, y }
     this.guideOverride = null;        // 뷰 옵션 가이드 (grid | snap) — 도구 가이드 대신 표시
 }
 
@@ -6941,7 +7077,9 @@ AlgeoApp.prototype.init = function () {
     self.initAlgebraPanelToggle();
     self.initToolGuide();
     self.initShortcutHelp();
+    self.initSettingsPanel();
     self.initSaveLoad();
+    self.initImageInsert();
 
     // 2. 뷰포트 조작 버튼 이벤트 바인딩
     $('#btnZoomIn').on('click', function () {
@@ -7186,12 +7324,18 @@ AlgeoApp.prototype.initToolRail = function () {
     });
 };
 
-// 도구 카테고리 플라이아웃 토글 (railOnly는 안내만)
+// 도구 카테고리 플라이아웃 토글 (railOnly: 블록코딩 안내 / 설정 패널)
 AlgeoApp.prototype.toggleToolCategory = function (categoryId) {
     const cat = findCategoryMeta(categoryId);
 
     if (cat && cat.railOnly) {
         this.closeToolFlyout();
+        if (categoryId === 'settings') {
+            this.closeShortcutPanel();
+            this.toggleSettingsPanel();
+            return;
+        }
+        this.closeSettingsPanel();
         this.showRailOnlyNotice(cat);
         return;
     }
@@ -7405,6 +7549,9 @@ AlgeoApp.prototype.syncToolRailUI = function () {
     if (this.openToolCategoryId) {
         $('.tool-rail-btn[data-category="' + this.openToolCategoryId + '"]').addClass('open');
     }
+    if (this.settingsPanelOpen) {
+        $('.tool-rail-btn[data-category="settings"]').addClass('active open');
+    }
 
     $('.flyout-tool-item').removeClass('active');
     $('.flyout-tool-item[data-tool="' + this.currentTool + '"]').addClass('active');
@@ -7574,6 +7721,7 @@ AlgeoApp.prototype.initShortcutHelp = function () {
 
     $('#btnShortcutHelp').on('click', function (e) {
         e.stopPropagation();
+        self.closeSettingsPanel();
         self.toggleShortcutPanel();
     });
 
@@ -7672,6 +7820,7 @@ AlgeoApp.prototype.openShortcutPanel = function () {
     $('#shortcutPanel').addClass('open').attr('aria-hidden', 'false');
     $('#btnShortcutHelp').addClass('active');
     this.closeCmdDict();
+    this.closeSettingsPanel();
 };
 
 // 단축키 안내 패널 토글
@@ -7679,7 +7828,142 @@ AlgeoApp.prototype.toggleShortcutPanel = function () {
     if (this.shortcutPanelOpen) {
         this.closeShortcutPanel();
     } else {
+        this.closeSettingsPanel();
         this.openShortcutPanel();
+    }
+};
+
+// 설정 패널 초기화
+AlgeoApp.prototype.initSettingsPanel = function () {
+    const self = this;
+
+    self.renderSettingsPanel();
+
+    $('#btnCloseSettingsPanel').on('mousedown', function (e) {
+        e.stopPropagation();
+    });
+
+    $('#btnCloseSettingsPanel').on('click', function (e) {
+        e.stopPropagation();
+        self.closeSettingsPanel();
+    });
+
+    $('#settingsPanel').on('mousedown', function (e) {
+        e.stopPropagation();
+    });
+
+    $('#settingsPanel').on('click', function (e) {
+        e.stopPropagation();
+    });
+
+    $('#settingsPanelBody').on('click', '[data-settings-action]', function (e) {
+        const action = $(this).attr('data-settings-action');
+        e.stopPropagation();
+        if (action === 'theme') {
+            self.setTheme(self.theme === 'light' ? 'dark' : 'light');
+        } else if (action === 'grid') {
+            self.setGridVisible(!self.renderer.showGrid);
+        } else if (action === 'snap') {
+            self.setSnapEnabled(!self.renderer.snapEnabled);
+        } else if (action === 'axes') {
+            self.setAxesVisible(!self.renderer.showAxes);
+        } else if (action === 'save') {
+            self.saveSceneToFile();
+        } else if (action === 'load') {
+            $('#sceneFileInput').val('');
+            $('#sceneFileInput').trigger('click');
+        }
+        self.syncSettingsPanelUI();
+    });
+
+    $(document).on('click.settingsPanel', function (e) {
+        if (!self.settingsPanelOpen) {
+            return;
+        }
+        if ($(e.target).closest('#settingsPanel, .tool-rail-btn[data-category="settings"], .algeo-right-bar-wrap').length) {
+            return;
+        }
+        self.closeSettingsPanel();
+    });
+};
+
+// 설정 패널 본문 HTML
+AlgeoApp.prototype.renderSettingsPanel = function () {
+    let html = '';
+
+    html += '<div class="settings-section">';
+    html += '<div class="settings-section-title">화면</div>';
+    html += '<button type="button" class="settings-toggle-row" data-settings-action="theme" id="settingsBtnTheme">';
+    html += '<span class="settings-toggle-label">테마</span>';
+    html += '<span class="settings-toggle-value" id="settingsThemeValue">라이트</span>';
+    html += '</button>';
+    html += '<button type="button" class="settings-toggle-row" data-settings-action="grid" id="settingsBtnGrid">';
+    html += '<span class="settings-toggle-label">격자</span>';
+    html += '<span class="settings-toggle-value" id="settingsGridValue">켜짐</span>';
+    html += '</button>';
+    html += '<button type="button" class="settings-toggle-row" data-settings-action="axes" id="settingsBtnAxes">';
+    html += '<span class="settings-toggle-label">좌표축</span>';
+    html += '<span class="settings-toggle-value" id="settingsAxesValue">켜짐</span>';
+    html += '</button>';
+    html += '<button type="button" class="settings-toggle-row" data-settings-action="snap" id="settingsBtnSnap">';
+    html += '<span class="settings-toggle-label">격자 스냅</span>';
+    html += '<span class="settings-toggle-value" id="settingsSnapValue">꺼짐</span>';
+    html += '</button>';
+    html += '</div>';
+
+    html += '<div class="settings-section">';
+    html += '<div class="settings-section-title">파일</div>';
+    html += '<button type="button" class="settings-action-btn" data-settings-action="save">장면 JSON 저장</button>';
+    html += '<button type="button" class="settings-action-btn" data-settings-action="load">장면 JSON 불러오기</button>';
+    html += '</div>';
+
+    html += '<p class="settings-note">우측 바의 테마·격자·스냅과 동기화됩니다.</p>';
+
+    $('#settingsPanelBody').html(html);
+    this.syncSettingsPanelUI();
+};
+
+// 설정 패널 토글 상태 문구·active 동기화
+AlgeoApp.prototype.syncSettingsPanelUI = function () {
+    const themeLabel = this.theme === 'dark' ? '다크' : '라이트';
+    const gridOn = !!this.renderer.showGrid;
+    const axesOn = !!this.renderer.showAxes;
+    const snapOn = !!this.renderer.snapEnabled;
+
+    $('#settingsThemeValue').text(themeLabel);
+    $('#settingsGridValue').text(gridOn ? '켜짐' : '꺼짐');
+    $('#settingsAxesValue').text(axesOn ? '켜짐' : '꺼짐');
+    $('#settingsSnapValue').text(snapOn ? '켜짐' : '꺼짐');
+
+    $('#settingsBtnGrid').toggleClass('is-on', gridOn);
+    $('#settingsBtnAxes').toggleClass('is-on', axesOn);
+    $('#settingsBtnSnap').toggleClass('is-on', snapOn);
+    $('#settingsBtnTheme').toggleClass('is-on', this.theme === 'dark');
+};
+
+// 설정 패널 닫기
+AlgeoApp.prototype.closeSettingsPanel = function () {
+    this.settingsPanelOpen = false;
+    $('#settingsPanel').removeClass('open').attr('aria-hidden', 'true');
+    this.syncToolRailUI();
+};
+
+// 설정 패널 열기
+AlgeoApp.prototype.openSettingsPanel = function () {
+    this.settingsPanelOpen = true;
+    this.closeShortcutPanel();
+    this.syncSettingsPanelUI();
+    $('#settingsPanel').addClass('open').attr('aria-hidden', 'false');
+    this.closeCmdDict();
+    this.syncToolRailUI();
+};
+
+// 설정 패널 토글
+AlgeoApp.prototype.toggleSettingsPanel = function () {
+    if (this.settingsPanelOpen) {
+        this.closeSettingsPanel();
+    } else {
+        this.openSettingsPanel();
     }
 };
 
@@ -7834,7 +8118,7 @@ AlgeoApp.prototype.getGuideActiveStepIndex = function () {
     if (tool === 'REFLECT_LINE' || tool === 'TRANSLATE') {
         return Math.min(n, 1);
     }
-    if (tool === 'TEXT') {
+    if (tool === 'TEXT' || tool === 'INSERT_IMAGE') {
         return 0;
     }
     if (tool === 'DECORATE_LEADER') {
@@ -8129,6 +8413,7 @@ AlgeoApp.prototype.updateCanvasCursor = function () {
         this.currentTool === 'MEASURE_ANGLE' ||
         this.currentTool === 'MEASURE_AREA' ||
         this.currentTool === 'TEXT' ||
+        this.currentTool === 'INSERT_IMAGE' ||
         this.currentTool === 'DECORATE_LEADER' ||
         this.currentTool === 'DECORATE_LENGTH' ||
         this.currentTool === 'DECORATE_ANGLE' ||
@@ -9500,6 +9785,12 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
                 this.syncToolGuide();
                 return;
             }
+            if (isAlgeoFreePlaceType(hitObj.type)) {
+                this.selectAlgebraObject(hitObj.id);
+                this.beginTranslateDrag([], null, math.x, math.y, null, [hitObj.id]);
+                this.syncToolGuide();
+                return;
+            }
             pointIds = this.engine.collectFreePointIdsForObject(hitObj);
             if (pointIds.length > 0) {
                 this.selectAlgebraObject(hitObj.id);
@@ -9582,6 +9873,8 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
         this.handleMeasureAreaMouseDown(e, hitPoint);
     } else if (this.currentTool === 'TEXT') {
         this.handleTextMouseDown(e);
+    } else if (this.currentTool === 'INSERT_IMAGE') {
+        this.handleInsertImageMouseDown(e);
     } else if (this.currentTool === 'DECORATE_LEADER') {
         this.handleDecorateLeaderMouseDown(e);
     } else if (this.currentTool === 'DECORATE_LENGTH') {
@@ -9735,6 +10028,15 @@ AlgeoApp.prototype.handleMouseMove = function (e) {
             if (slider && slider.type === 'SLIDER') {
                 slider.anchorX += dx;
                 slider.anchorY += dy;
+            }
+        }
+        if (this.dragTranslate.freeIds && this.dragTranslate.freeIds.length > 0) {
+            for (si = 0; si < this.dragTranslate.freeIds.length; si++) {
+                slider = this.engine.objectMap[this.dragTranslate.freeIds[si]];
+                if (slider && isAlgeoFreePlaceType(slider.type)) {
+                    slider.x += dx;
+                    slider.y += dy;
+                }
             }
         }
         this.dragTranslate.lastMathX = math.x;
@@ -10131,6 +10433,12 @@ AlgeoApp.prototype.findObjectAt = function (screenX, screenY) {
         } else if (obj.type === 'TEXT') {
             if (Math.abs(this.renderer.toScreenX(obj.x) - screenX) <= 80 &&
                 Math.abs(this.renderer.toScreenY(obj.y) - screenY) <= 20) {
+                return obj;
+            }
+        } else if (obj.type === 'IMAGE') {
+            const imgRect = this.renderer.getImageScreenRect(obj);
+            if (screenX >= imgRect.x && screenX <= imgRect.x + imgRect.w &&
+                screenY >= imgRect.y && screenY <= imgRect.y + imgRect.h) {
                 return obj;
             }
         } else if (obj.type === 'DECORATE_LEADER') {
@@ -10739,6 +11047,98 @@ AlgeoApp.prototype.handleTextMouseDown = function (e) {
     this.renderer.draw();
 };
 
+// 그림 넣기 — 클릭 위치 기억 후 파일 선택
+AlgeoApp.prototype.handleInsertImageMouseDown = function (e) {
+    const pos = this.getEventCanvasPos(e);
+    const math = this.screenToMath(pos.x, pos.y);
+
+    this.pendingImagePlace = { x: math.x, y: math.y };
+    $('#imageFileInput').val('');
+    $('#imageFileInput').trigger('click');
+};
+
+// 그림 파일 입력 초기화
+AlgeoApp.prototype.initImageInsert = function () {
+    const self = this;
+
+    $('#imageFileInput').on('change', function (e) {
+        const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+        if (!file) {
+            self.pendingImagePlace = null;
+            return;
+        }
+        self.loadImageFile(file);
+    });
+};
+
+// 선택한 이미지 파일을 캔버스 객체로 추가
+AlgeoApp.prototype.loadImageFile = function (file) {
+    const self = this;
+    const reader = new FileReader();
+    const place = this.pendingImagePlace;
+
+    if (!place) {
+        return;
+    }
+
+    reader.onload = function () {
+        const dataUrl = reader.result;
+        const probe = new Image();
+
+        probe.onload = function () {
+            let width = ALGEO_IMAGE_DEFAULT_WIDTH;
+            let height;
+            let name;
+
+            if (!probe.naturalWidth || probe.naturalWidth <= 0) {
+                self.pendingImagePlace = null;
+                return;
+            }
+            height = width * (probe.naturalHeight / probe.naturalWidth);
+            name = self.getNextImageName();
+            self.recordHistory('그림 추가');
+            self.engine.addImage(name, place.x, place.y, width, height, dataUrl, file.name || '');
+            self.pendingImagePlace = null;
+            self.updateAlgebraView();
+            self.renderer.draw();
+        };
+        probe.onerror = function () {
+            self.pendingImagePlace = null;
+            window.alert('이미지를 불러오지 못했습니다.');
+        };
+        probe.src = dataUrl;
+    };
+    reader.onerror = function () {
+        self.pendingImagePlace = null;
+        window.alert('파일을 읽지 못했습니다.');
+    };
+    reader.readAsDataURL(file);
+};
+
+// 그림 이름 자동 생성 (그림1, 그림2 …)
+AlgeoApp.prototype.getNextImageName = function () {
+    let n = 1;
+    let name = '';
+    let i;
+    let obj;
+    let used;
+
+    do {
+        name = '그림' + n;
+        used = false;
+        for (i = 0; i < this.engine.objects.length; i++) {
+            obj = this.engine.objects[i];
+            if (obj.type === 'IMAGE' && obj.name === name) {
+                used = true;
+                break;
+            }
+        }
+        n += 1;
+    } while (used);
+
+    return name;
+};
+
 // 설명선 꾸미기: 시작점 → 끝점 → 텍스트
 AlgeoApp.prototype.handleDecorateLeaderMouseDown = function (e) {
     const r = this.renderer;
@@ -10892,13 +11292,14 @@ AlgeoApp.prototype.createSliderAtMath = function (mathX, mathY, name) {
 };
 
 // 이동 도구 — 객체·점 평행 이동 드래그 시작
-AlgeoApp.prototype.beginTranslateDrag = function (pointIds, sliderId, mathX, mathY, sliderIds) {
+AlgeoApp.prototype.beginTranslateDrag = function (pointIds, sliderId, mathX, mathY, sliderIds, freeIds) {
     const hasPoints = pointIds && pointIds.length > 0;
     const ids = sliderIds && sliderIds.length > 0
         ? sliderIds.slice()
         : (sliderId ? [sliderId] : []);
+    const free = freeIds && freeIds.length > 0 ? freeIds.slice() : [];
 
-    if (!hasPoints && ids.length === 0) {
+    if (!hasPoints && ids.length === 0 && free.length === 0) {
         return;
     }
 
@@ -10906,6 +11307,7 @@ AlgeoApp.prototype.beginTranslateDrag = function (pointIds, sliderId, mathX, mat
         pointIds: hasPoints ? pointIds.slice() : [],
         sliderId: ids.length === 1 ? ids[0] : null,
         sliderIds: ids,
+        freeIds: free,
         lastMathX: mathX,
         lastMathY: mathY
     };
@@ -10976,11 +11378,12 @@ AlgeoApp.prototype.handleSelectToolMouseDown = function (e, mouseX, mouseY, hitP
     this.syncToolGuide();
 };
 
-// 선택 집합의 자유점·슬라이더를 한꺼번에 이동
+// 선택 집합의 자유점·슬라이더·자유배치를 한꺼번에 이동
 AlgeoApp.prototype.beginSelectionTranslate = function (mathX, mathY) {
     const pointSeen = {};
     const pointIds = [];
     const sliderIds = [];
+    const freeIds = [];
     let i;
     let obj;
     let collected;
@@ -10993,6 +11396,10 @@ AlgeoApp.prototype.beginSelectionTranslate = function (mathX, mathY) {
         }
         if (obj.type === 'SLIDER') {
             sliderIds.push(obj.id);
+            continue;
+        }
+        if (isAlgeoFreePlaceType(obj.type)) {
+            freeIds.push(obj.id);
             continue;
         }
         if (obj.type === 'FUNCTION') {
@@ -11011,7 +11418,7 @@ AlgeoApp.prototype.beginSelectionTranslate = function (mathX, mathY) {
         }
     }
 
-    this.beginTranslateDrag(pointIds, null, mathX, mathY, sliderIds);
+    this.beginTranslateDrag(pointIds, null, mathX, mathY, sliderIds, freeIds);
 };
 
 // 마우스업 시 단건 선택 확정 (드래그 없이 클릭만 한 경우)
@@ -11247,6 +11654,14 @@ AlgeoApp.prototype.getObjectScreenBounds = function (obj) {
         sx = r.toScreenX(obj.x);
         sy = r.toScreenY(obj.y);
         return { x1: sx - 4, y1: sy - 18, x2: sx + 110, y2: sy + 8 };
+    } else if (obj.type === 'IMAGE') {
+        bounds = r.getImageScreenRect(obj);
+        return {
+            x1: bounds.x,
+            y1: bounds.y,
+            x2: bounds.x + bounds.w,
+            y2: bounds.y + bounds.h
+        };
     } else if (obj.type === 'DECORATE_LEADER') {
         expandSeg(r.toScreenX(obj.x1), r.toScreenY(obj.y1), r.toScreenX(obj.x2), r.toScreenY(obj.y2));
     } else if (obj.type === 'DECORATE_LENGTH') {
@@ -12238,6 +12653,7 @@ AlgeoApp.prototype.setTheme = function (theme, skipSave) {
     }
 
     this.syncThemeToggleUI();
+    this.syncSettingsPanelUI();
     this.renderer.draw();
 };
 
@@ -12277,18 +12693,21 @@ AlgeoApp.prototype.initTheme = function () {
     });
 };
 
-// 격자·스냅 토글 초기화 (localStorage 복원)
+// 격자·스냅·축 토글 초기화 (localStorage 복원)
 AlgeoApp.prototype.initViewToggles = function () {
     const self = this;
     let gridSaved = null;
     let snapSaved = null;
+    let axesSaved = null;
 
     try {
         gridSaved = localStorage.getItem(ALGEO_GRID_VISIBLE_KEY);
         snapSaved = localStorage.getItem(ALGEO_SNAP_ENABLED_KEY);
+        axesSaved = localStorage.getItem(ALGEO_AXES_VISIBLE_KEY);
     } catch (ignoreErr) {
         gridSaved = null;
         snapSaved = null;
+        axesSaved = null;
     }
 
     if (gridSaved === '0') {
@@ -12301,6 +12720,12 @@ AlgeoApp.prototype.initViewToggles = function () {
         this.renderer.snapEnabled = true;
     } else if (snapSaved === '0') {
         this.renderer.snapEnabled = false;
+    }
+
+    if (axesSaved === '0') {
+        this.renderer.showAxes = false;
+    } else if (axesSaved === '1') {
+        this.renderer.showAxes = true;
     }
 
     this.syncViewToggleUI();
@@ -12329,6 +12754,7 @@ AlgeoApp.prototype.setGridVisible = function (visible) {
     }
 
     this.syncViewToggleUI();
+    this.syncSettingsPanelUI();
     this.renderer.draw();
     if (this.guideOverride === 'grid') {
         this.syncToolGuide();
@@ -12346,9 +12772,24 @@ AlgeoApp.prototype.setSnapEnabled = function (enabled) {
     }
 
     this.syncViewToggleUI();
+    this.syncSettingsPanelUI();
     if (this.guideOverride === 'snap') {
         this.syncToolGuide();
     }
+};
+
+// 좌표축 표시 설정
+AlgeoApp.prototype.setAxesVisible = function (visible) {
+    this.renderer.showAxes = !!visible;
+
+    try {
+        localStorage.setItem(ALGEO_AXES_VISIBLE_KEY, visible ? '1' : '0');
+    } catch (ignoreErr) {
+        // localStorage 미지원 환경 무시
+    }
+
+    this.syncSettingsPanelUI();
+    this.renderer.draw();
 };
 
 // 격자·스냅 토글 버튼 상태 갱신
@@ -12827,6 +13268,16 @@ AlgeoApp.prototype.buildAlgebraPropsHtml = function (obj) {
         html += '<label class="prop-field">간격 <input type="text" class="prop-input" data-prop="step" value="' + obj.step + '" /></label>';
         html += '<button type="button" class="prop-apply-btn">적용</button>';
         html += '</div>';
+    } else if (obj.type === 'IMAGE') {
+        html += '<div class="algebra-props-form">';
+        html += '<label class="prop-field">x <input type="text" class="prop-input" data-prop="x" value="' + obj.x.toFixed(2) + '" /></label>';
+        html += '<label class="prop-field">y <input type="text" class="prop-input" data-prop="y" value="' + obj.y.toFixed(2) + '" /></label>';
+        html += '<label class="prop-field">너비 <input type="text" class="prop-input" data-prop="width" value="' + Number(obj.width).toFixed(2) + '" /></label>';
+        html += '<button type="button" class="prop-apply-btn">적용</button>';
+        html += '</div>';
+        if (obj.fileName) {
+            html += '<p class="props-note">파일: ' + escapeHtmlText(obj.fileName) + '</p>';
+        }
     } else if (obj.type === 'FUNCTION') {
         html += '<div class="algebra-props-form">';
         html += '<label class="prop-field">기울기 a <input type="text" class="prop-input" data-prop="slope" value="' + obj.slope + '" /></label>';
@@ -13155,6 +13606,26 @@ AlgeoApp.prototype.applyAlgebraProps = function () {
         obj.max = maxVal;
         obj.step = stepVal;
         this.engine.setSliderValue(obj.id, numVal);
+    } else if (obj.type === 'IMAGE') {
+        xVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="x"]').val());
+        yVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="y"]').val());
+        numVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="width"]').val());
+        if (isNaN(xVal) || isNaN(yVal)) {
+            $('#algebraError').text('좌표는 숫자여야 합니다.');
+            return;
+        }
+        if (isNaN(numVal) || numVal <= 0) {
+            $('#algebraError').text('너비는 0보다 큰 숫자여야 합니다.');
+            return;
+        }
+        if (!obj.width || obj.width <= 0) {
+            $('#algebraError').text('그림 크기를 확인할 수 없습니다.');
+            return;
+        }
+        obj.x = xVal;
+        obj.y = yVal;
+        obj.height = numVal * (obj.height / obj.width);
+        obj.width = numVal;
     } else if (obj.type === 'FUNCTION') {
         slopeVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="slope"]').val());
         interceptVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="intercept"]').val());
@@ -13358,6 +13829,9 @@ AlgeoApp.prototype.updateAlgebraView = function () {
             }
         } else if (obj.type === 'TEXT') {
             desc = obj.text || '';
+        } else if (obj.type === 'IMAGE') {
+            desc = '그림' + (obj.fileName ? ' (' + obj.fileName + ')' : '') +
+                ' ' + Number(obj.width).toFixed(1) + '\u00D7' + Number(obj.height).toFixed(1);
         } else if (obj.type === 'DECORATE_LEADER') {
             desc = '설명선' + (obj.text ? ' - ' + obj.text : '');
         } else if (obj.type === 'DECORATE_LENGTH') {
@@ -13519,6 +13993,7 @@ AlgeoApp.prototype.toggleCmdDict = function () {
     if (this.algebraCmdDictOpen) {
         $('#algebraCmdDict').addClass('open');
         this.closeShortcutPanel();
+        this.closeSettingsPanel();
     } else {
         this.closeCmdDict();
     }
