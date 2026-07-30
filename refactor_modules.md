@@ -15,16 +15,16 @@
 
 ---
 
-## 목표 구조
+## 목표 구조 (완료)
 
 ```text
-algeo-icons.js              ← 기존 (SVG 아이콘)
+algeo-icons.js              ← SVG 아이콘
 js/algeo-constants.js       ← 1단계 ✅
 js/algeo-tools.js           ← 1단계 ✅
 js/algeo-engine.js          ← 2단계 ✅
 js/algeo-renderer.js        ← 3단계 ✅
-js/algeo-app.js             ← 4단계 예정
-script.js                   ← 진입점(init·UI·contentScript) + App
+js/algeo-app.js             ← 4단계 ✅
+script.js                   ← 5단계 ✅ 진입점만 (~250줄)
 ```
 
 ### 로드 순서 (`index.html`)
@@ -36,7 +36,7 @@ js/algeo-constants.js
 js/algeo-tools.js
 js/algeo-engine.js
 js/algeo-renderer.js
-(이후) js/algeo-app.js
+js/algeo-app.js
 script.js
 ```
 
@@ -46,54 +46,69 @@ script.js
 
 | 단계 | 내용 | 상태 |
 |------|------|------|
-| **1** | 상수·타입 헬퍼·테마/스타일 + 도구 카탈로그·가이드·단축키 분리 | ✅ 2026-07-30 |
+| **1** | 상수·타입 헬퍼·테마/스타일 + 도구 카탈로그·가이드·단축키 | ✅ 2026-07-30 |
 | **2** | `AlgeoEngine` → `js/algeo-engine.js` | ✅ 2026-07-30 |
 | **3** | `AlgeoRenderer` → `js/algeo-renderer.js` | ✅ 2026-07-30 |
-| **4** | `AlgeoApp` → `js/algeo-app.js` | ⬜ |
-| **5** | `script.js`를 진입점만 남기고 README·구조 문서 정리 | ⬜ |
+| **4** | `AlgeoApp` → `js/algeo-app.js` | ✅ 2026-07-30 |
+| **5** | `script.js` 진입점만 유지 · README 정리 | ✅ 2026-07-30 |
 
 ---
 
-## 1단계 상세 (완료)
+## 1단계
 
-| 파일 | 포함 |
-|------|------|
-| [`js/algeo-constants.js`](js/algeo-constants.js) | `ALGEBRA_*`, 타입 맵/헬퍼, 테마·`ALGEO_VIS*`·스타일 resolve |
-| [`js/algeo-tools.js`](js/algeo-tools.js) | 도구 카탈로그·가이드·단축키·레일 헬퍼 |
+| 파일 | 대략 | 포함 |
+|------|------|------|
+| [`js/algeo-constants.js`](js/algeo-constants.js) | ~0.6k | 타입·테마·스타일 resolve |
+| [`js/algeo-tools.js`](js/algeo-tools.js) | ~0.9k | 카탈로그·가이드·단축키·레일 |
 
-검증: 구문 검사 ✅ · 브라우저 스모크 ✅
-
----
-
-## 2단계 상세 (완료)
-
-| 파일 | 포함 |
-|------|------|
-| [`js/algeo-engine.js`](js/algeo-engine.js) | `AlgeoEngine` · DAG · 작도/변환/측정 · `exportState`/`importState` (~3k줄) |
-
-검증: 구문 검사 ✅ · 브라우저 스모크 ✅
+검증: 구문 ✅ · 브라우저 ✅
 
 ---
 
-## 3단계 상세 (완료)
+## 2단계
 
-| 파일 | 포함 |
-|------|------|
-| [`js/algeo-renderer.js`](js/algeo-renderer.js) | `AlgeoRenderer` · 좌표변환·격자/축·객체 그리기·미리보기·선택 하이라이트 (~2.4k줄) |
+| 파일 | 대략 | 포함 |
+|------|------|------|
+| [`js/algeo-engine.js`](js/algeo-engine.js) | ~3.0k | DAG · 작도/변환/측정 · export/import |
 
-### 남긴 것 (`script.js`)
+검증: 구문 ✅ · 브라우저 ✅
 
-- 진입점 (`contentScript` · `initAlgeoMath` · `createAlgeoUI`)
-- `AlgeoApp` (4단계)
+---
+
+## 3단계
+
+| 파일 | 대략 | 포함 |
+|------|------|------|
+| [`js/algeo-renderer.js`](js/algeo-renderer.js) | ~2.4k | 좌표변환·격자·객체 렌더·미리보기·선택 하이라이트 |
+
+검증: 구문 ✅ · 브라우저 ✅
+
+---
+
+## 4단계 (완료)
+
+| 파일 | 대략 | 포함 |
+|------|------|------|
+| [`js/algeo-app.js`](js/algeo-app.js) | ~7.5k | 도구 이벤트·작도·대수창·Undo/저장·테마·설정·단축키 |
 
 ### 의존성
 
-- Renderer → Engine 인스턴스 + `algeo-constants` (`ALGEO_VIS`, `resolveObjectStyle` 등)
+App → Engine · Renderer · constants · tools · icons
 
 ### 검증
 
-- [x] `js/algeo-renderer.js` · `script.js` 구문 검사
-- [ ] 브라우저: 격자·줌/팬 · 점/선분/원 렌더 · 선택 하이라이트
+- [x] 구문 검사
+- [ ] 브라우저: 도구 전환 · 작도 · 대수 입력 · 선택/스타일 · 저장·설정 패널
+
+---
+
+## 5단계 (완료)
+
+| 파일 | 대략 | 포함 |
+|------|------|------|
+| [`script.js`](script.js) | ~0.25k | `contentScript` · `waitWrapReady` · `bindWrapResize` · `initAlgeoMath` · `createAlgeoUI` |
+
+README 프로젝트 구조·`editor_parity_plan` C10 갱신.
 
 ---
 
@@ -101,6 +116,7 @@ script.js
 
 | 일자 | 내용 |
 |------|------|
-| 2026-07-30 | 문서 초안 · **1단계** constants/tools |
-| 2026-07-30 | **2단계** Engine |
-| 2026-07-30 | **3단계** Renderer → `js/algeo-renderer.js` |
+| 2026-07-30 | 1단계 constants/tools |
+| 2026-07-30 | 2단계 Engine |
+| 2026-07-30 | 3단계 Renderer |
+| 2026-07-30 | **4~5단계** App 분리 · `script.js` 진입점만 |

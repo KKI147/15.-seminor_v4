@@ -28,23 +28,24 @@ Z:\프로젝트\Homework\2024\김경일\동아(캔버스)\
 
 ```text
 algeomath_1/
-├── index.html              # 진입점 (common + algeo-* + script.js)
+├── index.html              # 진입점 (common + algeo-* 로드)
 ├── algeo-icons.js          # SVG 아이콘
 ├── js/
-│   ├── algeo-constants.js  # 상수·타입·테마/스타일 (1단계)
-│   ├── algeo-tools.js      # 도구 카탈로그·가이드·단축키 (1단계)
-│   ├── algeo-engine.js     # AlgeoEngine DAG 엔진 (2단계)
-│   └── algeo-renderer.js   # AlgeoRenderer 캔버스 (3단계)
-├── script.js               # 진입점 + AlgeoApp (4단계 분리 예정)
+│   ├── algeo-constants.js  # 상수·타입·테마/스타일
+│   ├── algeo-tools.js      # 도구 카탈로그·가이드·단축키
+│   ├── algeo-engine.js     # AlgeoEngine (DAG)
+│   ├── algeo-renderer.js   # AlgeoRenderer (Canvas)
+│   └── algeo-app.js        # AlgeoApp (도구·대수창 UI)
+├── script.js               # 진입점만 (init · UI 골격 · popscale)
 ├── style.css               # 알지오메스 전용 UI 스타일
-├── refactor_modules.md     # script.js 모듈 분리 계획·이력
+├── refactor_modules.md     # 모듈 분리 계획·이력 (C10 ✅)
 ├── task.md                 # 단계별 완료 체크리스트
 ├── tool_catalog.md         # 원본 전체 도구 목록·구현 상태
 ├── images/                 # 원본 UI 참고 스크린샷
 └── common/                 # 공용 JS/CSS (수정 금지)
 ```
 
-모듈 분리 진행: [`refactor_modules.md`](refactor_modules.md) (C10)
+모듈 분리: [`refactor_modules.md`](refactor_modules.md) — **1~5단계 완료**
 
 ### 아키텍처 (3계층)
 
