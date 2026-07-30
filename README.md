@@ -31,9 +31,10 @@ algeomath_1/
 ├── index.html              # 진입점 (common + algeo-* + script.js)
 ├── algeo-icons.js          # SVG 아이콘
 ├── js/
-│   ├── algeo-constants.js  # 상수·타입·테마/스타일 (모듈 분리 1단계)
-│   └── algeo-tools.js      # 도구 카탈로그·가이드·단축키
-├── script.js               # 진입점 + Engine/Renderer/App (추가 분리 예정)
+│   ├── algeo-constants.js  # 상수·타입·테마/스타일 (1단계)
+│   ├── algeo-tools.js      # 도구 카탈로그·가이드·단축키 (1단계)
+│   └── algeo-engine.js     # AlgeoEngine DAG 엔진 (2단계)
+├── script.js               # 진입점 + Renderer/App (3~4단계 분리 예정)
 ├── style.css               # 알지오메스 전용 UI 스타일
 ├── refactor_modules.md     # script.js 모듈 분리 계획·이력
 ├── task.md                 # 단계별 완료 체크리스트
