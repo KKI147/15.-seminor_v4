@@ -28,20 +28,21 @@ Z:\프로젝트\Homework\2024\김경일\동아(캔버스)\
 
 ```text
 algeomath_1/
-├── index.html              # 진입점 (common 프레임워크 + script.js 로드)
-├── script.js               # AlgeoEngine, AlgeoRenderer, AlgeoApp (단일 파일)
+├── index.html              # 진입점 (common + algeo-* + script.js)
+├── algeo-icons.js          # SVG 아이콘
+├── js/
+│   ├── algeo-constants.js  # 상수·타입·테마/스타일 (모듈 분리 1단계)
+│   └── algeo-tools.js      # 도구 카탈로그·가이드·단축키
+├── script.js               # 진입점 + Engine/Renderer/App (추가 분리 예정)
 ├── style.css               # 알지오메스 전용 UI 스타일
-├── ui_layout.md            # UI 레이아웃 개편 기록 (AlgeoMath 스타일)
-├── ux_guidelines.md        # 작도 UX 원칙·도구별 조작·가이드 패널
-├── tool_guide_plan.md      # 도구 사용 가이드 구현 계획
-├── tool_catalog.md         # 원본 전체 도구 목록·구현 상태 (images/ 기준)
+├── refactor_modules.md     # script.js 모듈 분리 계획·이력
+├── task.md                 # 단계별 완료 체크리스트
+├── tool_catalog.md         # 원본 전체 도구 목록·구현 상태
 ├── images/                 # 원본 UI 참고 스크린샷
-│   └── README.md           # 스샷 ↔ 카테고리 인덱스
-├── task.md                 # 단계별 완료 체크리스트 (진행 상황)
-├── implementation_plan.md  # 초기 아키텍처 설계 문서
-├── scratchpad_imsf86e0.md  # 수동 테스트 체크리스트
 └── common/                 # 공용 JS/CSS (수정 금지)
 ```
+
+모듈 분리 진행: [`refactor_modules.md`](refactor_modules.md) (C10)
 
 ### 아키텍처 (3계층)
 
@@ -323,3 +324,4 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 | [`images/README.md`](images/README.md) | 원본 UI 참고 스크린샷 인덱스 |
 | [`ux_guidelines.md`](ux_guidelines.md) | 작도 UX·가이드 패널 명세 |
 | [`icon_guidelines.md`](icon_guidelines.md) | **SVG 아이콘 전용** 규칙·추가 절차·체크리스트 |
+| [`refactor_modules.md`](refactor_modules.md) | **script.js 모듈 분리** 단계·체크리스트 (C10) |

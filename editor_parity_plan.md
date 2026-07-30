@@ -117,7 +117,7 @@
 | C7  | 우클릭 컨텍스트 메뉴        | **로드맵 밖**       | 속성·숨김·삭제 단축 경로                    |
 | C8  | PNG 캡처보내기          | **로드맵 밖**       | 저장과 함께 “결과물”                      |
 | C9  | 수식 입력 부분 강화        | **로드맵 밖**       | `거리`·`각도`·간단 식. MathQuill 전체는 비목표 |
-| C10 | `script.js` 모듈 분리  | tool_catalog 메모 | 유지보수. 기능 완료와 병행 가능                |
+| C10 | `script.js` 모듈 분리  | tool_catalog / [`refactor_modules.md`](refactor_modules.md) | **1단계 완료**(constants·tools). 2~4 Engine/Renderer/App |
 
 
 
