@@ -1,8 +1,9 @@
 # UX 가이드라인 — AlgeoMath 클론
 
-> **목적**: 사용자 UX 지시·피드백·구현 상태를 한곳에 모아, 이후 작업(3-5 다각형, UI-2 등)에서도 AlgeoMath 원본 수준의 조작감을 이어가기 위한 문서입니다.  
+> **목적**: 사용자 UX 지시·피드백·구현 상태를 한곳에 모아, 이후 작업에서도 AlgeoMath 원본 수준의 조작감을 이어가기 위한 문서입니다.  
 > **참고 원본**: [AlgeoMath 작도 화면](https://www.algeomath.kr/algeo/algeomath/app/make)  
-> **관련 코드**: `script.js` (`ALGEO_TOOL_CATEGORIES`, `constructionDraft`, `drawToolPreview`), `style.css`  
+> **원본 정합 갭·예방 (필수)**: [`original_parity_gaps.md`](original_parity_gaps.md) — `done`이어도 원본과 다를 수 있음. 신규 도구 전 대조.  
+> **관련 코드**: `js/algeo-*.js`, `style.css`  
 > **아이콘 (필수)**: [`icon_guidelines.md`](icon_guidelines.md) — **UI 아이콘은 SVG만** (`algeo-icons.js`)
 
 ---

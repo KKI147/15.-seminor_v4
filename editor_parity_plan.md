@@ -2,7 +2,7 @@
 
 > **목적**: 이 프로젝트의 **목표 범위·우선순위·작업 순서**를 고정해, 이후 구현·에이전트 작업 시 이 문서를 기준으로 한다.  
 > **작성**: 2026-07-22 · 로드맵 6단계 완료 시점 기준  
-> **관련**: `[README.md](README.md)` · `[task.md](task.md)` · `[tool_catalog.md](tool_catalog.md)` · `[ux_guidelines.md](ux_guidelines.md)`
+> **관련**: `[README.md](README.md)` · `[task.md](task.md)` · `[tool_catalog.md](tool_catalog.md)` · `[ux_guidelines.md](ux_guidelines.md)` · **`[original_parity_gaps.md](original_parity_gaps.md)` (원본 정합 갭·예방)**
 
 ---
 
@@ -46,24 +46,25 @@
 
 
 
-## 2. 현재 위치 (2026-07-30)
+## 2. 현재 위치 (2026-07-31)
 
 
 | 구분               | 상태                                           |
 | ---------------- | -------------------------------------------- |
 | 1~6단계            | ✅ 완료 (핵심 작도·대수 인프라·UI 맵·기하 확장)               |
-| 7-1 선택·그룹선택     | ✅ 완료 (2026-07-23)                                      |
+| 7-1 선택·그룹선택     | ✅ 동작 완료 — **원본 “영속 그룹”과는 다름** (G4 수정대기) |
 | M5 스타일 패널 · M6 Undo | ✅ 완료 (2026-07-23) — `obj.style` + `exportState` 스택   |
-| 8-1 측정 (길이·각도·넓이) | ✅ 완료 (2026-07-27) — 대수 연동 D2                      |
-| 9 변환 5종 · 12-4 저장 · 꾸미기/텍스트 | ✅ |
-| 그림 넣기 · 설정 패널 · 펜 | ✅ 완료 (2026-07-30) |
-| 타일 · 체크박스 | ✅ 완료 (2026-07-30) |
+| 8-1 측정 (길이·각도·넓이) | ✅ 완료 — **둘레 누락** (G6)                      |
+| 9 변환 5종 · 12-4 저장 · 꾸미기/텍스트 | ✅ (밀기·꾸미기 평행은 원본과 다름 — G3·G5) |
+| 그림 넣기 · 설정 패널 · 펜 | ✅ (그림 편집 팝업은 G8) |
+| 타일 | ✅ **원본 UX로 재구현** (2026-07-31, G1) |
+| 체크박스 | ✅ 배지만 — **연동 숨김 미구현** (G2, P1) |
 | 엔진 `done` / stub | 약 **49 / 54** (UI 맵은 100%)                   |
 | 12단계             | 테마·SVG·저장 ✅ · 터치·단축키 ⬜                       |
-| **다음 권장**        | **표 / 라인 트레이서** 또는 터치·단축키 (Could) |
+| **다음 권장**        | **원본 정합 P1** ([`original_parity_gaps.md`](original_parity_gaps.md)): G2→G3→G4… · Could(표/트레이서)는 그 다음 |
 
 
-상세 체크: `[task.md](task.md)` · 도구 표: `[tool_catalog.md](tool_catalog.md)`
+상세 체크: `[task.md](task.md)` · 도구 표: `[tool_catalog.md](tool_catalog.md)` · **갭·예방**: `[original_parity_gaps.md](original_parity_gaps.md)`
 
 ---
 
@@ -193,10 +194,13 @@
 3. ~~8-1 측정 (+ 대수 연동 D2)~~     (M2) ✅
 4. ~~9 변환 (타일 제외)~~           (M3) ✅
 5. ~~12-4 JSON 저장·불러오기~~      (M4) ✅
-6. ~~8-2 꾸미기 · 7-2 텍스트~~      (S1, S2) ✅ (체크박스는 Could)
+6. ~~8-2 꾸미기 · 7-2 텍스트~~      (S1, S2) ✅
 7. ~~그림 넣기 · 11-3 설정~~         (S4, S3) ✅
-8. ~~펜 · 타일 · 체크박스~~ · 터치 · 단축키 · 기타 Could
-─── 여기까지가 2번 “실무 완성선” ───
+8. ~~펜 · 타일(원본 UX) · 체크박스(UI)~~
+9. **원본 정합 수정 P1**            ← **현재** ([original_parity_gaps.md](original_parity_gaps.md))
+   G2 체크박스 연동 → G3 밀기 → G4 그룹 → G5·G11 꾸미기 → G6 둘레 → G8 그림
+10. Could: 표 · 라인 트레이서 · 터치 · 단축키
+─── 여기까지가 2번 “실무 완성선” + 원본 정합 보강 ───
 ✕ 블록코딩 · 사용자 도구 · 동영상 · 포털
 ```
 
@@ -204,7 +208,7 @@
 
 ### 한 줄 요약
 
-**선택 → … → 펜 → 타일·체크박스** → (Could: 표·라인 트레이서·터치)
+**… → 펜·타일** → **원본 정합 P1 (체크박스·밀기·그룹…)** → (Could: 표·라인 트레이서·터치)
 
 ---
 
@@ -232,13 +236,14 @@
 
 작업 시작 전:
 
-1. 이 문서 §3 Must / §5 순서 확인 — Won't에 손대지 말 것
-2. `[tool_catalog.md](tool_catalog.md)`에서 `toolId` · `status` 확인
-3. 새 도구: Engine `type`/`recompute` → Renderer → App `constructionDraft` → 가이드 → `status: done`
-4. UI 아이콘: SVG만 (`algeo-icons.js` · `iconId`) — `[.cursor/rules/svg-icons.mdc](.cursor/rules/svg-icons.mdc)`
-5. `common/` 수정 금지 · 화살표 함수 금지 · `let`/`const` · jQuery · 주석 한국어
-6. 캔버스 밖 UI 좌표는 `getPopscaleFactor()` / zoom factor 적용 (`[README.md](README.md)`)
-7. 완료 후 `[task.md](task.md)` · 필요 시 이 문서 §6 체크 · README “현재 진행” 갱신
+1. **`[original_parity_gaps.md](original_parity_gaps.md)` §0·§2·§3 확인** — 원본 정합 P1이 Could보다 우선. 패턴 재사용만으로 done 금지
+2. 이 문서 §3 Must / §5 순서 확인 — Won't에 손대지 말 것
+3. `[tool_catalog.md](tool_catalog.md)`에서 `toolId` · `status` 확인
+4. 새 도구·수정: **원본 조작 단계 vs 우리 단계 대조표**를 먼저 작성 → Engine → Renderer → App → 가이드 → `status`
+5. UI 아이콘: SVG만 (`algeo-icons.js` · `iconId`) — `[.cursor/rules/svg-icons.mdc](.cursor/rules/svg-icons.mdc)`
+6. `common/` 수정 금지 · 화살표 함수 금지 · `let`/`const` · jQuery · 주석 한국어
+7. 캔버스 밖 UI 좌표는 `getPopscaleFactor()` / zoom factor 적용 (`[README.md](README.md)`)
+8. 완료 후 `[task.md](task.md)` · 갭 문서 §3 상태 · 필요 시 이 문서 §2·§6 · README 갱신
 
 ---
 
@@ -249,6 +254,7 @@
 
 | 일자         | 내용                                                                 |
 | ---------- | ------------------------------------------------------------------ |
+| 2026-07-31 | **원본 정합 갭 문서화** — TILE 교정 반영 · 다음을 P1(체크박스·밀기…)로 · [original_parity_gaps.md](original_parity_gaps.md) |
 | 2026-07-30 | 타일·체크박스 done · 다음을 표/라인 트레이서·터치로 |
 | 2026-07-30 | 펜(PEN) done · 다음을 타일/체크박스로 |
 | 2026-07-30 | 그림 넣기·설정 패널 완료 · 2번 실무 완성선 체크 전부 ✅ · 다음을 Could(타일/펜/체크박스)로 |

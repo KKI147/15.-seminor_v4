@@ -1,0 +1,27 @@
+---
+description: 원본 AlgeoMath 정합 — 패턴 재사용만으로 done 금지, 갭 문서 우선
+alwaysApply: true
+---
+
+# 원본 정합 (필수)
+
+세션을 이어가거나 도구를 추가·수정할 때 **반드시** [`original_parity_gaps.md`](original_parity_gaps.md) 를 확인합니다.
+
+## 현재 우선순위
+
+- **Could(표·라인 트레이서·터치)보다** [`task.md`](task.md) 「원본 정합 수정」 **P1** 이 우선입니다.
+- 순서: G2 체크박스 연동 → G3 밀기 → G4 그룹 → G5·G11 꾸미기 → G6 둘레 → G8 그림  
+- `TILE`은 이미 원본 UX로 교정됨 (벡터×n 폐기).
+
+## 구현 전 필수
+
+1. 원본 조작 단계(매뉴얼 또는 `/app/make`)를 3~5단계로 적는다.
+2. 우리 구현 단계를 같은 형식으로 적고 **대조**한다.
+3. TRANSLATE·TEXT·`prompt` 등 **기존 패턴만 베끼지 않는다.** (TILE 실패 원인)
+4. 기능 의미가 다르면 `status: done`만 올리지 말고 갭 문서 §3에 `수정대기`로 남긴다.
+5. 완료 후 `task.md` · `original_parity_gaps.md` · `tool_catalog.md` 비고를 갱신한다.
+
+## 참고
+
+- 목표 범위·순서: [`editor_parity_plan.md`](editor_parity_plan.md)
+- 체크리스트: [`task.md`](task.md)

@@ -17,7 +17,8 @@
 | **UI만** (`stub`) | **7** |
 
 > 원본 스샷 기준 ~52종 + 작도 `ANGLE`(선) + SELECT/GROUP을 pointer에만 둔 구성.  
-> 5단계 완료 후 **UI 맵 100%**, 엔진은 6단계부터 stub → done 전환.
+> 5단계 완료 후 **UI 맵 100%**, 엔진은 6단계부터 stub → done 전환.  
+> **`done`이어도 원본 UX와 다를 수 있음** — [`original_parity_gaps.md`](original_parity_gaps.md) (정합 수정 P1 우선).
 
 ---
 
@@ -77,7 +78,7 @@
 |--------|------|--------|------|--------|------|
 | `MOVE` | 이동 | — | done | 1단계 | Pan + 자유 점 드래그 |
 | `SELECT` | 선택 | — | done | 7-1 | 클릭 선택 · Shift 토글 · 드래그 이동 · Delete |
-| `GROUP_SELECT` | 그룹선택 | Shift+G | done | 7-1 | 드래그 박스 다중선택 · G 단독 = 격자 |
+| `GROUP_SELECT` | 그룹선택 | Shift+G | done | 7-1 | 마퀴 다중선택 · **영속 그룹 없음** ([G4](original_parity_gaps.md)) |
 
 ### point — 점 (`144346`)
 
@@ -139,9 +140,9 @@
 | `REFLECT_POINT` | 점대칭 | R | done | 9-1 | 선택 후 기준점 클릭 |
 | `REFLECT_LINE` | 선대칭 | — | done | 9-1 | 선택 후 기준선의 두 점 |
 | `ROTATE` | 회전 | — | done | 9-2 | 선택 후 중심점 + 각도 |
-| `TRANSLATE` | 평행이동 | — | done | 9-2 | 선택 후 시작점 + 끝점 |
+| `TRANSLATE` | 평행이동 | — | done | 9-2 | 벡터 두 점 · **원본 밀기(거리+방향)와 다름** ([G3](original_parity_gaps.md)) |
 | `DILATE` | 점을 중심으로 확대 | — | done | 9-2 | 선택 후 중심점 + 배율 |
-| `TILE` | 타일 | — | done | 9-3 | 도형 선택 → 클릭 배치 → 팝업·핸들 회전·대칭 |
+| `TILE` | 타일 | — | done | 9-3 | **원본 UX** 클릭 배치·팝업·핸들 (G1 ✅) · 구 벡터×n 폐기 |
 
 ### misc — 기타·객체 (`144341`)
 
@@ -150,7 +151,7 @@
 | `TEXT` | 텍스트 | T | done | 7-2 | 클릭 위치 + 문구 입력 |
 | `SLIDER` | 슬라이더 | — | done | 4-3 | |
 | `USER_TOOL` | 사용자 도구 | — | stub | 11-2 | |
-| `CHECKBOX` | 체크박스 | — | done | 7-2 | 클릭 배치 · 선택 시 토글 |
+| `CHECKBOX` | 체크박스 | — | done | 7-2 | UI done · **연동 숨김 미구현** ([G2](original_parity_gaps.md)) |
 | `BLOCK_EVENT_BTN` | 블록코딩 이벤트 버튼 | — | stub | 11-1 | |
 | `HIDE_OBJECT` | 대상 숨기기 | H | done | 4-4 | |
 | `DELETE` | 삭제 | — | done | 1단계 | |
@@ -164,7 +165,7 @@
 | `DECORATE_LEADER` | 꾸미기: 설명선 | E | done | 8-2 | 시작점·끝점·문구 |
 | `DECORATE_LENGTH` | 꾸미기: 길이 | — | done | 8-2 | 선형 객체 클릭 |
 | `DECORATE_ANGLE` | 꾸미기: 각도 | — | done | 8-2 | 각 객체 또는 세 점 |
-| `DECORATE_PARALLEL` | 꾸미기: 평행 | — | done | 8-2 | 선형 객체 두 개 |
+| `DECORATE_PARALLEL` | 꾸미기: 평행 | — | done | 8-2 | 현재 선 두 개 · **원본은 선 1개+표식** ([G5](original_parity_gaps.md)) |
 | `PEN` | 그리기 (펜그림) | B | done | 8-3 | 드래그 자유곡선 · 점의 수 |
 
 ---
@@ -173,14 +174,15 @@
 
 새 도구를 stub → done 으로 올릴 때:
 
-0. **아이콘** — 이미 있으면 유지 ([`icon_guidelines.md`](icon_guidelines.md))
-1. `tool_catalog.md` — 상태 `done` 갱신
-2. `ALGEO_TOOL_CATEGORIES` — `status: 'done'`
-3. `ALGEO_TOOL_GUIDES` — 실제 조작 단계로 교체
-4. `AlgeoEngine` — `type` · `parents` · `recompute`
-5. `AlgeoRenderer` — `draw*` · hit test
-6. `AlgeoApp` — `constructionDraft` · `handleMouse*` (stub 가드 통과)
-7. 대수창 · `task.md` · `README.md`
+0. **원본 정합** — 조작 단계를 원본과 대조. 다르면 [`original_parity_gaps.md`](original_parity_gaps.md)에 기록. 패턴 재사용만으로 done 금지
+1. **아이콘** — 이미 있으면 유지 ([`icon_guidelines.md`](icon_guidelines.md))
+2. `tool_catalog.md` — 상태 `done` 갱신
+3. `ALGEO_TOOL_CATEGORIES` — `status: 'done'`
+4. `ALGEO_TOOL_GUIDES` — 실제 조작 단계로 교체
+5. `AlgeoEngine` — `type` · `parents` · `recompute`
+6. `AlgeoRenderer` — `draw*` · hit test
+7. `AlgeoApp` — `constructionDraft` · `handleMouse*` (stub 가드 통과)
+8. 대수창 · `task.md` · `README.md` · 갭 문서 상태
 
 **좌표·드래그**: 캔버스 밖 UI는 [`README.md`](README.md) 「popscale factor」 참고.
 
@@ -207,6 +209,7 @@
 
 | 일자 | 내용 |
 |------|------|
+| 2026-07-31 | **원본 정합 갭 문서** · TILE UX 교정 · CHECKBOX/TRANSLATE/GROUP/PARALLEL 비고에 G# 링크 |
 | 2026-07-31 | TILE UX 원본 맞춤 — 클릭 배치·팝업(90°/대칭/복제)·회전 핸들 |
 | 2026-07-30 | TILE·CHECKBOX done — done 49 / stub 5 |
 | 2026-07-30 | PEN done — 드래그 자유곡선 · 대수 `점의 수` · done 47 |

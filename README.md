@@ -5,7 +5,8 @@
 **배포 주소**: [https://kki147.github.io/15.-seminor_v4/)
 
 > **진행 방식**: 이 README의 로드맵을 따르되, **목표 범위·우선순위는 [`editor_parity_plan.md`](editor_parity_plan.md)** (작도 에디터 = 원본 대비 2번)를 우선합니다.  
-> 완료 여부는 [`task.md`](task.md) 에서 체크하며, 세부 설계는 [`implementation_plan.md`](implementation_plan.md) 를 참고합니다.
+> 완료 여부는 [`task.md`](task.md) 에서 체크하며, 세부 설계는 [`implementation_plan.md`](implementation_plan.md) 를 참고합니다.  
+> **원본과 다르게 구현된 기능·수정 백로그·예방 규칙**: [`original_parity_gaps.md`](original_parity_gaps.md) — 세션 재개·신규 도구 시 **필수**.
 
 Z:\프로젝트\Homework\2024\김경일\동아(캔버스)\
 ---
@@ -110,8 +111,9 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 | UX-4 | 도구 가이드 패널 | ✅ |
 | **5단계** | 레일 9+1 · 플라이아웃 stub 맵 | ✅ [`tool_catalog.md`](tool_catalog.md) |
 
-**다음**: **표 / 라인 트레이서** 또는 **터치·단축키** (Could)  
-([`editor_parity_plan.md`](editor_parity_plan.md) §5 권장 순서)
+**다음**: **원본 정합 P1** (체크박스 연동 → 밀기 → …) — [`original_parity_gaps.md`](original_parity_gaps.md)  
+Could(표·라인 트레이서·터치)는 그 다음.  
+([`editor_parity_plan.md`](editor_parity_plan.md) §5)
 
 - 레이아웃: [`ui_layout.md`](ui_layout.md)
 - **작도 UX·조작 명세**: [`ux_guidelines.md`](ux_guidelines.md)
@@ -251,7 +253,7 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 [12단계]  ██████████████░░░░░░  60%   (테마·SVG·저장 ✅ / 터치 ⬜)
 ```
 
-**다음 작업**: **표 · 라인 트레이서** (Could) 또는 터치·단축키 완성
+**다음 작업**: **원본 정합 P1** ([`original_parity_gaps.md`](original_parity_gaps.md) · [`task.md`](task.md)) — Could(표·트레이서)는 그 다음
 
 **제품 목표**: 원본 **작도 에디터** 수준(2번). 포털·블록코딩 본편은 비목표 — [`editor_parity_plan.md`](editor_parity_plan.md)
 
@@ -318,6 +320,7 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 | 파일 | 용도 |
 |------|------|
 | [`editor_parity_plan.md`](editor_parity_plan.md) | **목표 범위(작도 에디터 2번)** · Must/Should/Could/Won't · 권장 작업 순서 |
+| [`original_parity_gaps.md`](original_parity_gaps.md) | **원본 정합 갭·예방 규칙·수정 백로그** (TILE 교훈, P1 우선) |
 | [`task.md`](task.md) | 단계별 완료 체크 (구현 시 업데이트) |
 | [`implementation_plan.md`](implementation_plan.md) | 초기 설계·아키텍처 결정 기록 |
 | [`scratchpad_imsf86e0.md`](scratchpad_imsf86e0.md) | 수동 테스트 시나리오 |
