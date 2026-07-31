@@ -111,7 +111,7 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 | UX-4 | 도구 가이드 패널 | ✅ |
 | **5단계** | 레일 9+1 · 플라이아웃 stub 맵 | ✅ [`tool_catalog.md`](tool_catalog.md) |
 
-**다음**: **원본 정합 P1** (체크박스 연동 → 밀기 → …) — [`original_parity_gaps.md`](original_parity_gaps.md)  
+**다음**: **원본 정합 P1** — **G4 그룹선택** → G5 꾸미기… ([`original_parity_gaps.md`](original_parity_gaps.md))  
 Could(표·라인 트레이서·터치)는 그 다음.  
 ([`editor_parity_plan.md`](editor_parity_plan.md) §5)
 
@@ -253,7 +253,7 @@ Could(표·라인 트레이서·터치)는 그 다음.
 [12단계]  ██████████████░░░░░░  60%   (테마·SVG·저장 ✅ / 터치 ⬜)
 ```
 
-**다음 작업**: **원본 정합 P1** ([`original_parity_gaps.md`](original_parity_gaps.md) · [`task.md`](task.md)) — Could(표·트레이서)는 그 다음
+**다음 작업**: **G4 그룹선택** 등 원본 정합 P1 ([`original_parity_gaps.md`](original_parity_gaps.md) · [`task.md`](task.md))
 
 **제품 목표**: 원본 **작도 에디터** 수준(2번). 포털·블록코딩 본편은 비목표 — [`editor_parity_plan.md`](editor_parity_plan.md)
 

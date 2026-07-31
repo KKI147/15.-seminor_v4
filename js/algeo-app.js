@@ -1136,7 +1136,13 @@ AlgeoApp.prototype.getGuideActiveStepIndex = function () {
         }
         return 0;
     }
-    if (tool === 'TEXT' || tool === 'INSERT_IMAGE' || tool === 'CHECKBOX') {
+    if (tool === 'TEXT' || tool === 'INSERT_IMAGE') {
+        return 0;
+    }
+    if (tool === 'CHECKBOX') {
+        if (draft && draft.type === 'CHECKBOX_LINK') {
+            return 2;
+        }
         return 0;
     }
     if (tool === 'PEN') {
@@ -2903,7 +2909,7 @@ AlgeoApp.prototype.handleMouseDown = function (e) {
     } else if (this.currentTool === 'TEXT') {
         this.handleTextMouseDown(e);
     } else if (this.currentTool === 'CHECKBOX') {
-        this.handleCheckboxMouseDown(e);
+        this.handleCheckboxMouseDown(e, hitPoint);
     } else if (this.currentTool === 'INSERT_IMAGE') {
         this.handleInsertImageMouseDown(e);
     } else if (this.currentTool === 'PEN') {
@@ -4033,10 +4039,12 @@ AlgeoApp.prototype.handleRotateMouseDown = function (e, hitPoint) {
     });
 };
 
-// 평행이동: 기준 시작점 + 끝점
+// 평행이동(밀기): 거리 입력 + 방향 두 점
 AlgeoApp.prototype.handleTranslateMouseDown = function (e, hitPoint) {
     const r = this.renderer;
     const pos = this.getEventCanvasPos(e);
+    let distStr;
+    let distance;
 
     if (!this.ensureTransformSelection(pos.x, pos.y, hitPoint)) {
         return;
@@ -4057,11 +4065,29 @@ AlgeoApp.prototype.handleTranslateMouseDown = function (e, hitPoint) {
         r.draw();
         return;
     }
+
+    distStr = window.prompt('밀 거리를 입력하세요. (예: 2)', '2');
+    if (distStr === null) {
+        this.selectedPoints = [];
+        this.syncHighlightToRenderer();
+        r.draw();
+        return;
+    }
+    distance = parseFloat(distStr);
+    if (isNaN(distance)) {
+        window.alert('거리는 숫자로 입력해 주세요.');
+        this.selectedPoints = [];
+        this.syncHighlightToRenderer();
+        r.draw();
+        return;
+    }
+
     this.recordHistory('평행이동');
     this.applyTransformToSelection('평행이동', {
         transformType: 'TRANSLATE',
         ref1Id: this.selectedPoints[0],
-        ref2Id: this.selectedPoints[1]
+        ref2Id: this.selectedPoints[1],
+        translateDistance: distance
     });
 };
 
@@ -4626,19 +4652,85 @@ AlgeoApp.prototype.handleTextMouseDown = function (e) {
     this.renderer.draw();
 };
 
-// 체크박스 추가
-AlgeoApp.prototype.handleCheckboxMouseDown = function (e) {
+// 체크박스: 위치 → 문구 → 대상 연결 (체크 시 일괄 표시/숨김)
+AlgeoApp.prototype.handleCheckboxMouseDown = function (e, hitPoint) {
+    const r = this.renderer;
     const pos = this.getEventCanvasPos(e);
     const math = this.screenToMath(pos.x, pos.y);
-    const text = window.prompt('체크박스 문구를 입력하세요.', '항목');
+    const draft = this.constructionDraft;
+    let hitObj;
+    let text;
+    let cb;
+    let label;
 
+    hitObj = this.findObjectAt(pos.x, pos.y);
+    if (!hitObj && hitPoint) {
+        hitObj = hitPoint;
+    }
+
+    // 연결 모드 — 대상 클릭으로 연결/해제, 빈 곳·Esc로 종료는 도구 전환
+    if (draft && draft.type === 'CHECKBOX_LINK') {
+        if (!hitObj) {
+            this.constructionDraft = null;
+            this.syncHighlightToRenderer();
+            this.syncToolGuide();
+            r.draw();
+            return;
+        }
+        if (hitObj.id === draft.checkboxId) {
+            return;
+        }
+        this.recordHistory('체크박스 대상 연결');
+        this.engine.toggleCheckboxLink(draft.checkboxId, hitObj.id);
+        this.highlightCheckboxLinkTargets(draft.checkboxId);
+        this.updateAlgebraView();
+        this.syncToolGuide();
+        r.draw();
+        return;
+    }
+
+    // 기존 체크박스 클릭 → 연결 모드 재진입
+    if (hitObj && hitObj.type === 'CHECKBOX') {
+        this.constructionDraft = { type: 'CHECKBOX_LINK', checkboxId: hitObj.id };
+        this.setSelection([hitObj.id], hitObj.id);
+        this.highlightCheckboxLinkTargets(hitObj.id);
+        this.syncToolGuide();
+        r.draw();
+        return;
+    }
+
+    text = window.prompt('체크박스 문구를 입력하세요.', '항목');
     if (text === null) {
         return;
     }
+    label = text.replace(/^\s+|\s+$/g, '');
     this.recordHistory('체크박스 추가');
-    this.engine.addCheckbox(text.replace(/^\s+|\s+$/g, ''), math.x, math.y, false);
+    cb = this.engine.addCheckbox(label, math.x, math.y, true);
+    this.constructionDraft = { type: 'CHECKBOX_LINK', checkboxId: cb.id };
+    this.setSelection([cb.id], cb.id);
+    this.highlightCheckboxLinkTargets(cb.id);
     this.updateAlgebraView();
-    this.renderer.draw();
+    this.syncToolGuide();
+    r.draw();
+};
+
+// 체크박스 연결 대상 하이라이트
+AlgeoApp.prototype.highlightCheckboxLinkTargets = function (checkboxId) {
+    const cb = this.engine.objectMap[checkboxId];
+    const ids = [];
+    let i;
+
+    if (!cb || cb.type !== 'CHECKBOX') {
+        this.renderer.highlightIds = [];
+        return;
+    }
+    ids.push(checkboxId);
+    if (cb.linkedIds) {
+        for (i = 0; i < cb.linkedIds.length; i++) {
+            ids.push(cb.linkedIds[i]);
+        }
+    }
+    this.renderer.highlightIds = ids;
 };
 
 // 그림 넣기 — 클릭 위치 기억 후 파일 선택
@@ -7126,9 +7218,11 @@ AlgeoApp.prototype.buildAlgebraPropsHtml = function (obj) {
         html += '<label class="prop-field">y <input type="text" class="prop-input" data-prop="y" value="' + obj.y.toFixed(2) + '" /></label>';
         html += '<label class="prop-field">문구 <input type="text" class="prop-input" data-prop="text" value="' + escapeHtmlText(obj.text || '') + '" /></label>';
         html += '<label class="prop-field prop-check-field"><input type="checkbox" class="prop-input" data-prop="checked"' +
-            (obj.checked ? ' checked' : '') + ' /> 체크됨</label>';
+            (obj.checked ? ' checked' : '') + ' /> 체크됨 (연결 대상 표시)</label>';
         html += '<button type="button" class="prop-apply-btn">적용</button>';
         html += '</div>';
+        html += '<p class="props-note">연결 ' + (obj.linkedIds ? obj.linkedIds.length : 0) +
+            '개 · 체크박스 도구로 대상을 더 연결할 수 있습니다.</p>';
     } else if (obj.type === 'FUNCTION') {
         html += '<div class="algebra-props-form">';
         html += '<label class="prop-field">기울기 a <input type="text" class="prop-input" data-prop="slope" value="' + obj.slope + '" /></label>';
@@ -7582,6 +7676,7 @@ AlgeoApp.prototype.applyAlgebraProps = function () {
         obj.y = yVal;
         obj.text = String($('#algebraPropsPanel .prop-input[data-prop="text"]').val() || '');
         obj.checked = $('#algebraPropsPanel .prop-input[data-prop="checked"]').is(':checked');
+        this.engine.applyCheckboxLinkedVisibility(obj.id);
     } else if (obj.type === 'FUNCTION') {
         slopeVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="slope"]').val());
         interceptVal = parseFloat($('#algebraPropsPanel .prop-input[data-prop="intercept"]').val());
@@ -7792,7 +7887,8 @@ AlgeoApp.prototype.updateAlgebraView = function () {
         } else if (obj.type === 'TEXT') {
             desc = obj.text || '';
         } else if (obj.type === 'CHECKBOX') {
-            desc = (obj.checked ? '체크됨 · ' : '미체크 · ') + (obj.text || '');
+            desc = (obj.checked ? '체크 · ' : '해제 · ') + (obj.text || '') +
+                ' (연결 ' + (obj.linkedIds ? obj.linkedIds.length : 0) + ')';
         } else if (obj.type === 'IMAGE') {
             desc = '그림' + (obj.fileName ? ' (' + obj.fileName + ')' : '') +
                 ' ' + Number(obj.width).toFixed(1) + '\u00D7' + Number(obj.height).toFixed(1);

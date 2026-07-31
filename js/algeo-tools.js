@@ -87,7 +87,7 @@ const ALGEO_TOOL_CATEGORIES = [
             { tool: 'REFLECT_POINT', label: '점대칭', iconId: 'reflect_point', status: 'done', shortcut: 'R', hint: '선택 후 기준점 클릭' },
             { tool: 'REFLECT_LINE', label: '선대칭', iconId: 'reflect_line', status: 'done', hint: '선택 후 기준선의 두 점 클릭' },
             { tool: 'ROTATE', label: '회전', iconId: 'rotate', status: 'done', hint: '선택 후 중심점·각도 입력' },
-            { tool: 'TRANSLATE', label: '평행이동', iconId: 'translate', status: 'done', hint: '선택 후 시작점·끝점 클릭' },
+            { tool: 'TRANSLATE', label: '평행이동', iconId: 'translate', status: 'done', hint: '선택 → 방향 두 점 → 거리 입력' },
             { tool: 'DILATE', label: '점을 중심으로 확대', iconId: 'dilate', status: 'done', hint: '선택 후 중심점·배율 입력' },
             { tool: 'TILE', label: '타일', iconId: 'tile', status: 'done', hint: '도형 선택 → 위치 클릭 → 회전·대칭' }
         ]
@@ -100,7 +100,7 @@ const ALGEO_TOOL_CATEGORIES = [
             { tool: 'TEXT', label: '텍스트', iconId: 'text', status: 'done', shortcut: 'T', hint: '클릭 위치에 텍스트 배치' },
             { tool: 'SLIDER', label: '슬라이더', iconId: 'slider', status: 'done', hint: '캔버스 클릭 생성' },
             { tool: 'USER_TOOL', label: '사용자 도구', iconId: 'user_tool', status: 'stub', hint: '사용자 정의 (11-2)' },
-            { tool: 'CHECKBOX', label: '체크박스', iconId: 'checkbox', status: 'done', hint: '클릭 배치 · 선택 시 토글' },
+            { tool: 'CHECKBOX', label: '체크박스', iconId: 'checkbox', status: 'done', hint: '위치 → 문구 → 대상 연결' },
             { tool: 'BLOCK_EVENT_BTN', label: '블록코딩 이벤트 버튼', iconId: 'block_event_btn', status: 'stub', hint: '이벤트 버튼 (11-1)' },
             { tool: 'HIDE_OBJECT', label: '대상 숨기기', iconId: 'hide_object', status: 'done', shortcut: 'H', hint: '객체 클릭' },
             { tool: 'DELETE', label: '삭제', iconId: 'delete', status: 'done', hint: '객체 클릭' }
@@ -470,9 +470,16 @@ const ALGEO_TOOL_GUIDES = {
         tips: ['양수는 반시계 방향, 음수는 시계 방향입니다.']
     },
     TRANSLATE: {
-        summary: '선택한 점·도형을 기준 벡터만큼 평행이동 복제합니다.',
-        steps: ['변환할 대상을 먼저 선택합니다.', '이동 시작점을 클릭합니다.', '이동 끝점을 클릭합니다.'],
-        tips: ['두 점이 정하는 방향과 거리만큼 복제됩니다.']
+        summary: '선택한 도형을 입력한 거리만큼, 지정한 방향으로 밀어 복제합니다.',
+        steps: [
+            '밀 대상을 먼저 선택합니다.',
+            '방향의 시작점을 클릭합니다.',
+            '방향의 끝점을 클릭한 뒤 거리를 입력합니다.'
+        ],
+        tips: [
+            '두 점은 방향만 정합니다. 이동 길이는 입력한 거리입니다.',
+            '방향 점을 옮기면 같은 거리로 방향만 다시 계산됩니다.'
+        ]
     },
     DILATE: {
         summary: '선택한 점·도형을 중심점 기준으로 확대·축소 복제합니다.',
@@ -503,9 +510,17 @@ const ALGEO_TOOL_GUIDES = {
         tips: []
     },
     CHECKBOX: {
-        summary: '클릭한 위치에 체크박스를 둡니다. 선택 도구로 켜고 끌 수 있습니다.',
-        steps: ['체크박스를 둘 위치를 클릭합니다.', '표시할 문구를 입력합니다.'],
-        tips: ['선택 도구로 체크박스를 클릭하면 체크가 토글됩니다.']
+        summary: '체크박스로 여러 객체를 한꺼번에 보이거나 숨깁니다.',
+        steps: [
+            '체크박스를 둘 위치를 클릭합니다.',
+            '문구를 입력합니다.',
+            '보이게/숨길 대상을 차례로 클릭합니다. (빈 곳 클릭으로 연결 종료)'
+        ],
+        tips: [
+            '선택 도구로 체크박스를 클릭하면 체크가 토글되고 연결 대상이 같이 숨겨지거나 나타납니다.',
+            '기존 체크박스를 체크박스 도구로 다시 클릭하면 대상을 더 연결할 수 있습니다.',
+            '같은 대상을 다시 클릭하면 연결이 해제됩니다.'
+        ]
     },
     BLOCK_EVENT_BTN: {
         summary: '블록코딩 이벤트 버튼을 만듭니다. (준비 중)',

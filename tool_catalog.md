@@ -140,7 +140,7 @@
 | `REFLECT_POINT` | 점대칭 | R | done | 9-1 | 선택 후 기준점 클릭 |
 | `REFLECT_LINE` | 선대칭 | — | done | 9-1 | 선택 후 기준선의 두 점 |
 | `ROTATE` | 회전 | — | done | 9-2 | 선택 후 중심점 + 각도 |
-| `TRANSLATE` | 평행이동 | — | done | 9-2 | 벡터 두 점 · **원본 밀기(거리+방향)와 다름** ([G3](original_parity_gaps.md)) |
+| `TRANSLATE` | 평행이동 | — | done | 9-2 | **거리+방향** (G3 ✅) · 구 벡터 길이 저장본은 호환 |
 | `DILATE` | 점을 중심으로 확대 | — | done | 9-2 | 선택 후 중심점 + 배율 |
 | `TILE` | 타일 | — | done | 9-3 | **원본 UX** 클릭 배치·팝업·핸들 (G1 ✅) · 구 벡터×n 폐기 |
 
@@ -151,7 +151,7 @@
 | `TEXT` | 텍스트 | T | done | 7-2 | 클릭 위치 + 문구 입력 |
 | `SLIDER` | 슬라이더 | — | done | 4-3 | |
 | `USER_TOOL` | 사용자 도구 | — | stub | 11-2 | |
-| `CHECKBOX` | 체크박스 | — | done | 7-2 | UI done · **연동 숨김 미구현** ([G2](original_parity_gaps.md)) |
+| `CHECKBOX` | 체크박스 | — | done | 7-2 | **대상 연동 표시/숨김** (G2 ✅) |
 | `BLOCK_EVENT_BTN` | 블록코딩 이벤트 버튼 | — | stub | 11-1 | |
 | `HIDE_OBJECT` | 대상 숨기기 | H | done | 4-4 | |
 | `DELETE` | 삭제 | — | done | 1단계 | |
@@ -209,6 +209,7 @@
 
 | 일자 | 내용 |
 |------|------|
+| 2026-07-31 | **G2·G3 정합** — 체크박스 연동 숨김 · 밀기(거리+방향) |
 | 2026-07-31 | **원본 정합 갭 문서** · TILE UX 교정 · CHECKBOX/TRANSLATE/GROUP/PARALLEL 비고에 G# 링크 |
 | 2026-07-31 | TILE UX 원본 맞춤 — 클릭 배치·팝업(90°/대칭/복제)·회전 핸들 |
 | 2026-07-30 | TILE·CHECKBOX done — done 49 / stub 5 |

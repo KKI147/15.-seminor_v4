@@ -1188,6 +1188,32 @@ AlgeoEngine.prototype.translatePointCoords = function (source, fromPoint, toPoin
     };
 };
 
+// 밀기: 방향(두 점) + 고정 거리로 이동한 좌표
+AlgeoEngine.prototype.translateByDistanceCoords = function (source, fromPoint, toPoint, distance) {
+    let dx;
+    let dy;
+    let len;
+    let scale;
+
+    if (!source || !fromPoint || !toPoint) {
+        return null;
+    }
+    if (distance === null || distance === undefined || isNaN(distance)) {
+        return null;
+    }
+    dx = toPoint.x - fromPoint.x;
+    dy = toPoint.y - fromPoint.y;
+    len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 1e-12) {
+        return null;
+    }
+    scale = distance / len;
+    return {
+        x: source.x + dx * scale,
+        y: source.y + dy * scale
+    };
+};
+
 // 타일: 구버전 벡터 반복 복제 좌표 (TRANSFORM_POINT + TILE 불러오기 호환)
 AlgeoEngine.prototype.tilePointCoords = function (source, fromPoint, toPoint, tileIndex) {
     let k;
@@ -1235,6 +1261,10 @@ AlgeoEngine.prototype.getTransformedPointCoords = function (obj) {
         return this.rotatePointCoords(source, ref1, obj.degrees || 0);
     }
     if (obj.transformType === 'TRANSLATE') {
+        if (obj.translateDistance !== undefined && obj.translateDistance !== null &&
+            !isNaN(obj.translateDistance)) {
+            return this.translateByDistanceCoords(source, ref1, ref2, obj.translateDistance);
+        }
         return this.translatePointCoords(source, ref1, ref2);
     }
     if (obj.transformType === 'TILE') {
@@ -1266,7 +1296,8 @@ AlgeoEngine.prototype.addTransformPoint = function (name, sourceId, config) {
         transformType: config.transformType,
         degrees: config.degrees || 0,
         scale: config.scale !== undefined ? config.scale : 1,
-        tileIndex: config.tileIndex !== undefined ? config.tileIndex : 1
+        tileIndex: config.tileIndex !== undefined ? config.tileIndex : 1,
+        translateDistance: config.translateDistance
     });
     if (!coords) {
         return null;
@@ -1290,6 +1321,7 @@ AlgeoEngine.prototype.addTransformPoint = function (name, sourceId, config) {
         degrees: config.degrees || 0,
         scale: config.scale !== undefined ? config.scale : 1,
         tileIndex: config.tileIndex !== undefined ? config.tileIndex : 1,
+        translateDistance: config.translateDistance !== undefined ? config.translateDistance : null,
         x: coords.x,
         y: coords.y,
         parents: parents,
@@ -1784,7 +1816,7 @@ AlgeoEngine.prototype.addText = function (text, x, y) {
     return obj;
 };
 
-// 체크박스 객체 추가
+// 체크박스 객체 추가 (linkedIds: 표시/숨김 연동 대상)
 AlgeoEngine.prototype.addCheckbox = function (text, x, y, checked) {
     const id = this.generateId();
     const obj = {
@@ -1794,7 +1826,8 @@ AlgeoEngine.prototype.addCheckbox = function (text, x, y, checked) {
         text: text || '',
         x: x,
         y: y,
-        checked: !!checked,
+        checked: checked !== false,
+        linkedIds: [],
         parents: [],
         children: []
     };
@@ -1803,7 +1836,60 @@ AlgeoEngine.prototype.addCheckbox = function (text, x, y, checked) {
     return obj;
 };
 
-// 체크박스 체크 상태 토글
+// 체크박스에 대상 연결 (이미 있으면 해제)
+AlgeoEngine.prototype.toggleCheckboxLink = function (checkboxId, targetId) {
+    const obj = this.objectMap[checkboxId];
+    const target = this.objectMap[targetId];
+    let i;
+    let idx = -1;
+
+    if (!obj || obj.type !== 'CHECKBOX' || !target) {
+        return null;
+    }
+    if (targetId === checkboxId || target.type === 'CHECKBOX') {
+        return null;
+    }
+    if (!obj.linkedIds) {
+        obj.linkedIds = [];
+    }
+    for (i = 0; i < obj.linkedIds.length; i++) {
+        if (obj.linkedIds[i] === targetId) {
+            idx = i;
+            break;
+        }
+    }
+    if (idx >= 0) {
+        obj.linkedIds.splice(idx, 1);
+    } else {
+        obj.linkedIds.push(targetId);
+    }
+    this.applyCheckboxLinkedVisibility(checkboxId);
+    return obj;
+};
+
+// 체크 상태에 맞춰 연결 대상 표시/숨김
+AlgeoEngine.prototype.applyCheckboxLinkedVisibility = function (checkboxId) {
+    const obj = this.objectMap[checkboxId];
+    let i;
+    let tid;
+    let show;
+
+    if (!obj || obj.type !== 'CHECKBOX') {
+        return;
+    }
+    if (!obj.linkedIds) {
+        obj.linkedIds = [];
+    }
+    show = !!obj.checked;
+    for (i = 0; i < obj.linkedIds.length; i++) {
+        tid = obj.linkedIds[i];
+        if (this.objectMap[tid]) {
+            this.setObjectVisible(tid, show);
+        }
+    }
+};
+
+// 체크박스 체크 상태 토글 (+ 연결 대상 표시 동기)
 AlgeoEngine.prototype.toggleCheckbox = function (id) {
     const obj = this.objectMap[id];
 
@@ -1811,6 +1897,7 @@ AlgeoEngine.prototype.toggleCheckbox = function (id) {
         return null;
     }
     obj.checked = !obj.checked;
+    this.applyCheckboxLinkedVisibility(id);
     return obj;
 };
 
@@ -3112,5 +3199,9 @@ AlgeoEngine.prototype.importState = function (state) {
     for (i = 0; i < this.objects.length; i++) {
         obj = this.objects[i];
         this.objectMap[obj.id] = obj;
+        // 구버전 체크박스 — linkedIds 보강
+        if (obj.type === 'CHECKBOX' && !obj.linkedIds) {
+            obj.linkedIds = [];
+        }
     }
 };
