@@ -199,7 +199,7 @@ var designLeft = (elementRect.left - parentRect.left) / factor;
 
 ### 9단계 — 변환·타일
 
-점대칭, 선대칭, 회전, 평행이동, 확대, 타일 ✅
+점대칭, 선대칭, 회전, 평행이동, 확대, 타일(클릭 배치·팝업 회전/대칭) ✅
 
 ---
 

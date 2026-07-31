@@ -1188,7 +1188,7 @@ AlgeoEngine.prototype.translatePointCoords = function (source, fromPoint, toPoin
     };
 };
 
-// 타일: 기준 벡터의 tileIndex배만큼 이동한 좌표
+// 타일: 구버전 벡터 반복 복제 좌표 (TRANSFORM_POINT + TILE 불러오기 호환)
 AlgeoEngine.prototype.tilePointCoords = function (source, fromPoint, toPoint, tileIndex) {
     let k;
 

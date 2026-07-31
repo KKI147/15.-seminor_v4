@@ -19,6 +19,7 @@ function AlgeoRenderer(engine, canvas) {
     this.selectionIds = [];     // 캔버스 다중 선택 ID 목록
     this.marqueeRect = null;    // 그룹선택 드래그 상자 { x1, y1, x2, y2 }
     this.toolPreview = null;    // 호·원 작도 중 실시간 미리보기
+    this.tileHandle = null;     // 타일 회전 핸들 { cx, cy, hx, hy } 수학 좌표
     this.showGrid = true;       // 격자·눈금 표시
     this.snapEnabled = false;   // 격자 스냅(자석)
     this.showAxes = true;       // X·Y 축 표시
@@ -137,6 +138,45 @@ AlgeoRenderer.prototype.draw = function () {
     if (this.marqueeRect) {
         this.drawMarqueeRect(this.marqueeRect);
     }
+
+    // 6. 타일 회전 핸들 (하얀 원)
+    if (this.tileHandle) {
+        this.drawTileRotateHandle(this.tileHandle);
+    }
+};
+
+// 타일 복제본 위 자유 회전 핸들
+AlgeoRenderer.prototype.drawTileRotateHandle = function (handle) {
+    const ctx = this.ctx;
+    let sx;
+    let sy;
+    let hx;
+    let hy;
+
+    if (!handle) {
+        return;
+    }
+    sx = this.toScreenX(handle.cx);
+    sy = this.toScreenY(handle.cy);
+    hx = this.toScreenX(handle.hx);
+    hy = this.toScreenY(handle.hy);
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(100, 116, 139, 0.85)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(hx, hy);
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(hx, hy, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
 };
 
 // 선택 집합 하이라이트 (selectionIds 우선, 없으면 selectedObjectId)

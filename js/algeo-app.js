@@ -53,6 +53,9 @@ function AlgeoApp(engine, renderer) {
         showLabel: false
     };
     this.guideOverride = null;        // 뷰 옵션 가이드 (grid | snap) — 도구 가이드 대신 표시
+    this.tileStampSourceIds = null;   // 타일 배치 원본 선택 ID 목록
+    this.activeTileGroupId = null;    // 편집 중인 타일 그룹
+    this.tileRotateDrag = null;       // 타일 자유 회전 드래그 상태
 }
 
 AlgeoApp.prototype.init = function () {
@@ -73,6 +76,7 @@ AlgeoApp.prototype.init = function () {
     self.initSettingsPanel();
     self.initSaveLoad();
     self.initImageInsert();
+    self.initTilePopup();
 
     // 2. 뷰포트 조작 버튼 이벤트 바인딩
     $('#btnZoomIn').on('click', function () {
@@ -433,6 +437,13 @@ AlgeoApp.prototype.selectTool = function (toolId) {
     // 펜 도구 — 작도 전 스타일 패널이 보이도록 선택 해제
     if (toolId === 'PEN') {
         this.clearSelection();
+    }
+    if (toolId === 'TILE') {
+        if (this.selectionIds.length > 0) {
+            this.tileStampSourceIds = this.selectionIds.slice();
+        }
+    } else {
+        this.clearTileToolState();
     }
     this.syncToolRailUI();
     this.updateCanvasCursor();
@@ -1113,8 +1124,17 @@ AlgeoApp.prototype.getGuideActiveStepIndex = function () {
     if (tool === 'REFLECT_POINT' || tool === 'ROTATE' || tool === 'DILATE') {
         return 0;
     }
-    if (tool === 'REFLECT_LINE' || tool === 'TRANSLATE' || tool === 'TILE') {
+    if (tool === 'REFLECT_LINE' || tool === 'TRANSLATE') {
         return Math.min(n, 1);
+    }
+    if (tool === 'TILE') {
+        if (this.activeTileGroupId) {
+            return 2;
+        }
+        if (this.tileStampSourceIds && this.tileStampSourceIds.length > 0) {
+            return 1;
+        }
+        return 0;
     }
     if (tool === 'TEXT' || tool === 'INSERT_IMAGE' || tool === 'CHECKBOX') {
         return 0;
@@ -3058,6 +3078,8 @@ AlgeoApp.prototype.handleMouseMove = function (e) {
         this.dragTranslate.lastMathY = math.y;
         this.updateAlgebraView();
         r.draw();
+    } else if (this.tileRotateDrag) {
+        this.handleTileRotateDragMove(mouseX, mouseY);
     } else if (this.constructionDraft && this.constructionDraft.type === 'PEN') {
         this.handlePenMouseMove(mouseX, mouseY);
     } else if (this.constructionDraft) {
@@ -3201,6 +3223,18 @@ AlgeoApp.prototype.handleMouseUp = function (e) {
     this.dragTranslate = null;
     this.activePoint = null;
     this.isDraggingCanvas = false;
+
+    if (this.tileRotateDrag) {
+        if (this.tileRotateDrag.moved && this.tileRotateDrag.snapshot) {
+            this.pushUndoEntry(this.tileRotateDrag.snapshot, '타일 회전');
+        }
+        this.tileRotateDrag = null;
+        this.syncTileHandle();
+        if (this.activeTileGroupId) {
+            this.showTilePopupAtCenter();
+        }
+        this.renderer.draw();
+    }
 
     if (this.constructionDraft && this.constructionDraft.type === 'PEN') {
         this.finishPenStroke();
@@ -4031,80 +4065,517 @@ AlgeoApp.prototype.handleTranslateMouseDown = function (e, hitPoint) {
     });
 };
 
-// 타일: 기준 벡터 + 반복 횟수 → 1..n배 위치에 복제
+// 타일: 도형 선택 → 위치 클릭 배치 → 팝업·핸들로 회전·대칭
 AlgeoApp.prototype.handleTileMouseDown = function (e, hitPoint) {
     const r = this.renderer;
     const pos = this.getEventCanvasPos(e);
-    let countStr;
-    let count;
-    let k;
+    const math = this.screenToMath(pos.x, pos.y);
+    let hitObj;
     let result;
-    let allCreated;
-    let ref1Id;
-    let ref2Id;
+    let sourceIds;
 
-    if (!this.ensureTransformSelection(pos.x, pos.y, hitPoint)) {
-        return;
-    }
-    if (!hitPoint) {
-        r.draw();
-        return;
-    }
-    this.selectedPoints.push(hitPoint.id);
-    this.syncHighlightToRenderer();
-    if (this.selectedPoints.length < 2) {
-        r.draw();
-        return;
-    }
-    if (this.selectedPoints[0] === this.selectedPoints[1]) {
-        this.selectedPoints = [];
-        this.syncHighlightToRenderer();
-        r.draw();
+    if (this.isNearTileRotateHandle(pos.x, pos.y)) {
+        this.beginTileRotateDrag(pos.x, pos.y);
         return;
     }
 
-    countStr = window.prompt('반복 횟수를 입력하세요. (예: 3)', '3');
-    if (countStr === null) {
-        this.selectedPoints = [];
-        this.syncHighlightToRenderer();
-        r.draw();
+    hitObj = this.findObjectAt(pos.x, pos.y);
+    if ((!hitObj || !hitObj.tileGroupId) && hitPoint && hitPoint.tileGroupId) {
+        hitObj = hitPoint;
+    }
+
+    if (hitObj && hitObj.tileGroupId) {
+        this.activateTileGroup(hitObj.tileGroupId, pos);
         return;
     }
-    count = parseInt(countStr, 10);
-    if (isNaN(count) || count < 1) {
-        window.alert('반복 횟수는 1 이상의 정수로 입력해 주세요.');
-        this.selectedPoints = [];
-        this.syncHighlightToRenderer();
+
+    if (hitObj && ALGEO_TRANSFORMABLE_OBJECT_TYPES[hitObj.type]) {
+        this.setSelection([hitObj.id], hitObj.id);
+        this.tileStampSourceIds = this.selectionIds.slice();
+        this.activeTileGroupId = null;
+        this.hideTilePopup();
+        this.syncTileHandle();
+        this.syncToolGuide();
         r.draw();
         return;
     }
 
-    ref1Id = this.selectedPoints[0];
-    ref2Id = this.selectedPoints[1];
+    if (hitPoint && isAlgeoPointType(hitPoint.type)) {
+        this.setSelection([hitPoint.id], hitPoint.id);
+        this.tileStampSourceIds = this.selectionIds.slice();
+        this.activeTileGroupId = null;
+        this.hideTilePopup();
+        this.syncTileHandle();
+        this.syncToolGuide();
+        r.draw();
+        return;
+    }
+
+    sourceIds = this.tileStampSourceIds;
+    if ((!sourceIds || sourceIds.length === 0) && this.selectionIds.length > 0) {
+        sourceIds = this.selectionIds.slice();
+        this.tileStampSourceIds = sourceIds;
+    }
+    if (!sourceIds || sourceIds.length === 0) {
+        window.alert('타일링할 도형을 먼저 선택하세요.');
+        return;
+    }
+
+    this.setSelection(sourceIds, sourceIds[0]);
+    if (this.getTransformSelectionInfo().pointIds.length === 0 &&
+        this.getTransformSelectionInfo().objectIds.length === 0) {
+        window.alert('변환할 수 있는 선택 대상이 없습니다.');
+        return;
+    }
+
     this.recordHistory('타일');
-    allCreated = [];
-    for (k = 1; k <= count; k++) {
-        result = this.cloneSelectionWithTransform({
-            transformType: 'TILE',
-            ref1Id: ref1Id,
-            ref2Id: ref2Id,
-            tileIndex: k
-        });
-        if (result.createdIds && result.createdIds.length > 0) {
-            allCreated = allCreated.concat(result.createdIds);
+    result = this.cloneSelectionAsTileStamp(math.x, math.y);
+    if (!result.createdIds || result.createdIds.length === 0) {
+        window.alert('변환할 수 있는 선택 대상이 없습니다.');
+        this.syncToolGuide();
+        r.draw();
+        return;
+    }
+    this.tileStampSourceIds = sourceIds.slice();
+    this.activateTileGroup(result.groupId, pos);
+    this.updateAlgebraView();
+};
+
+// 타일 도구 임시 상태 초기화
+AlgeoApp.prototype.clearTileToolState = function () {
+    this.tileStampSourceIds = null;
+    this.activeTileGroupId = null;
+    this.tileRotateDrag = null;
+    this.hideTilePopup();
+    this.renderer.tileHandle = null;
+};
+
+// 다음 타일 그룹 ID
+AlgeoApp.prototype.getNextTileGroupId = function () {
+    const list = this.engine.objects;
+    let maxId = 0;
+    let i;
+    let gid;
+
+    for (i = 0; i < list.length; i++) {
+        gid = list[i].tileGroupId;
+        if (gid && gid > maxId) {
+            maxId = gid;
         }
     }
-    if (allCreated.length === 0) {
-        window.alert('변환할 수 있는 선택 대상이 없습니다.');
-        this.selectedPoints = [];
-        this.syncHighlightToRenderer();
-        r.draw();
+    return maxId + 1;
+};
+
+// 타일 그룹에 속한 자유점 목록
+AlgeoApp.prototype.getTileGroupFreePoints = function (groupId) {
+    const list = this.engine.objects;
+    const points = [];
+    let i;
+    let obj;
+
+    for (i = 0; i < list.length; i++) {
+        obj = list[i];
+        if (obj.tileGroupId === groupId && obj.type === 'POINT') {
+            points.push(obj);
+        }
+    }
+    return points;
+};
+
+// 타일 그룹 객체 ID 목록
+AlgeoApp.prototype.getTileGroupObjectIds = function (groupId) {
+    const list = this.engine.objects;
+    const ids = [];
+    let i;
+
+    for (i = 0; i < list.length; i++) {
+        if (list[i].tileGroupId === groupId) {
+            ids.push(list[i].id);
+        }
+    }
+    return ids;
+};
+
+// 점 목록의 중심 좌표
+AlgeoApp.prototype.getPointsCentroid = function (points) {
+    let sx = 0;
+    let sy = 0;
+    let i;
+
+    if (!points || points.length === 0) {
+        return null;
+    }
+    for (i = 0; i < points.length; i++) {
+        sx += points[i].x;
+        sy += points[i].y;
+    }
+    return {
+        x: sx / points.length,
+        y: sy / points.length
+    };
+};
+
+// 선택 도형을 클릭 위치 중심으로 자유점 스탬프 복제
+AlgeoApp.prototype.cloneSelectionAsTileStamp = function (placeX, placeY) {
+    const info = this.getTransformSelectionInfo();
+    const pointMap = {};
+    const createdIds = [];
+    const groupId = this.getNextTileGroupId();
+    let i;
+    let pointId;
+    let src;
+    let pt;
+    let name;
+    let obj;
+    let newObj;
+    let cx = 0;
+    let cy = 0;
+    let count = 0;
+    let dx;
+    let dy;
+
+    if (info.pointIds.length === 0) {
+        return { createdIds: [], groupId: null };
+    }
+
+    for (i = 0; i < info.pointIds.length; i++) {
+        src = this.engine.objectMap[info.pointIds[i]];
+        if (src && typeof src.x === 'number' && typeof src.y === 'number') {
+            cx += src.x;
+            cy += src.y;
+            count += 1;
+        }
+    }
+    if (count === 0) {
+        return { createdIds: [], groupId: null };
+    }
+    cx /= count;
+    cy /= count;
+    dx = placeX - cx;
+    dy = placeY - cy;
+
+    for (i = 0; i < info.pointIds.length; i++) {
+        pointId = info.pointIds[i];
+        src = this.engine.objectMap[pointId];
+        if (!src || typeof src.x !== 'number') {
+            continue;
+        }
+        name = this.getNextPointName();
+        pt = this.engine.addPoint(name, src.x + dx, src.y + dy);
+        if (!pt) {
+            continue;
+        }
+        pt.tileGroupId = groupId;
+        if (!pt.style) {
+            pt.style = {};
+        }
+        pt.style.showLabel = false;
+        pointMap[pointId] = pt.id;
+        createdIds.push(pt.id);
+    }
+
+    for (i = 0; i < info.objectIds.length; i++) {
+        obj = this.engine.objectMap[info.objectIds[i]];
+        newObj = this.cloneObjectFromPointMap(obj, pointMap);
+        if (newObj) {
+            newObj.tileGroupId = groupId;
+            createdIds.push(newObj.id);
+        }
+    }
+
+    return {
+        createdIds: createdIds,
+        groupId: groupId
+    };
+};
+
+// 타일 그룹 활성화 (팝업·회전 핸들)
+AlgeoApp.prototype.activateTileGroup = function (groupId, screenPos) {
+    const ids = this.getTileGroupObjectIds(groupId);
+
+    if (!groupId || ids.length === 0) {
         return;
     }
-    this.setSelection(allCreated, allCreated[allCreated.length - 1]);
-    this.clearToolDraft();
+    this.activeTileGroupId = groupId;
+    this.setSelection(ids, ids[ids.length - 1]);
+    this.syncTileHandle();
+    if (screenPos) {
+        this.showTilePopupAt(screenPos.x, screenPos.y);
+    } else {
+        this.showTilePopupAtCenter();
+    }
+    this.syncToolGuide();
+    this.renderer.draw();
+};
+
+// 타일 회전 핸들 위치 갱신
+AlgeoApp.prototype.syncTileHandle = function () {
+    const points = this.getTileGroupFreePoints(this.activeTileGroupId);
+    const c = this.getPointsCentroid(points);
+    let handleOffset;
+
+    if (!c) {
+        this.renderer.tileHandle = null;
+        return;
+    }
+    handleOffset = 28 / this.renderer.scale;
+    this.renderer.tileHandle = {
+        cx: c.x,
+        cy: c.y,
+        hx: c.x,
+        hy: c.y + handleOffset
+    };
+};
+
+// 회전 핸들 근처인지
+AlgeoApp.prototype.isNearTileRotateHandle = function (screenX, screenY) {
+    const handle = this.renderer.tileHandle;
+    let hx;
+    let hy;
+    let dx;
+    let dy;
+
+    if (!handle || this.currentTool !== 'TILE') {
+        return false;
+    }
+    hx = this.renderer.toScreenX(handle.hx);
+    hy = this.renderer.toScreenY(handle.hy);
+    dx = screenX - hx;
+    dy = screenY - hy;
+    return (dx * dx + dy * dy) <= 12 * 12;
+};
+
+// 타일 자유 회전 드래그 시작
+AlgeoApp.prototype.beginTileRotateDrag = function (screenX, screenY) {
+    const points = this.getTileGroupFreePoints(this.activeTileGroupId);
+    const c = this.getPointsCentroid(points);
+    const math = {
+        x: this.renderer.toMathX(screenX),
+        y: this.renderer.toMathY(screenY)
+    };
+    const startPositions = [];
+    let i;
+
+    if (!c || points.length === 0) {
+        return;
+    }
+    for (i = 0; i < points.length; i++) {
+        startPositions.push({
+            id: points[i].id,
+            x: points[i].x,
+            y: points[i].y
+        });
+    }
+    this.tileRotateDrag = {
+        groupId: this.activeTileGroupId,
+        centerX: c.x,
+        centerY: c.y,
+        startAngle: Math.atan2(math.y - c.y, math.x - c.x),
+        startPositions: startPositions,
+        snapshot: this.captureEngineState(),
+        moved: false
+    };
+    this.hideTilePopup();
+    this.setCanvasCursor('grabbing');
+};
+
+// 타일 자유 회전 드래그 중
+AlgeoApp.prototype.handleTileRotateDragMove = function (screenX, screenY) {
+    const drag = this.tileRotateDrag;
+    const math = {
+        x: this.renderer.toMathX(screenX),
+        y: this.renderer.toMathY(screenY)
+    };
+    let angle;
+    let delta;
+    let cos;
+    let sin;
+    let i;
+    let sp;
+    let pt;
+    let dx;
+    let dy;
+
+    if (!drag) {
+        return;
+    }
+    angle = Math.atan2(math.y - drag.centerY, math.x - drag.centerX);
+    delta = angle - drag.startAngle;
+    cos = Math.cos(delta);
+    sin = Math.sin(delta);
+    for (i = 0; i < drag.startPositions.length; i++) {
+        sp = drag.startPositions[i];
+        pt = this.engine.objectMap[sp.id];
+        if (!pt) {
+            continue;
+        }
+        dx = sp.x - drag.centerX;
+        dy = sp.y - drag.centerY;
+        pt.x = drag.centerX + dx * cos - dy * sin;
+        pt.y = drag.centerY + dx * sin + dy * cos;
+    }
+    drag.moved = true;
+    this.syncTileHandle();
+    if (this.renderer.tileHandle) {
+        this.renderer.tileHandle.hx = math.x;
+        this.renderer.tileHandle.hy = math.y;
+    }
     this.updateAlgebraView();
     this.renderer.draw();
+};
+
+// 타일 그룹을 중심 기준 각도(도)만큼 회전
+AlgeoApp.prototype.rotateTileGroupByDegrees = function (groupId, degrees) {
+    const points = this.getTileGroupFreePoints(groupId);
+    const c = this.getPointsCentroid(points);
+    const rad = degrees * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    let i;
+    let pt;
+    let dx;
+    let dy;
+
+    if (!c) {
+        return;
+    }
+    for (i = 0; i < points.length; i++) {
+        pt = points[i];
+        dx = pt.x - c.x;
+        dy = pt.y - c.y;
+        pt.x = c.x + dx * cos - dy * sin;
+        pt.y = c.y + dx * sin + dy * cos;
+    }
+};
+
+// 타일 그룹 가로 대칭 (세로축 기준 좌우 반전)
+AlgeoApp.prototype.flipTileGroupHorizontal = function (groupId) {
+    const points = this.getTileGroupFreePoints(groupId);
+    const c = this.getPointsCentroid(points);
+    let i;
+
+    if (!c) {
+        return;
+    }
+    for (i = 0; i < points.length; i++) {
+        points[i].x = 2 * c.x - points[i].x;
+    }
+};
+
+// 타일 그룹 세로 대칭 (가로축 기준 상하 반전)
+AlgeoApp.prototype.flipTileGroupVertical = function (groupId) {
+    const points = this.getTileGroupFreePoints(groupId);
+    const c = this.getPointsCentroid(points);
+    let i;
+
+    if (!c) {
+        return;
+    }
+    for (i = 0; i < points.length; i++) {
+        points[i].y = 2 * c.y - points[i].y;
+    }
+};
+
+// 타일 팝업 UI 초기화
+AlgeoApp.prototype.initTilePopup = function () {
+    const self = this;
+    let html;
+
+    if ($('#algeoTilePopup').length) {
+        return;
+    }
+    html = '<div id="algeoTilePopup" class="algeo-tile-popup" style="display:none;" role="toolbar" aria-label="타일 편집">';
+    html += '<button type="button" class="tile-popup-btn" data-tile-action="rot-ccw" title="반시계 90도">';
+    html += renderAlgeoIcon('tile_rot_ccw', 'tile-popup-icon', true) + '</button>';
+    html += '<button type="button" class="tile-popup-btn" data-tile-action="rot-cw" title="시계 90도">';
+    html += renderAlgeoIcon('tile_rot_cw', 'tile-popup-icon', true) + '</button>';
+    html += '<button type="button" class="tile-popup-btn" data-tile-action="flip-h" title="세로 대칭(좌우)">';
+    html += renderAlgeoIcon('tile_flip_h', 'tile-popup-icon', true) + '</button>';
+    html += '<button type="button" class="tile-popup-btn" data-tile-action="flip-v" title="가로 대칭(상하)">';
+    html += renderAlgeoIcon('tile_flip_v', 'tile-popup-icon', true) + '</button>';
+    html += '<button type="button" class="tile-popup-btn" data-tile-action="dup" title="복제">';
+    html += renderAlgeoIcon('tile_dup', 'tile-popup-icon', true) + '</button>';
+    html += '</div>';
+    $('.algeo-canvas-container').append(html);
+
+    $(document).on('click', '#algeoTilePopup .tile-popup-btn', function (e) {
+        const action = $(this).attr('data-tile-action');
+        e.preventDefault();
+        e.stopPropagation();
+        self.handleTilePopupAction(action);
+    });
+};
+
+// 타일 팝업 액션
+AlgeoApp.prototype.handleTilePopupAction = function (action) {
+    const groupId = this.activeTileGroupId;
+    let ids;
+
+    if (!groupId) {
+        return;
+    }
+    if (action === 'dup') {
+        ids = this.getTileGroupObjectIds(groupId);
+        this.tileStampSourceIds = ids.slice();
+        this.setSelection(ids, ids[0]);
+        this.hideTilePopup();
+        this.syncToolGuide();
+        this.renderer.draw();
+        return;
+    }
+
+    this.recordHistory('타일 편집');
+    if (action === 'rot-ccw') {
+        this.rotateTileGroupByDegrees(groupId, 90);
+    } else if (action === 'rot-cw') {
+        this.rotateTileGroupByDegrees(groupId, -90);
+    } else if (action === 'flip-h') {
+        this.flipTileGroupHorizontal(groupId);
+    } else if (action === 'flip-v') {
+        this.flipTileGroupVertical(groupId);
+    }
+    this.syncTileHandle();
+    this.showTilePopupAtCenter();
+    this.updateAlgebraView();
+    this.renderer.draw();
+};
+
+// 캔버스 좌표 기준 타일 팝업 표시
+AlgeoApp.prototype.showTilePopupAt = function (canvasX, canvasY) {
+    const $popup = $('#algeoTilePopup');
+    let left = canvasX - 70;
+    let top = canvasY - 52;
+
+    if (left < 8) {
+        left = 8;
+    }
+    if (top < 8) {
+        top = 8;
+    }
+    $popup.css({
+        display: 'flex',
+        left: left + 'px',
+        top: top + 'px'
+    });
+};
+
+// 활성 타일 중심 근처에 팝업
+AlgeoApp.prototype.showTilePopupAtCenter = function () {
+    const handle = this.renderer.tileHandle;
+    let sx;
+    let sy;
+
+    if (!handle) {
+        return;
+    }
+    sx = this.renderer.toScreenX(handle.cx);
+    sy = this.renderer.toScreenY(handle.cy);
+    this.showTilePopupAt(sx, sy - 24);
+};
+
+// 타일 팝업 숨김
+AlgeoApp.prototype.hideTilePopup = function () {
+    $('#algeoTilePopup').hide();
 };
 
 // 확대: 중심점 + 배율 입력

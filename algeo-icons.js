@@ -208,6 +208,23 @@ const ALGEO_ICON_PATHS = {
         '<rect x="13" y="5" width="6" height="6" fill="none" stroke="' + ALGEO_ICON_BLUE + '" stroke-width="1.3"/>' +
         '<rect x="5" y="13" width="6" height="6" fill="none" stroke="' + ALGEO_ICON_BLUE + '" stroke-width="1.3"/>' +
         '<rect x="13" y="13" width="6" height="6" fill="none" stroke="' + ALGEO_ICON_RED + '" stroke-width="1.3"/>',
+    tile_rot_ccw: '' +
+        '<path d="M8 10a5 5 0 1 1 1.5 4.5" fill="none" stroke="' + ALGEO_ICON_INK + '" stroke-width="1.5" stroke-linecap="round"/>' +
+        '<path d="M8 7v3.5H11.5" fill="none" stroke="' + ALGEO_ICON_RED + '" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
+    tile_rot_cw: '' +
+        '<path d="M16 10a5 5 0 1 0-1.5 4.5" fill="none" stroke="' + ALGEO_ICON_INK + '" stroke-width="1.5" stroke-linecap="round"/>' +
+        '<path d="M16 7v3.5H12.5" fill="none" stroke="' + ALGEO_ICON_RED + '" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
+    tile_flip_h: '' +
+        '<path d="M12 5v14" fill="none" stroke="' + ALGEO_ICON_MUTED + '" stroke-width="1.2" stroke-dasharray="2 2"/>' +
+        '<path d="M10 8L5 12l5 4" fill="none" stroke="' + ALGEO_ICON_INK + '" stroke-width="1.4" stroke-linejoin="round"/>' +
+        '<path d="M14 8l5 4-5 4" fill="none" stroke="' + ALGEO_ICON_RED + '" stroke-width="1.4" stroke-linejoin="round"/>',
+    tile_flip_v: '' +
+        '<path d="M5 12h14" fill="none" stroke="' + ALGEO_ICON_MUTED + '" stroke-width="1.2" stroke-dasharray="2 2"/>' +
+        '<path d="M8 10L12 5l4 5" fill="none" stroke="' + ALGEO_ICON_INK + '" stroke-width="1.4" stroke-linejoin="round"/>' +
+        '<path d="M8 14l4 5 4-5" fill="none" stroke="' + ALGEO_ICON_RED + '" stroke-width="1.4" stroke-linejoin="round"/>',
+    tile_dup: '' +
+        '<rect x="6" y="8" width="9" height="9" rx="1" fill="none" stroke="' + ALGEO_ICON_INK + '" stroke-width="1.3"/>' +
+        '<rect x="10" y="5" width="9" height="9" rx="1" fill="none" stroke="' + ALGEO_ICON_RED + '" stroke-width="1.3"/>',
     text: '' +
         '<path d="M7 7h10M12 7v11" fill="none" stroke="' + ALGEO_ICON_INK + '" stroke-width="1.6" stroke-linecap="round"/>' +
         '<line x1="9" y1="18" x2="15" y2="18" stroke="' + ALGEO_ICON_RED + '" stroke-width="1.4" stroke-linecap="round"/>',

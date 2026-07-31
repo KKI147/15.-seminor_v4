@@ -1911,6 +1911,60 @@
     line-height: 1.4;
 }
 
+/* 타일 편집 팝업 (회전·대칭·복제) */
+.algeo-tile-popup {
+    position: absolute;
+    z-index: 40;
+    display: none;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    background: var(--surface-panel, #ffffff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+}
+
+.algeo-tile-popup .tile-popup-btn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-primary, #0f172a);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.algeo-tile-popup .tile-popup-btn:hover {
+    background: var(--flyout-hover, #f1f5f9);
+}
+
+.algeo-tile-popup .tile-popup-icon {
+    width: 22px;
+    height: 22px;
+    display: block;
+}
+
+.algeo-tile-popup .tile-popup-icon .algeo-icon-svg {
+    width: 22px;
+    height: 22px;
+}
+
+.algeo-wrapper[data-theme="dark"] .algeo-tile-popup {
+    background: #1e293b;
+    border-color: #334155;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.algeo-wrapper[data-theme="dark"] .algeo-tile-popup .tile-popup-btn:hover {
+    background: #334155;
+}
+
 /* 테마 semantic 텍스트 색 — common * #000 / inherit 보정 위에 재적용 */
 .algeo-wrapper .mode-rail-btn { color: var(--text-secondary); }
 .algeo-wrapper .mode-rail-btn.active { color: var(--on-accent); }

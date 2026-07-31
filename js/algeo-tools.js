@@ -89,7 +89,7 @@ const ALGEO_TOOL_CATEGORIES = [
             { tool: 'ROTATE', label: '회전', iconId: 'rotate', status: 'done', hint: '선택 후 중심점·각도 입력' },
             { tool: 'TRANSLATE', label: '평행이동', iconId: 'translate', status: 'done', hint: '선택 후 시작점·끝점 클릭' },
             { tool: 'DILATE', label: '점을 중심으로 확대', iconId: 'dilate', status: 'done', hint: '선택 후 중심점·배율 입력' },
-            { tool: 'TILE', label: '타일', iconId: 'tile', status: 'done', hint: '선택 후 벡터·반복 횟수' }
+            { tool: 'TILE', label: '타일', iconId: 'tile', status: 'done', hint: '도형 선택 → 위치 클릭 → 회전·대칭' }
         ]
     },
     {
@@ -480,14 +480,17 @@ const ALGEO_TOOL_GUIDES = {
         tips: ['2는 2배 확대, 0.5는 절반 축소입니다.']
     },
     TILE: {
-        summary: '선택한 도형을 기준 벡터 방향으로 여러 번 복제합니다.',
+        summary: '도형을 원하는 위치에 복제하고, 회전·대칭으로 테셀레이션을 만듭니다.',
         steps: [
-            '타일링할 점·도형을 먼저 선택합니다.',
-            '이동 벡터의 시작점을 클릭합니다.',
-            '이동 벡터의 끝점을 클릭합니다.',
-            '반복 횟수를 입력합니다.'
+            '타일링할 도형을 클릭해 선택합니다.',
+            '복제본을 둘 빈 곳을 클릭합니다.',
+            '복제본을 클릭한 뒤 팝업·하얀 원으로 회전·대칭합니다.'
         ],
-        tips: ['1회는 평행이동과 같고, 3이면 벡터의 1·2·3배 위치에 복제됩니다.']
+        tips: [
+            '팝업: 90° 회전, 가로·세로 대칭, 추가 복제',
+            '하얀 원을 드래그하면 자유롭게 회전합니다.',
+            '원본 도형을 다시 선택하면 같은 모양을 더 배치할 수 있습니다.'
+        ]
     },
     TEXT: {
         summary: '클릭한 위치에 자유 텍스트를 배치합니다.',

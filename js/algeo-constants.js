@@ -218,7 +218,7 @@ function isAlgeoPointType(type) {
         type === 'TRANSFORM_POINT';
 }
 
-// 변환 도구인지 여부
+// 변환 도구인지 여부 (TILE은 스탬프 UI — 구버전 TRANSFORM_POINT 호환용으로만 포함)
 function isAlgeoTransformTool(type) {
     return type === 'REFLECT_POINT' || type === 'REFLECT_LINE' ||
         type === 'ROTATE' || type === 'TRANSLATE' || type === 'DILATE' ||
